@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global dark mode class applied in layout */
+html.dark {
+  color-scheme: dark;
+}
