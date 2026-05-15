@@ -5,13 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { Button } from '@/components/ui';
-import { PropsWithChildren, useState } from 'react';
-import { useUserStore } from '@/store/useUserStore';
+import { Settings, LogOut, TreePine } from 'lucide-react';
+import { PropsWithChildren } from 'react';
 
-/**
- * Trillium Logo Mark (extracted from legacy Navbar)
- */
 function TrilliumLogoMark() {
   return (
     <svg
@@ -30,7 +26,6 @@ function TrilliumLogoMark() {
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { name: 'Portfolio', href: '/dashboard' },
@@ -41,96 +36,77 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-900">
-        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-800/80">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                <TrilliumLogoMark />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Trillium
-              </span>
-            </Link>
+      <div className="flex min-h-screen flex-col bg-[#0f111a] text-slate-200 font-sans relative overflow-hidden">
+        {/* Ambient Glow Effects */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/10 blur-[120px] pointer-events-none" />
+        <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
-            <nav className="hidden items-center gap-8 lg:flex">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`text-sm font-semibold transition-colors ${
-                    pathname === link.href
-                      ? 'text-blue-600'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
-            </nav>
+        <div className="relative z-10 w-full max-w-[1100px] mx-auto px-4 pt-6">
+          <header className="flex h-[64px] items-center justify-between rounded-2xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 px-5 shadow-xl">
+            <div className="flex items-center gap-8">
+              <Link href="/dashboard" className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+                  <TrilliumLogoMark />
+                </div>
+                <span className="text-[17px] font-bold text-white tracking-wide">
+                  Trillium <span className="text-blue-500">Finance</span>
+                </span>
+              </Link>
 
-            <div className="flex items-center gap-4">
-              <span className="hidden text-sm font-medium text-slate-600 dark:text-slate-400 sm:inline">
-                {user?.email}
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => signOut()}
-                className="hidden sm:flex"
-              >
-                Sign Out
-              </Button>
-              <button
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 lg:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                <span className="sr-only">Toggle Menu</span>
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16m-7 6h7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden">
-              <div className="space-y-1 px-2 pb-3 pt-2">
+              <nav className="hidden items-center gap-6 lg:flex ml-2">
                 {navLinks.map((link) => (
                   <Link
                     key={link.name}
                     href={link.href}
-                    className="block rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
-                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-sm font-semibold transition-colors ${
+                      pathname === link.href
+                        ? 'text-blue-400'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
                   >
                     {link.name}
                   </Link>
                 ))}
-                <button
-                  onClick={() => signOut()}
-                  className="block w-full px-3 py-2 text-left text-base font-medium text-red-600 hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  Sign Out
-                </button>
-              </div>
+              </nav>
             </div>
-          )}
-        </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-          {children}
-        </main>
+            <div className="flex items-center gap-3">
+              {/* Level Badge */}
+              <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner">
+                <div className="flex items-center gap-1.5">
+                  <TreePine className="h-4 w-4 text-green-500" />
+                  <span className="text-xs font-bold text-slate-300">Novice</span>
+                </div>
+                <div className="w-16 h-1.5 rounded-full bg-[#0f111a] overflow-hidden">
+                  <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+                </div>
+              </div>
+
+              {/* Settings */}
+              <button className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner">
+                <Settings className="h-4 w-4" />
+              </button>
+
+              {/* Personal Toggle */}
+              <button className="hidden sm:flex items-center gap-2 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-semibold text-slate-300">Personal</span>
+                <span className="text-sm">🔥</span>
+              </button>
+
+              {/* Logout */}
+              <button
+                onClick={() => signOut()}
+                className="flex items-center gap-2 rounded-xl bg-slate-800/50 px-4 py-1.5 border border-slate-700/50 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors shadow-inner"
+              >
+                Logout
+              </button>
+            </div>
+          </header>
+
+          <main className="w-full mt-6 pb-12">
+            {children}
+          </main>
+        </div>
       </div>
     </ProtectedRoute>
   );

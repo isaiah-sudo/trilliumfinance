@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { adminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * Validates the session and returns the user ID.
@@ -53,7 +54,7 @@ export async function addTransaction(data: { amount: number; type: string; descr
     .collection('transactions')
     .add({
       ...data,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: FieldValue.serverTimestamp(),
     });
 
   return { id: res.id };

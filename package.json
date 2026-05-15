@@ -14,10 +14,12 @@
     "firebase": "^10.12.0",
     "firebase-admin": "12.4.0",
     "framer-motion": "11.0.0",
-    "next": "15.0.0",
+    "lucide-react": "^1.16.0",
+    "next": "15.0.5",
     "postcss": "8.4.31",
     "react": "18.3.0",
     "react-dom": "18.3.0",
+    "recharts": "^3.8.1",
     "tailwindcss": "3.4.0",
     "zustand": "4.5.0"
   },
@@ -25,7 +27,7 @@
     "@types/node": "20.12.2",
     "@types/react": "18.3.3",
     "eslint": "8.57.0",
-    "eslint-config-next": "15.0.0",
+    "eslint-config-next": "15.0.5",
     "typescript": "5.4.5"
   }
 }
