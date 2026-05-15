@@ -1,10 +1,16 @@
-node_modules/
+# Ignore node_modules anywhere in the project
+**/node_modules/
 
+# Ignore .next folders anywhere (root or inside .firebase)
+**/.next/
+
+# Ignore the entire firebase cache folder
 .firebase/
 
-.next/
+# Ignore all env files
+.env*
+.env.example*
 
-.env.local
 .firebase/hosting.LmZpcmViYXNlXHRyaWxsaXVtZmluYW5jZS1lMWU4MVxob3N0aW5n.cache
 .firebase/trilliumfinance-e1e81/functions/.env
 .firebase/trilliumfinance-e1e81/functions/.env.example
@@ -249,3 +255,5 @@ node_modules/
 .next/types/app/layout.ts
 .next/types/app/page.ts
 .next/types/cache-life.d.ts
+.env.example
+.env.example

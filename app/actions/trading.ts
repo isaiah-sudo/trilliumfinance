@@ -48,22 +48,50 @@ export interface PortfolioSummary {
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
-  const userId = await getAuthenticatedUserId();
+  let userId;
+  try {
+    userId = await getAuthenticatedUserId();
+    if (!userId) {
+      throw new Error('User ID is missing after authentication');
+    }
+  } catch (err: any) {
+    console.error("Auth Error:", err);
+    throw new Error(`Authentication failed: ${err.message}`);
+  }
+
   const userRef = adminDb.collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
   const holdingsRef = portfolioRef.collection('holdings');
-  
+
+  // Ensure the user document exists
+  const userDoc = await userRef.get();
+  if (!userDoc.exists) {
+    await userRef.set({});
+  }
+
+  // Fetch portfolio document (will be created later if missing)
   const doc = await portfolioRef.get();
-  
+
   let cash = 10000;
   if (!doc.exists) {
-    await portfolioRef.set({ cash: 10000 });
+    try {
+      await portfolioRef.set({ cash: 10000 });
+    } catch (err: any) {
+      console.error("Firestore Portfolio Set Error:", err);
+      throw new Error(`Firestore Error (Set Portfolio): ${err.message}`);
+    }
   } else {
     cash = doc.data()?.cash ?? 10000;
   }
 
   // Fetch holdings from sub-collection
-  const holdingsSnapshot = await holdingsRef.get();
+  let holdingsSnapshot;
+  try {
+    holdingsSnapshot = await holdingsRef.get();
+  } catch (err: any) {
+    console.error("Firestore Holdings Get Error:", err);
+    throw new Error(`Firestore Error (Holdings): ${err.message}`);
+  }
   const holdingsList = [];
   let totalMarketValue = 0;
   let dayPL = 0;
@@ -82,7 +110,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       const currentPrice = quoteData.c || 0;
       const previousClose = quoteData.pc || currentPrice;
       const change = currentPrice - previousClose;
-      
+
       const marketValue = holdingData.qty * currentPrice;
       const costBase = holdingData.qty * holdingData.avgPrice;
       const pl = marketValue - costBase;
@@ -128,7 +156,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
 
 export async function executeTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
   if (quantity <= 0) throw new Error('Quantity must be greater than 0');
-  
+
   const userId = await getAuthenticatedUserId();
   const userRef = adminDb.collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
@@ -144,7 +172,7 @@ export async function executeTrade(ticker: string, quantity: number, type: 'BUY'
   await adminDb.runTransaction(async (transaction) => {
     const portfolioDoc = await transaction.get(portfolioRef);
     const holdingDoc = await transaction.get(holdingsRef);
-    
+
     let cash = 10000;
     if (portfolioDoc.exists) {
       cash = portfolioDoc.data()?.cash ?? 10000;
@@ -154,24 +182,24 @@ export async function executeTrade(ticker: string, quantity: number, type: 'BUY'
       if (cash < totalAmount) {
         throw new Error('Insufficient funds');
       }
-      
+
       const currentHolding = holdingDoc.exists ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
       const newQty = currentHolding.qty + quantity;
       const newAvgPrice = ((currentHolding.qty * currentHolding.avgPrice) + totalAmount) / newQty;
-      
+
       transaction.update(portfolioRef, { cash: cash - totalAmount });
       transaction.set(holdingsRef, { qty: newQty, avgPrice: newAvgPrice }, { merge: true });
-      
+
     } else if (type === 'SELL') {
       if (!holdingDoc.exists || holdingDoc.data()?.qty < quantity) {
         throw new Error('Insufficient shares to sell');
       }
-      
+
       const currentHolding = holdingDoc.data()!;
       const newQty = currentHolding.qty - quantity;
-      
+
       transaction.update(portfolioRef, { cash: cash + totalAmount });
-      
+
       if (newQty === 0) {
         transaction.delete(holdingsRef);
       } else {
@@ -197,13 +225,13 @@ export async function executeTrade(ticker: string, quantity: number, type: 'BUY'
 export async function getChartData(ticker: string = 'SPY') {
   const end = Math.floor(Date.now() / 1000);
   const start = end - (7 * 24 * 60 * 60);
-  
+
   try {
     const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=15&from=${start}&to=${end}&token=${getFinnhubToken()}`);
     if (!res.ok) return [];
-    
+
     const data = await res.json();
-    
+
     if (data.s !== 'ok' || !data.c || !data.t) {
       return [];
     }
