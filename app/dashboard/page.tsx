@@ -8,12 +8,13 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'rec
 import { getPortfolioSummary, getChartData, executeTrade, PortfolioSummary } from '@/app/actions/trading';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [showDetails, setShowDetails] = useState(true);
   
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -22,6 +23,8 @@ export default function DashboardPage() {
   const [tradeError, setTradeError] = useState('');
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [portData, cData] = await Promise.all([
         getPortfolioSummary(),
@@ -29,22 +32,31 @@ export default function DashboardPage() {
       ]);
       setPortfolio(portData);
       
-      // Merge chart data with dummy portfolio line for visual effect
-      const mergedChartData = cData.map((d: any) => ({
-        ...d,
-        portfolio: d.price * 2.08 // Dummy correlation for the chart visually
-      }));
-      setChartData(mergedChartData);
-    } catch (err) {
+      if (cData && cData.length > 0) {
+        // Merge chart data with dummy portfolio line for visual effect
+        const mergedChartData = cData.map((d: any) => ({
+          ...d,
+          portfolio: d.price * 2.08 // Dummy correlation for the chart visually
+        }));
+        setChartData(mergedChartData);
+      } else {
+        setChartData([]);
+      }
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Failed to load portfolio data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) loadData();
-  }, [user]);
+    if (!authLoading && user) {
+      loadData();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   const handleTrade = async (type: 'BUY' | 'SELL') => {
     if (!tradeTicker) return;
@@ -66,8 +78,62 @@ export default function DashboardPage() {
   const formatCurrency = (val: number) => val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   const formatPercent = (val: number) => val.toFixed(2) + '%';
 
-  if (loading || !portfolio) {
-    return <div className="text-white text-center mt-20">Loading Portfolio...</div>;
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="text-white text-center mt-20 p-8 rounded-3xl bg-[#1a2133]/90 border border-slate-700/50">
+        <Lock className="h-12 w-12 text-slate-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+        <p className="text-slate-400 mb-6">Please log in to view your portfolio.</p>
+        <a href="/login" className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-colors inline-block">
+          Go to Login
+        </a>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+        <p className="font-medium animate-pulse">Syncing with markets...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-white text-center mt-20 p-8 rounded-3xl bg-rose-500/10 border border-rose-500/50">
+        <X className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
+        <p className="text-slate-400 mb-6">{error}</p>
+        <button onClick={loadData} className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!portfolio) {
+    return (
+      <div className="text-white text-center mt-20 flex flex-col items-center gap-4">
+        <h2 className="text-2xl font-bold">Welcome to Trillium Finance</h2>
+        <p className="text-slate-400">Your portfolio is currently empty or failed to load. Start by exploring the market!</p>
+        <button 
+          onClick={() => setTradeModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+        >
+          Make Your First Trade
+        </button>
+      </div>
+    );
   }
 
   const marketValue = portfolio.totalValue - portfolio.cash;
@@ -208,16 +274,22 @@ export default function DashboardPage() {
         </div>
 
         <div className="h-[280px] w-full mt-4 -ml-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} dy={10} />
-              <YAxis yAxisId="left" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={-10} />
-              <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={10} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f111a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px', fontWeight: 600 }} />
-              <Line yAxisId="left" type="monotone" dataKey="portfolio" stroke="#2dd4bf" strokeWidth={2} dot={false} activeDot={{r: 4, fill: '#2dd4bf', stroke: '#0f111a', strokeWidth: 2}} />
-              <Line yAxisId="right" type="monotone" dataKey="price" stroke="#64748b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          {chartData && chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} dy={10} />
+                <YAxis yAxisId="left" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={-10} />
+                <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={10} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f111a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px', fontWeight: 600 }} />
+                <Line yAxisId="left" type="monotone" dataKey="portfolio" stroke="#2dd4bf" strokeWidth={2} dot={false} activeDot={{r: 4, fill: '#2dd4bf', stroke: '#0f111a', strokeWidth: 2}} />
+                <Line yAxisId="right" type="monotone" dataKey="price" stroke="#64748b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full w-full text-slate-500 font-bold text-sm">
+              No chart data available.
+            </div>
+          )}
         </div>
       </motion.div>
 

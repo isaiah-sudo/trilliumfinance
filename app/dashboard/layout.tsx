@@ -29,6 +29,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
   const navLinks = [
     { name: 'Portfolio', href: '/dashboard' },
+    { name: 'Explore', href: '/dashboard/explore' },
     { name: 'Chat', href: '/chat' },
     { name: 'Rankings', href: '/leaderboard' },
     { name: 'Achievements', href: '/achievements' },
