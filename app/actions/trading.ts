@@ -51,27 +51,26 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   const userId = await getAuthenticatedUserId();
   const userRef = adminDb.collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
+  const holdingsRef = portfolioRef.collection('holdings');
   
   const doc = await portfolioRef.get();
   
   let cash = 10000;
-  let holdings: Record<string, { qty: number, avgPrice: number }> = {};
-  
   if (!doc.exists) {
-    await portfolioRef.set({ cash: 10000, holdings: {} });
+    await portfolioRef.set({ cash: 10000 });
   } else {
-    const data = doc.data()!;
-    cash = data.cash || 10000;
-    holdings = data.holdings || {};
+    cash = doc.data()?.cash ?? 10000;
   }
 
+  // Fetch holdings from sub-collection
+  const holdingsSnapshot = await holdingsRef.get();
+  const holdingsList = [];
   let totalMarketValue = 0;
   let dayPL = 0;
-  let totalCostBase = 0;
 
-  const holdingsList = [];
-
-  for (const [ticker, holdingData] of Object.entries(holdings)) {
+  for (const hDoc of holdingsSnapshot.docs) {
+    const ticker = hDoc.id;
+    const holdingData = hDoc.data();
     if (holdingData.qty <= 0) continue;
 
     try {
@@ -92,7 +91,6 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
 
       totalMarketValue += marketValue;
       dayPL += holdingDayPL;
-      totalCostBase += costBase;
 
       holdingsList.push({
         symbol: ticker,
@@ -134,6 +132,7 @@ export async function executeTrade(ticker: string, quantity: number, type: 'BUY'
   const userId = await getAuthenticatedUserId();
   const userRef = adminDb.collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
+  const holdingsRef = portfolioRef.collection('holdings').doc(ticker);
   const transactionsRef = userRef.collection('transactions');
 
   const quoteData = await fetchFinnhubQuote(ticker);
@@ -143,44 +142,43 @@ export async function executeTrade(ticker: string, quantity: number, type: 'BUY'
   const totalAmount = currentPrice * quantity;
 
   await adminDb.runTransaction(async (transaction) => {
-    const doc = await transaction.get(portfolioRef);
-    let cash = 10000;
-    let holdings: Record<string, { qty: number, avgPrice: number }> = {};
+    const portfolioDoc = await transaction.get(portfolioRef);
+    const holdingDoc = await transaction.get(holdingsRef);
     
-    if (doc.exists) {
-      const data = doc.data()!;
-      cash = data.cash || 10000;
-      holdings = data.holdings || {};
+    let cash = 10000;
+    if (portfolioDoc.exists) {
+      cash = portfolioDoc.data()?.cash ?? 10000;
     }
 
     if (type === 'BUY') {
       if (cash < totalAmount) {
         throw new Error('Insufficient funds');
       }
-      cash -= totalAmount;
       
-      const currentHolding = holdings[ticker] || { qty: 0, avgPrice: 0 };
+      const currentHolding = holdingDoc.exists ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
       const newQty = currentHolding.qty + quantity;
       const newAvgPrice = ((currentHolding.qty * currentHolding.avgPrice) + totalAmount) / newQty;
       
-      holdings[ticker] = { qty: newQty, avgPrice: newAvgPrice };
+      transaction.update(portfolioRef, { cash: cash - totalAmount });
+      transaction.set(holdingsRef, { qty: newQty, avgPrice: newAvgPrice }, { merge: true });
+      
     } else if (type === 'SELL') {
-      const currentHolding = holdings[ticker] || { qty: 0, avgPrice: 0 };
-      if (currentHolding.qty < quantity) {
+      if (!holdingDoc.exists || holdingDoc.data()?.qty < quantity) {
         throw new Error('Insufficient shares to sell');
       }
-      cash += totalAmount;
       
+      const currentHolding = holdingDoc.data()!;
       const newQty = currentHolding.qty - quantity;
+      
+      transaction.update(portfolioRef, { cash: cash + totalAmount });
+      
       if (newQty === 0) {
-        delete holdings[ticker];
+        transaction.delete(holdingsRef);
       } else {
-        holdings[ticker] = { qty: newQty, avgPrice: currentHolding.avgPrice };
+        transaction.set(holdingsRef, { qty: newQty, avgPrice: currentHolding.avgPrice }, { merge: true });
       }
     }
 
-    transaction.set(portfolioRef, { cash, holdings }, { merge: true });
-    
     const newTxRef = transactionsRef.doc();
     transaction.set(newTxRef, {
       ticker,
