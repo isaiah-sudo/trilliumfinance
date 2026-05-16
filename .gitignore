@@ -7,9 +7,12 @@
 # Ignore the entire firebase cache folder
 .firebase/
 
-# Ignore all env files
-.env*
-.env.example*
+# Ignore all env files except example
+.env
+.env.local
+.env.production
+.env.development
+!.env.example
 
 .firebase/hosting.LmZpcmViYXNlXHRyaWxsaXVtZmluYW5jZS1lMWU4MVxob3N0aW5n.cache
 .firebase/trilliumfinance-e1e81/functions/.env
@@ -255,5 +258,3 @@
 .next/types/app/layout.ts
 .next/types/app/page.ts
 .next/types/cache-life.d.ts
-.env.example
-.env.example

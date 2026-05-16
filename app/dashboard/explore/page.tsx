@@ -4,29 +4,81 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, TrendingUp, Cpu, Zap, Leaf, Bitcoin, Eye, ShoppingCart, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { executeTrade } from '@/app/actions/trading';
+import { handleTrade, getMarketQuotes } from '@/app/actions/trading';
 
-const STOCK_DATA = [
-  { ticker: 'AAPL', name: 'Apple Inc.', category: 'Technology', price: 185.92, change: 1.2 },
-  { ticker: 'MSFT', name: 'Microsoft Corp.', category: 'Technology', price: 415.10, change: -0.5 },
-  { ticker: 'NVDA', name: 'NVIDIA Corp.', category: 'Technology', price: 875.28, change: 3.4 },
-  { ticker: 'GOOGL', name: 'Alphabet Inc.', category: 'Technology', price: 152.12, change: 0.8 },
-  { ticker: 'TSLA', name: 'Tesla, Inc.', category: 'Energy', price: 171.05, change: -2.1 },
-  { ticker: 'XOM', name: 'Exxon Mobil Corp.', category: 'Energy', price: 118.32, change: 1.1 },
-  { ticker: 'UNH', name: 'UnitedHealth Group', category: 'Healthcare', price: 480.15, change: -0.3 },
-  { ticker: 'PFE', name: 'Pfizer Inc.', category: 'Healthcare', price: 27.50, change: 0.5 },
-  { ticker: 'BTC', name: 'Bitcoin', category: 'Crypto', price: 65432.10, change: 2.5 },
-  { ticker: 'ETH', name: 'Ethereum', category: 'Crypto', price: 3456.78, change: 1.8 },
-  { ticker: 'AMZN', name: 'Amazon.com Inc.', category: 'Technology', price: 178.22, change: 0.9 },
-  { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology', price: 495.30, change: 1.4 },
+const BASE_STOCKS = [
+  // Technology
+  { ticker: 'AAPL', name: 'Apple Inc.', category: 'Technology' },
+  { ticker: 'MSFT', name: 'Microsoft Corp.', category: 'Technology' },
+  { ticker: 'NVDA', name: 'NVIDIA Corp.', category: 'Technology' },
+  { ticker: 'GOOGL', name: 'Alphabet Inc.', category: 'Technology' },
+  { ticker: 'AMZN', name: 'Amazon.com Inc.', category: 'Technology' },
+  { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology' },
+  { ticker: 'TSM', name: 'Taiwan Semiconductor', category: 'Technology' },
+  { ticker: 'AVGO', name: 'Broadcom Inc.', category: 'Technology' },
+  { ticker: 'ASML', name: 'ASML Holding', category: 'Technology' },
+  { ticker: 'ORCL', name: 'Oracle Corp.', category: 'Technology' },
+  { ticker: 'AMD', name: 'Advanced Micro Devices', category: 'Technology' },
+  { ticker: 'CRM', name: 'Salesforce Inc.', category: 'Technology' },
+  { ticker: 'ADBE', name: 'Adobe Inc.', category: 'Technology' },
+  { ticker: 'NFLX', name: 'Netflix Inc.', category: 'Technology' },
+  { ticker: 'INTC', name: 'Intel Corporation', category: 'Technology' },
+  
+  // Healthcare
+  { ticker: 'UNH', name: 'UnitedHealth Group', category: 'Healthcare' },
+  { ticker: 'LLY', name: 'Eli Lilly & Co.', category: 'Healthcare' },
+  { ticker: 'JNJ', name: 'Johnson & Johnson', category: 'Healthcare' },
+  { ticker: 'MRK', name: 'Merck & Co.', category: 'Healthcare' },
+  { ticker: 'ABBV', name: 'AbbVie Inc.', category: 'Healthcare' },
+  { ticker: 'PFE', name: 'Pfizer Inc.', category: 'Healthcare' },
+  { ticker: 'TMO', name: 'Thermo Fisher', category: 'Healthcare' },
+  { ticker: 'DHR', name: 'Danaher Corp.', category: 'Healthcare' },
+  { ticker: 'ABT', name: 'Abbott Labs', category: 'Healthcare' },
+  { ticker: 'AMGN', name: 'Amgen Inc.', category: 'Healthcare' },
+
+  // Energy
+  { ticker: 'XOM', name: 'Exxon Mobil Corp.', category: 'Energy' },
+  { ticker: 'CVX', name: 'Chevron Corp.', category: 'Energy' },
+  { ticker: 'COP', name: 'ConocoPhillips', category: 'Energy' },
+  { ticker: 'SLB', name: 'Schlumberger N.V.', category: 'Energy' },
+  { ticker: 'EOG', name: 'EOG Resources', category: 'Energy' },
+  { ticker: 'PXD', name: 'Pioneer Natural', category: 'Energy' },
+  { ticker: 'MPC', name: 'Marathon Petroleum', category: 'Energy' },
+  { ticker: 'PSX', name: 'Phillips 66', category: 'Energy' },
+  { ticker: 'VLO', name: 'Valero Energy', category: 'Energy' },
+  { ticker: 'OXY', name: 'Occidental Petroleum', category: 'Energy' },
+
+  // Finance
+  { ticker: 'JPM', name: 'JPMorgan Chase', category: 'Finance' },
+  { ticker: 'V', name: 'Visa Inc.', category: 'Finance' },
+  { ticker: 'MA', name: 'Mastercard Inc.', category: 'Finance' },
+  { ticker: 'BAC', name: 'Bank of America', category: 'Finance' },
+  { ticker: 'WFC', name: 'Wells Fargo', category: 'Finance' },
+  { ticker: 'GS', name: 'Goldman Sachs', category: 'Finance' },
+  { ticker: 'MS', name: 'Morgan Stanley', category: 'Finance' },
+  { ticker: 'AXP', name: 'American Express', category: 'Finance' },
+  { ticker: 'C', name: 'Citigroup Inc.', category: 'Finance' },
+  { ticker: 'BLK', name: 'BlackRock Inc.', category: 'Finance' },
+
+  // Consumer
+  { ticker: 'WMT', name: 'Walmart Inc.', category: 'Consumer' },
+  { ticker: 'PG', name: 'Procter & Gamble', category: 'Consumer' },
+  { ticker: 'HD', name: 'Home Depot', category: 'Consumer' },
+  { ticker: 'COST', name: 'Costco Wholesale', category: 'Consumer' },
+  { ticker: 'KO', name: 'Coca-Cola Co.', category: 'Consumer' },
 ];
 
-const CATEGORIES = ['All', 'Technology', 'Healthcare', 'Energy', 'Crypto'];
+const CATEGORIES = ['All', 'Technology', 'Healthcare', 'Energy', 'Finance', 'Consumer'];
 
 export default function MarketExplorer() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  // Real-time stock state
+  const [stocks, setStocks] = useState(
+    BASE_STOCKS.map(s => ({ ...s, price: 0, change: 0, loading: true }))
+  );
   
   // Trade Modal State
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
@@ -36,7 +88,46 @@ export default function MarketExplorer() {
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState(false);
 
-  const filteredStocks = STOCK_DATA.filter(stock => {
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchPrices = async () => {
+      try {
+        const tickers = BASE_STOCKS.map(s => s.ticker);
+        const quotes = await getMarketQuotes(tickers);
+        
+        if (mounted && quotes.length > 0) {
+          setStocks(prev => prev.map(stock => {
+            const quote = quotes.find(q => q.ticker === stock.ticker);
+            if (quote) {
+              return { 
+                ...stock, 
+                price: quote.price, 
+                change: quote.change, 
+                loading: false 
+              };
+            }
+            return stock;
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch live quotes', err);
+      }
+    };
+
+    // Initial fetch
+    fetchPrices();
+
+    // Set interval for every 60 seconds to respect API rate limits (60 req/min)
+    const interval = setInterval(fetchPrices, 60000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const filteredStocks = stocks.filter(stock => {
     const matchesSearch = stock.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          stock.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || stock.category === selectedCategory;
@@ -51,12 +142,12 @@ export default function MarketExplorer() {
     setTradeQty(1);
   };
 
-  const handleTrade = async (type: 'BUY' | 'SELL') => {
+  const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!selectedStock) return;
     setTradeLoading(true);
     setTradeError('');
     try {
-      await executeTrade(selectedStock.ticker, Number(tradeQty), type);
+      await handleTrade(selectedStock.ticker, Number(tradeQty), type);
       setTradeSuccess(true);
       setTimeout(() => {
         setTradeModalOpen(false);
@@ -75,7 +166,7 @@ export default function MarketExplorer() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Market Explorer</h1>
-          <p className="text-slate-400 font-medium">Discover and trade your favorite assets instantly.</p>
+          <p className="text-slate-400 font-medium">Discover and trade your favorite assets instantly. Prices update every 60s.</p>
         </div>
         
         <div className="relative w-full md:w-96 group">
@@ -117,7 +208,7 @@ export default function MarketExplorer() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{ delay: (idx % 10) * 0.05 }} // modulo so it doesn't take forever to render 50 items
               className="group rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-xl hover:border-blue-500/30 transition-all hover:shadow-2xl hover:shadow-blue-500/5"
             >
               <div className="flex justify-between items-start mb-4">
@@ -132,7 +223,8 @@ export default function MarketExplorer() {
                 </div>
                 <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
                   stock.category === 'Technology' ? 'bg-blue-500/10 text-blue-400' :
-                  stock.category === 'Crypto' ? 'bg-orange-500/10 text-orange-400' :
+                  stock.category === 'Finance' ? 'bg-indigo-500/10 text-indigo-400' :
+                  stock.category === 'Consumer' ? 'bg-orange-500/10 text-orange-400' :
                   stock.category === 'Energy' ? 'bg-yellow-500/10 text-yellow-400' :
                   'bg-teal-500/10 text-teal-400'
                 }`}>
@@ -142,19 +234,30 @@ export default function MarketExplorer() {
 
               <div className="mb-6">
                 <div className="text-2xl font-black text-white mb-1">
-                  ${stock.price.toLocaleString()}
+                  {stock.loading ? (
+                    <div className="h-8 w-24 bg-slate-800 animate-pulse rounded"></div>
+                  ) : (
+                    `$${stock.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  )}
                 </div>
                 <div className={`text-xs font-bold flex items-center gap-1 ${stock.change >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                  {stock.change >= 0 ? '+' : ''}{stock.change}% 
-                  <TrendingUp className={`h-3 w-3 ${stock.change < 0 ? 'rotate-180' : ''}`} />
-                  <span className="text-slate-500 text-[10px] ml-1 font-semibold">PAST 24H</span>
+                  {stock.loading ? (
+                    <div className="h-4 w-16 bg-slate-800 animate-pulse rounded"></div>
+                  ) : (
+                    <>
+                      {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}% 
+                      <TrendingUp className={`h-3 w-3 ${stock.change < 0 ? 'rotate-180' : ''}`} />
+                      <span className="text-slate-500 text-[10px] ml-1 font-semibold">PAST 24H</span>
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <button 
                   onClick={() => openTradeModal(stock)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2 active:scale-95"
+                  disabled={stock.loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                 >
                   <ShoppingCart className="h-3.5 w-3.5" /> Buy
                 </button>
@@ -175,7 +278,7 @@ export default function MarketExplorer() {
         </div>
       )}
 
-      {/* Trade Modal - Reused from Dashboard style but enhanced */}
+      {/* Trade Modal */}
       <AnimatePresence>
         {tradeModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -185,7 +288,6 @@ export default function MarketExplorer() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-[#1a2133] border border-slate-700/50 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative overflow-hidden"
             >
-              {/* Background Glow */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-[60px] pointer-events-none" />
               
               <div className="flex justify-between items-center mb-8">
@@ -211,7 +313,7 @@ export default function MarketExplorer() {
                   <div className="p-6 rounded-3xl bg-[#0f111a] border border-slate-700/50">
                     <div className="flex justify-between items-center mb-6">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Market Price</span>
-                      <span className="text-xl font-black text-white">${selectedStock?.price.toLocaleString()}</span>
+                      <span className="text-xl font-black text-white">${selectedStock?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     
                     <div className="space-y-4">
@@ -241,7 +343,7 @@ export default function MarketExplorer() {
 
                     <div className="mt-8 pt-6 border-t border-slate-800 flex justify-between items-center">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Cost</span>
-                      <span className="text-2xl font-black text-blue-400">${(selectedStock?.price * tradeQty).toLocaleString()}</span>
+                      <span className="text-2xl font-black text-blue-400">${(selectedStock?.price * tradeQty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                   
@@ -253,14 +355,14 @@ export default function MarketExplorer() {
                   
                   <div className="flex gap-4">
                     <button 
-                      onClick={() => handleTrade('BUY')}
+                      onClick={() => executeTradeSubmit('BUY')}
                       disabled={tradeLoading}
                       className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 active:scale-95"
                     >
                       {tradeLoading ? 'Confirming...' : 'Confirm Buy'}
                     </button>
                     <button 
-                      onClick={() => handleTrade('SELL')}
+                      onClick={() => executeTradeSubmit('SELL')}
                       disabled={tradeLoading}
                       className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(244,63,94,0.3)] disabled:opacity-50 active:scale-95"
                     >

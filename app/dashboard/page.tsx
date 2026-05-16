@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
-import { getPortfolioSummary, getChartData, executeTrade, PortfolioSummary } from '@/app/actions/trading';
+import PortfolioChart from '@/components/PortfolioChart';
+import { getPortfolioSummary, getGraphData, handleTrade, PortfolioSummary } from '@/app/actions/trading';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const [showDetails, setShowDetails] = useState(true);
   
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
+  const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,22 +27,8 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [portData, cData] = await Promise.all([
-        getPortfolioSummary(),
-        getChartData('SPY') // You can switch this to portfolio total value over time later
-      ]);
+      const portData = await getPortfolioSummary();
       setPortfolio(portData);
-      
-      if (cData && cData.length > 0) {
-        // Merge chart data with dummy portfolio line for visual effect
-        const mergedChartData = cData.map((d: any) => ({
-          ...d,
-          portfolio: d.price * 2.08 // Dummy correlation for the chart visually
-        }));
-        setChartData(mergedChartData);
-      } else {
-        setChartData([]);
-      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to load portfolio data. Please try again.');
@@ -51,6 +38,18 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (!user) return;
+    const loadGraph = async () => {
+      try {
+        const data = await getGraphData(timeRange);
+        setChartData(data);
+      } catch (err) {
+        console.error('Failed to load graph data', err);
+      }
+    };
+    loadGraph();
+  }, [user, timeRange]);
+  useEffect(() => {
     if (!authLoading && user) {
       loadData();
     } else if (!authLoading && !user) {
@@ -58,12 +57,12 @@ export default function DashboardPage() {
     }
   }, [user, authLoading]);
 
-  const handleTrade = async (type: 'BUY' | 'SELL') => {
+  const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!tradeTicker) return;
     setTradeLoading(true);
     setTradeError('');
     try {
-      await executeTrade(tradeTicker.toUpperCase(), Number(tradeQty), type);
+      await handleTrade(tradeTicker.toUpperCase(), Number(tradeQty), type);
       await loadData();
       setTradeModalOpen(false);
       setTradeTicker('');
@@ -273,23 +272,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="h-[280px] w-full mt-4 -ml-4">
-          {chartData && chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} dy={10} />
-                <YAxis yAxisId="left" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={-10} />
-                <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `$${val}`} dx={10} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f111a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px', fontWeight: 600 }} />
-                <Line yAxisId="left" type="monotone" dataKey="portfolio" stroke="#2dd4bf" strokeWidth={2} dot={false} activeDot={{r: 4, fill: '#2dd4bf', stroke: '#0f111a', strokeWidth: 2}} />
-                <Line yAxisId="right" type="monotone" dataKey="price" stroke="#64748b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full w-full text-slate-500 font-bold text-sm">
-              No chart data available.
-            </div>
-          )}
+        <div className="w-full mt-4">
+          <PortfolioChart data={chartData || { portfolio: [], benchmark: [] }} timeRange={timeRange} onTimeRangeChange={setTimeRange} />
         </div>
       </motion.div>
 
@@ -391,14 +375,14 @@ export default function DashboardPage() {
                 
                 <div className="flex gap-4 pt-2">
                   <button 
-                    onClick={() => handleTrade('BUY')}
+                    onClick={() => executeTradeSubmit('BUY')}
                     disabled={tradeLoading || !tradeTicker}
                     className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(20,184,166,0.3)] disabled:opacity-50"
                   >
                     {tradeLoading ? 'Processing...' : 'Buy'}
                   </button>
                   <button 
-                    onClick={() => handleTrade('SELL')}
+                    onClick={() => executeTradeSubmit('SELL')}
                     disabled={tradeLoading || !tradeTicker}
                     className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] disabled:opacity-50"
                   >
