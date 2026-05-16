@@ -1,8 +1,12 @@
 'use server';
 
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { FieldValue } from 'firebase-admin/firestore';
+
+// Helper to get DB/Auth safely in actions
+const getDb = () => getAdminDb();
+const getAuth = () => getAdminAuth();
 
 // ----- Premade portfolio definitions -----
 const PREMADE_PORTFOLIOS: Record<string, { ticker: string; qty: number }[]> = {
@@ -23,7 +27,7 @@ async function getAuthenticatedUserId() {
   if (!token) throw new Error('Unauthorized: No auth token cookie found');
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await getAuth().verifyIdToken(token);
     if (!decodedToken.uid) throw new Error('UID missing from token');
     return decodedToken.uid;
   } catch (error: any) {
@@ -97,7 +101,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   const userId = await getAuthenticatedUserId();
   
   // Use a direct approach to avoid NOT_FOUND errors
-  const userRef = adminDb.collection('users').doc(userId);
+  const userRef = getDb().collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
   const holdingsRef = portfolioRef.collection('holdings');
 
@@ -169,10 +173,22 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   // Asynchronously ensure a snapshot is captured for this session/day
   // We do not await this to avoid slowing down the UI load
   const todayStr = new Date().toDateString();
-  const userDocData = (await userRef.get()).data();
-  if (userDocData?.lastSnapshotDate !== todayStr) {
-    capturePortfolioSnapshot(userId, summaryObj).catch(console.error);
-    userRef.set({ lastSnapshotDate: todayStr }, { merge: true }).catch(console.error);
+  try {
+    const userDocSnap = await userRef.get();
+    if (userDocSnap.exists) {
+      const userDocData = userDocSnap.data();
+      if (userDocData?.lastSnapshotDate !== todayStr) {
+        capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Background Snapshot Error:', err));
+        userRef.set({ lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
+      }
+    } else {
+      // Lazy creation of user doc
+      userRef.set({ lastSnapshotDate: todayStr, updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
+      capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Initial Background Snapshot Error:', err));
+    }
+  } catch (err) {
+    console.error('Error checking for portfolio snapshot:', err);
+    // Continue anyway as this is non-critical for the immediate render
   }
 
   return summaryObj;
@@ -182,7 +198,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   if (quantity <= 0) throw new Error('Quantity must be greater than 0');
   const userId = await getAuthenticatedUserId();
   
-  const userRef = adminDb.collection('users').doc(userId);
+  const userRef = getDb().collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
   const holdingsRef = portfolioRef.collection('holdings').doc(ticker.toUpperCase());
   const transactionsRef = userRef.collection('transactions');
@@ -193,7 +209,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
 
   const totalAmount = currentPrice * quantity;
 
-  await adminDb.runTransaction(async (transaction) => {
+  await getDb().runTransaction(async (transaction) => {
     const portfolioDoc = await transaction.get(portfolioRef);
     const holdingDoc = await transaction.get(holdingsRef);
 
@@ -269,7 +285,7 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
   try {
     const userId = userIdOverride || await getAuthenticatedUserId();
     const portSummary = summary || await getPortfolioSummary();
-    const historyRef = adminDb.collection('users').doc(userId).collection('portfolio_history');
+    const historyRef = getDb().collection('users').doc(userId).collection('portfolio_history');
     
     // Simple deduplication: check if we just took a snapshot in the last hour
     // (This is basic; could be more robust, but prevents spam)
@@ -287,7 +303,7 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
 
 export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   const userId = await getAuthenticatedUserId();
-  const historyRef = adminDb.collection('users').doc(userId).collection('portfolio_history');
+  const historyRef = getDb().collection('users').doc(userId).collection('portfolio_history');
   
   // Calculate timestamps
   const now = new Date();
@@ -387,7 +403,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
 export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follower' | 'day_trader') {
   try {
     const userId = await getAuthenticatedUserId();
-    const userRef = adminDb.collection('users').doc(userId);
+    const userRef = getDb().collection('users').doc(userId);
     const portfolioRef = userRef.collection('portfolio').doc('main');
     const holdingsRef = portfolioRef.collection('holdings');
 
@@ -409,7 +425,7 @@ export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follow
     if (startingCash < 0) throw new Error('Starting value exceeds $10,000 limit');
 
     // Use a batch for faster, more reliable initialization
-    const batch = adminDb.batch();
+    const batch = getDb().batch();
 
     // Ensure user and portfolio exists
     batch.set(userRef, { lastInitialized: FieldValue.serverTimestamp() }, { merge: true });

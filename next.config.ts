@@ -7,9 +7,7 @@ import type { NextConfig } from 'next';
  * - Enables SWC compiler and experimental React Server Components support.
  */
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-  output: 'standalone',
+
   // Tailwind CSS will purge unused classes based on the `content` field in tailwind.config.ts.
   // No further custom webpack config needed.
   // Environment variables will be available at runtime via process.env.

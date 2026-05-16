@@ -1,8 +1,7 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Placeholder environment variables – replace with real values in GCP Secret Manager
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIzaSyAv0SEA9NU1Cjaophf-g_EOYwnNAJmg974",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "trilliumfinance-e1e81.firebaseapp.com",
@@ -13,7 +12,8 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? "G-0E8HDNJPMN",
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
