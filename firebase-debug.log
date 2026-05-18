@@ -123,3 +123,257 @@
 [debug] [2026-05-18T00:53:55.845Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 [none]
 [debug] [2026-05-18T00:53:56.463Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 200
 [debug] [2026-05-18T00:53:56.463Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 {"name":"projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81","defaultUrl":"https://trilliumfinance-e1e81.web.app","appId":"1:698523641934:web:a4feca257b0611550ebb1f","type":"DEFAULT_SITE"}
+[debug] [2026-05-18T00:54:02.300Z] [web frameworks] effective firebase.json:  {
+  "hosting": [
+    {
+      "source": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "frameworksBackend": {
+        "region": "us-central1"
+      },
+      "site": "trilliumfinance-e1e81",
+      "rewrites": [
+        {
+          "source": "**",
+          "function": {
+            "functionId": "ssrtrilliumfinancee1e81",
+            "region": "us-central1",
+            "pinTag": true
+          }
+        }
+      ],
+      "redirects": [],
+      "headers": [
+        {
+          "source": "/_not-found",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found"
+            }
+          ]
+        },
+        {
+          "source": "/login",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/login/layout,_N_T_/login/page,_N_T_/login"
+            }
+          ]
+        },
+        {
+          "source": "/signup",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/signup/layout,_N_T_/signup/page,_N_T_/signup"
+            }
+          ]
+        },
+        {
+          "source": "/dashboard/explore",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/explore/layout,_N_T_/dashboard/explore/page,_N_T_/dashboard/explore"
+            }
+          ]
+        },
+        {
+          "source": "/dashboard",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/page,_N_T_/dashboard"
+            }
+          ]
+        },
+        {
+          "source": "/dashboard/setup",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "4294967294"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/setup/layout,_N_T_/dashboard/setup/page,_N_T_/dashboard/setup"
+            }
+          ]
+        },
+        {
+          "source": "**/*.[jt]s",
+          "headers": [
+            {
+              "key": "Set-Cookie",
+              "value": "__FIREBASE_DEFAULTS__=eyJjb25maWciOnsicHJvamVjdElkIjoidHJpbGxpdW1maW5hbmNlLWUxZTgxIiwiYXBwSWQiOiIxOjY5ODUyMzY0MTkzNDp3ZWI6YTRmZWNhMjU3YjA2MTE1NTBlYmIxZiIsInN0b3JhZ2VCdWNrZXQiOiJ0cmlsbGl1bWZpbmFuY2UtZTFlODEuZmlyZWJhc2VzdG9yYWdlLmFwcCIsImFwaUtleSI6IkFJemFTeUF2MFNFQTlOVTFDamFvcGhmLWdfRU9Zd25OQUptZzk3NCIsImF1dGhEb21haW4iOiJ0cmlsbGl1bWZpbmFuY2UtZTFlODEuZmlyZWJhc2VhcHAuY29tIiwibWVzc2FnaW5nU2VuZGVySWQiOiI2OTg1MjM2NDE5MzQiLCJtZWFzdXJlbWVudElkIjoiRy0wRThIRE5KUE1OIiwicHJvamVjdE51bWJlciI6IjY5ODUyMzY0MTkzNCIsInZlcnNpb24iOiIyIn0sIl9hdXRoVG9rZW5TeW5jVVJMIjoiL19fc2Vzc2lvbiJ9; SameSite=Strict; Expires=2028-04-11T11:34:02.300Z; Path=/;"
+            }
+          ]
+        }
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "public": ".firebase/trilliumfinance-e1e81/hosting",
+      "webFramework": "next_ssr"
+    }
+  ],
+  "functions": [
+    {
+      "source": ".firebase/trilliumfinance-e1e81/functions",
+      "codebase": "firebase-frameworks-trilliumfinance-e1e81"
+    }
+  ]
+}
+[debug] [2026-05-18T00:54:02.300Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-18T00:54:02.301Z] > authorizing via signed-in user (trilliumfinance15@gmail.com)
+[debug] [2026-05-18T00:54:02.301Z] [iam] checking project trilliumfinance-e1e81 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-05-18T00:54:02.301Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.301Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.301Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions [none]
+[debug] [2026-05-18T00:54:02.302Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions  x-goog-user-project=trilliumfinance-e1e81
+[debug] [2026-05-18T00:54:02.302Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-05-18T00:54:02.439Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions 200
+[debug] [2026-05-18T00:54:02.439Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'trilliumfinance-e1e81'...
+[info] 
+[info] i  deploying functions, hosting 
+[debug] [2026-05-18T00:54:02.443Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.443Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.443Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81 [none]
+[debug] [2026-05-18T00:54:02.578Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81 200
+[debug] [2026-05-18T00:54:02.578Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81 {"projectNumber":"698523641934","projectId":"trilliumfinance-e1e81","lifecycleState":"ACTIVE","name":"Trilliumfinance","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-05-14T04:41:33.333Z"}
+[info] i  functions: preparing codebase firebase-frameworks-trilliumfinance-e1e81 for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-05-18T00:54:02.591Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.591Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.591Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/adminSdkConfig [none]
+[debug] [2026-05-18T00:54:02.848Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/adminSdkConfig 200
+[debug] [2026-05-18T00:54:02.848Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/adminSdkConfig {"projectId":"trilliumfinance-e1e81","storageBucket":"trilliumfinance-e1e81.firebasestorage.app"}
+[debug] [2026-05-18T00:54:02.849Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.850Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:02.850Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/configs [none]
+[debug] [2026-05-18T00:54:03.143Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/configs 200
+[debug] [2026-05-18T00:54:03.144Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/configs {}
+[debug] [2026-05-18T00:54:03.148Z] Validating nodejs source
+[warn] ⚠  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-05-18T00:54:03.776Z] > [functions] package.json contents: {
+  "name": "trilliumfinance",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "autoprefixer": "10.4.16",
+    "clsx": "2.1.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "firebase": "^10.12.0",
+    "firebase-admin": "12.4.0",
+    "framer-motion": "^11.11.17",
+    "lightweight-charts": "^5.2.0",
+    "lucide-react": "^0.460.0",
+    "next": "15.0.5",
+    "postcss": "8.4.31",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.8.1",
+    "tailwindcss": "3.4.0",
+    "zustand": "^5.0.13",
+    "firebase-frameworks": "^0.11.0",
+    "firebase-functions": "^6.0.1"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "server.js"
+}
+[debug] [2026-05-18T00:54:03.776Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase firebase-frameworks-trilliumfinance-e1e81 to determine what to deploy 
+[debug] [2026-05-18T00:54:03.777Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-18T00:54:03.785Z] Found firebase-functions binary at '/home/isaiah/github/trilliumfinance/.firebase/trilliumfinance-e1e81/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8639
+
+[debug] [2026-05-18T00:54:04.383Z] Got response from /__/functions.yaml {"endpoints":{"ssrtrilliumfinancee1e81":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"httpsTrigger":{},"entryPoint":"ssrtrilliumfinancee1e81"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2026-05-18T00:54:08.430Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:08.434Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:08.434Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/trilliumfinance-e1e81/locations/-/functions [none]
+[debug] [2026-05-18T00:54:09.018Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/trilliumfinance-e1e81/locations/-/functions 200
+[debug] [2026-05-18T00:54:09.019Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/trilliumfinance-e1e81/locations/-/functions {}
+[debug] [2026-05-18T00:54:09.019Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.019Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.020Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/trilliumfinance-e1e81/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-05-18T00:54:09.596Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/trilliumfinance-e1e81/locations/-/functions 200
+[debug] [2026-05-18T00:54:09.597Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/trilliumfinance-e1e81/locations/-/functions {"functions":[{"name":"projects/trilliumfinance-e1e81/locations/us-central1/functions/ssrtrilliumfinancee1e81","buildConfig":{"build":"projects/698523641934/locations/us-central1/builds/654b6353-5992-4085-b27f-273ed07c44b1","runtime":"nodejs20","entryPoint":"ssrtrilliumfinancee1e81","source":{"storageSource":{"bucket":"gcf-v2-sources-698523641934-us-central1","object":"ssrtrilliumfinancee1e81/function-source.zip","generation":"1779051115338020"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/trilliumfinance-e1e81/locations/us-central1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-698523641934-us-central1","object":"ssrtrilliumfinancee1e81/function-source.zip","generation":"1779051115338020"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/trilliumfinance-e1e81/serviceAccounts/698523641934-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/trilliumfinance-e1e81/locations/us-central1/services/ssrtrilliumfinancee1e81","timeoutSeconds":60,"environmentVariables":{"VERCEL_URL":"trilliumfinance-e1e81.web.app","__FIREBASE_FRAMEWORKS_ENTRY__":"next.js","__FIREBASE_DEFAULTS__":"{\"config\":{\"projectId\":\"trilliumfinance-e1e81\",\"appId\":\"1:698523641934:web:a4feca257b0611550ebb1f\",\"storageBucket\":\"trilliumfinance-e1e81.firebasestorage.app\",\"apiKey\":\"AIzaSyAv0SEA9NU1Cjaophf-g_EOYwnNAJmg974\",\"authDomain\":\"trilliumfinance-e1e81.firebaseapp.com\",\"messagingSenderId\":\"698523641934\",\"measurementId\":\"G-0E8HDNJPMN\",\"projectNumber\":\"698523641934\",\"version\":\"2\"},\"_authTokenSyncURL\":\"/__session\"}","FIREBASE_CONFIG":"{\"projectId\":\"trilliumfinance-e1e81\",\"storageBucket\":\"trilliumfinance-e1e81.firebasestorage.app\"}","GCLOUD_PROJECT":"trilliumfinance-e1e81","EVENTARC_CLOUD_EVENT_SOURCE":"projects/trilliumfinance-e1e81/locations/us-central1/services/ssrtrilliumfinancee1e81","FUNCTION_TARGET":"ssrtrilliumfinancee1e81","LOG_EXECUTION_ID":"true"},"maxInstanceCount":3,"ingressSettings":"ALLOW_ALL","uri":"https://ssrtrilliumfinancee1e81-3f4lfqpxhq-uc.a.run.app","serviceAccountEmail":"698523641934-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"revision":"ssrtrilliumfinancee1e81-00015-gub","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2026-05-17T20:55:21.298125495Z","labels":{"deployment-tool":"cli-firebase","firebase-functions-codebase":"firebase-frameworks-trilliumfinance-e1e81","firebase-functions-hash":"a56336b33e7536f7033362c91e74ff77484baafc"},"environment":"GEN_2","url":"https://us-central1-trilliumfinance-e1e81.cloudfunctions.net/ssrtrilliumfinancee1e81","createTime":"2026-05-14T20:44:02.169116898Z","satisfiesPzi":true}]}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-05-18T00:54:09.603Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-18T00:54:09.604Z] > authorizing via signed-in user (trilliumfinance15@gmail.com)
+[debug] [2026-05-18T00:54:09.604Z] [iam] checking project trilliumfinance-e1e81 for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-05-18T00:54:09.605Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.605Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.606Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions [none]
+[debug] [2026-05-18T00:54:09.606Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions  x-goog-user-project=trilliumfinance-e1e81
+[debug] [2026-05-18T00:54:09.606Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-05-18T00:54:09.771Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions 200
+[debug] [2026-05-18T00:54:09.771Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-05-18T00:54:09.772Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.772Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:54:09.772Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/trilliumfinance-e1e81/instances pageSize=100&pageToken=
+[debug] [2026-05-18T00:54:10.247Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/trilliumfinance-e1e81/instances 200
+[debug] [2026-05-18T00:54:10.247Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/trilliumfinance-e1e81/instances {}
+[debug] [2026-05-18T00:54:10.250Z] Failed to validate key FIREBASE_PROJECT_ID: Error: Key FIREBASE_PROJECT_ID starts with a reserved prefix (X_GOOGLE_ FIREBASE_ EXT_)
+[debug] [2026-05-18T00:54:10.251Z] Failed to validate key PORT: Error: Key PORT is reserved for internal use.
+[error] Error: Failed to load environment variables from .env.:
+[error] - Error Key FIREBASE_PROJECT_ID starts with a reserved prefix (X_GOOGLE_ FIREBASE_ EXT_)
+[error] - Error Key PORT is reserved for internal use.

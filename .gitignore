@@ -14,6 +14,8 @@
 .env.development
 !.env.example
 
+firebase-service-account.json
+
 .firebase/hosting.LmZpcmViYXNlXHRyaWxsaXVtZmluYW5jZS1lMWU4MVxob3N0aW5n.cache
 .firebase/trilliumfinance-e1e81/functions/.env
 .firebase/trilliumfinance-e1e81/functions/.env.example
