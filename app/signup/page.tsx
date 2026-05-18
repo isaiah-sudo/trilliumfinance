@@ -23,7 +23,13 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      await signUpWithEmail(email, password);
+      const userCred = await signUpWithEmail(email, password);
+      const idToken = await userCred.user.getIdToken();
+      await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
       router.push('/dashboard/setup');
     } catch (err: any) {
       setError(err.message);
@@ -36,7 +42,13 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      await signInWithGoogle();
+      const userCred = await signInWithGoogle();
+      const idToken = await userCred.user.getIdToken();
+      await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);

@@ -22,12 +22,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        document.cookie = `auth_token=${token}; path=/; max-age=3600; SameSite=Lax`;
-      } else {
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      }
+      // Removed document.cookie assignment here. The login/signup pages now handle setting the HTTP-only cookie via API.
       setLoading(false);
     });
     return () => unsubscribe();

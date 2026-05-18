@@ -1,0 +1,125 @@
+[debug] [2026-05-18T00:53:01.175Z] ----------------------------------------------------------------------
+[debug] [2026-05-18T00:53:01.179Z] Command:       /home/isaiah/.nvm/versions/node/v24.15.0/bin/node /home/isaiah/.nvm/versions/node/v24.15.0/bin/firebase deploy
+[debug] [2026-05-18T00:53:01.180Z] CLI Version:   15.18.0
+[debug] [2026-05-18T00:53:01.180Z] Platform:      linux
+[debug] [2026-05-18T00:53:01.180Z] Node Version:  v24.15.0
+[debug] [2026-05-18T00:53:01.180Z] Time:          Sun May 17 2026 17:53:01 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-05-18T00:53:01.181Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-18T00:53:03.391Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-18T00:53:03.392Z] > authorizing via signed-in user (trilliumfinance15@gmail.com)
+[debug] [2026-05-18T00:53:03.392Z] [iam] checking project trilliumfinance-e1e81 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-05-18T00:53:03.393Z] Checked if tokens are valid: false, expires at: 1779053866542
+[debug] [2026-05-18T00:53:03.394Z] Checked if tokens are valid: false, expires at: 1779053866542
+[debug] [2026-05-18T00:53:03.394Z] > refreshing access token with scopes: []
+[debug] [2026-05-18T00:53:03.396Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-05-18T00:53:03.396Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-18T00:53:03.568Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-05-18T00:53:03.570Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-18T00:53:03.584Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions [none]
+[debug] [2026-05-18T00:53:03.585Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions  x-goog-user-project=trilliumfinance-e1e81
+[debug] [2026-05-18T00:53:03.585Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-18T00:53:03.807Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions 200
+[debug] [2026-05-18T00:53:03.807Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-18T00:53:03.808Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:03.809Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:03.809Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81 [none]
+[debug] [2026-05-18T00:53:04.092Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81 200
+[debug] [2026-05-18T00:53:04.092Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81 {"projectId":"trilliumfinance-e1e81","projectNumber":"698523641934","displayName":"Trilliumfinance","name":"projects/trilliumfinance-e1e81","resources":{"hostingSite":"trilliumfinance-e1e81"},"state":"ACTIVE","etag":"1_6ac93132-93ee-4688-83e9-c627162e4a6e"}
+[debug] [2026-05-18T00:53:05.924Z] defaultcredentials: writing to file /home/isaiah/.config/firebase/trilliumfinance15_gmail_com_application_default_credentials.json
+[debug] [2026-05-18T00:53:05.929Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:05.929Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:05.930Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites pageToken=&pageSize=10
+[debug] [2026-05-18T00:53:06.916Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites 200
+[debug] [2026-05-18T00:53:06.917Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites {"sites":[{"name":"projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81","defaultUrl":"https://trilliumfinance-e1e81.web.app","appId":"1:698523641934:web:a4feca257b0611550ebb1f","type":"DEFAULT_SITE"}]}
+[debug] [2026-05-18T00:53:06.919Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:06.919Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:06.920Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:698523641934:web:a4feca257b0611550ebb1f/config [none]
+[debug] [2026-05-18T00:53:07.409Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:698523641934:web:a4feca257b0611550ebb1f/config 200
+[debug] [2026-05-18T00:53:07.410Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:698523641934:web:a4feca257b0611550ebb1f/config {"projectId":"trilliumfinance-e1e81","appId":"1:698523641934:web:a4feca257b0611550ebb1f","storageBucket":"trilliumfinance-e1e81.firebasestorage.app","apiKey":"AIzaSyAv0SEA9NU1Cjaophf-g_EOYwnNAJmg974","authDomain":"trilliumfinance-e1e81.firebaseapp.com","messagingSenderId":"698523641934","measurementId":"G-0E8HDNJPMN","projectNumber":"698523641934","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2026-05-18T00:53:11.413Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:11.413Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:11.414Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 [none]
+[debug] [2026-05-18T00:53:11.905Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 200
+[debug] [2026-05-18T00:53:11.906Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 {"name":"projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81","defaultUrl":"https://trilliumfinance-e1e81.web.app","appId":"1:698523641934:web:a4feca257b0611550ebb1f","type":"DEFAULT_SITE"}
+[info]    ▲ Next.js 15.0.5
+
+[info]    - Environments: .env
+
+
+[info]    Creating an optimized production build ...
+
+[info]  ✓ Compiled successfully
+
+[info]    Linting and checking validity of types ...
+
+[info]    Collecting page data ...
+
+[info]    Generating static pages (0/11) ...
+
+[info]    Generating static pages (2/11) 
+   Generating static pages (5/11) 
+   Generating static pages (8/11) 
+
+[info]  ✓ Generating static pages (11/11)
+
+[info]    Finalizing page optimization ...
+   Collecting build traces ...
+
+[info] 
+
+[info] Route (app)                              Size     First Load JS
+┌ ○ /                                    3.49 kB         152 kB
+├ ○ /_not-found                          896 B           101 kB
+├ ƒ /api/auth/cookie                     142 B           100 kB
+├ ƒ /api/health                          142 B           100 kB
+├ ○ /dashboard                           61.7 kB         325 kB
+├ ○ /dashboard/explore                   7.71 kB         273 kB
+├ ƒ /dashboard/news                      142 B           100 kB
+├ ○ /dashboard/setup                     4.12 kB         140 kB
+├ ○ /login                               2.62 kB         280 kB
+└ ○ /signup                              2.69 kB         280 kB
++ First Load JS shared by all            100 kB
+  ├ chunks/4bd1b696-6f750c1c863008b5.js  52.5 kB
+  ├ chunks/517-fb829d8a71536fec.js       45.6 kB
+  └ other shared chunks (total)          1.91 kB
+
+
+[info] 
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+[info] Building a Cloud Function to run this application. This is needed due to:
+[info]  • non-static component /api/auth/cookie/route
+[info]  • non-static component /api/health/route
+[info]  • non-static component /dashboard/news/page
+[info]  • route with server action /login
+[info]  • route with server action /
+[debug] [2026-05-18T00:53:52.756Z]  • route with server action /signup
+[debug] [2026-05-18T00:53:52.756Z]  • route with server action /dashboard/explore
+[debug] [2026-05-18T00:53:52.757Z]  • route with server action /dashboard
+[debug] [2026-05-18T00:53:52.757Z]  • route with server action /dashboard/setup
+[info]  • and 4 other reasons, use --debug to see more
+[info] 
+[debug] [2026-05-18T00:53:53.513Z] skipping /login due to server action
+[debug] [2026-05-18T00:53:53.513Z] skipping /signup due to server action
+[debug] [2026-05-18T00:53:53.513Z] skipping /dashboard/explore due to server action
+[debug] [2026-05-18T00:53:53.514Z] skipping /dashboard due to server action
+[debug] [2026-05-18T00:53:53.514Z] skipping /dashboard/setup due to server action
+[debug] [2026-05-18T00:53:53.514Z] skipping / due to server action
+[debug] [2026-05-18T00:53:55.844Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:55.844Z] Checked if tokens are valid: true, expires at: 1779069182570
+[debug] [2026-05-18T00:53:55.845Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 [none]
+[debug] [2026-05-18T00:53:56.463Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 200
+[debug] [2026-05-18T00:53:56.463Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81 {"name":"projects/trilliumfinance-e1e81/sites/trilliumfinance-e1e81","defaultUrl":"https://trilliumfinance-e1e81.web.app","appId":"1:698523641934:web:a4feca257b0611550ebb1f","type":"DEFAULT_SITE"}

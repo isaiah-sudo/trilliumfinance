@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, TrendingUp, Cpu, Zap, Leaf, Bitcoin, Eye, ShoppingCart, X } from 'lucide-react';
+import { Search, TrendingUp, Cpu, Zap, Leaf, Bitcoin, Eye, ShoppingCart, X, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { handleTrade, getMarketQuotes } from '@/app/actions/trading';
+import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
 
 const BASE_STOCKS = [
   // Technology
@@ -87,6 +88,15 @@ export default function MarketExplorer() {
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState(false);
+
+  // Stock Details Drawer State
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSymbol, setDrawerSymbol] = useState('');
+
+  const openDrawer = (symbol: string) => {
+    setDrawerSymbol(symbol);
+    setDrawerOpen(true);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -217,7 +227,19 @@ export default function MarketExplorer() {
                     {stock.ticker[0]}
                   </div>
                   <div>
-                    <h3 className="text-white font-bold tracking-tight">{stock.ticker}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-white font-bold tracking-tight">{stock.ticker}</h3>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDrawer(stock.ticker);
+                        }}
+                        className="p-1 rounded-lg bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 transition-all hover:bg-slate-750/30"
+                        title="View corporate details and metrics"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                    </div>
                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{stock.name}</p>
                   </div>
                 </div>
@@ -379,6 +401,13 @@ export default function MarketExplorer() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Stock Info slide-over drawer */}
+      <StockInfoDrawer
+        symbol={drawerSymbol}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 }

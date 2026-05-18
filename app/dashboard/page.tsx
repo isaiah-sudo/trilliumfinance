@@ -5,17 +5,16 @@ import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
-import { getPortfolioSummary, getGraphData, handleTrade, PortfolioSummary } from '@/app/actions/trading';
+import { getGraphData } from '@/app/actions/trading';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const [showDetails, setShowDetails] = useState(true);
   
-  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
+  const { portfolio, loading: storeLoading, error: storeError, fetchPortfolio, executeTrade } = usePortfolioStore();
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -24,17 +23,7 @@ export default function DashboardPage() {
   const [tradeError, setTradeError] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const portData = await getPortfolioSummary();
-      setPortfolio(portData);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to load portfolio data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    await fetchPortfolio();
   };
 
   useEffect(() => {
@@ -49,11 +38,10 @@ export default function DashboardPage() {
     };
     loadGraph();
   }, [user, timeRange]);
+
   useEffect(() => {
     if (!authLoading && user) {
       loadData();
-    } else if (!authLoading && !user) {
-      setLoading(false);
     }
   }, [user, authLoading]);
 
@@ -62,8 +50,7 @@ export default function DashboardPage() {
     setTradeLoading(true);
     setTradeError('');
     try {
-      await handleTrade(tradeTicker.toUpperCase(), Number(tradeQty), type);
-      await loadData();
+      await executeTrade(tradeTicker.toUpperCase(), Number(tradeQty), type);
       setTradeModalOpen(false);
       setTradeTicker('');
       setTradeQty(1);
@@ -98,7 +85,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (loading) {
+  if (storeLoading && !portfolio) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
@@ -107,12 +94,12 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
+  if (storeError) {
     return (
       <div className="text-white text-center mt-20 p-8 rounded-3xl bg-rose-500/10 border border-rose-500/50">
         <X className="h-12 w-12 text-rose-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
-        <p className="text-slate-400 mb-6">{error}</p>
+        <p className="text-slate-400 mb-6">{storeError}</p>
         <button onClick={loadData} className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
           Try Again
         </button>
@@ -135,7 +122,7 @@ export default function DashboardPage() {
     );
   }
 
-  const marketValue = portfolio.totalValue - portfolio.cash;
+  const marketValue = portfolio.totalMarketValue;
 
   return (
     <div className="space-y-6 relative">
@@ -161,18 +148,18 @@ export default function DashboardPage() {
           
           <div>
             <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Total Performance</div>
-            <div className={`text-xl font-bold tracking-tight ${portfolio.dayPL >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPL >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPL)}
+            <div className={`text-xl font-bold tracking-tight ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+              {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.totalPerformanceUSD)}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.dayPL >= 0 ? '+' : ''}{formatPercent(portfolio.dayPLPercent)}</div>
+            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.totalPerformancePercent)}</div>
           </div>
           
           <div>
             <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Day Performance</div>
-            <div className={`text-xl font-bold tracking-tight ${portfolio.dayPL >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPL >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPL)}
+            <div className={`text-xl font-bold tracking-tight ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.dayPL >= 0 ? '+' : ''}{formatPercent(portfolio.dayPLPercent)}</div>
+            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)}</div>
           </div>
           
           <div>
@@ -258,8 +245,8 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex items-baseline gap-3">
             <div className="text-3xl font-extrabold text-white tracking-tight">{formatCurrency(marketValue)}</div>
-            <div className={`text-[13px] font-bold ${portfolio.dayPL >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPL >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPL)} ({portfolio.dayPL >= 0 ? '+' : ''}{formatPercent(portfolio.dayPLPercent)})
+            <div className={`text-[13px] font-bold ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)} ({portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)})
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">

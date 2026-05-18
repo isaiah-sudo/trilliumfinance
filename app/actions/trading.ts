@@ -3,6 +3,22 @@
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { FieldValue } from 'firebase-admin/firestore';
+import {
+  safeRound,
+  safeAdd,
+  safeSubtract,
+  safeMultiply,
+  safeDivide,
+  calculateAssetMarketValue,
+  calculateAssetCostBasis,
+  calculateAssetPLUSD,
+  calculateAssetPLPercent,
+  calculateAssetDayPLUSD,
+  calculateNetWorth,
+  calculateGlobalTotalPerformanceUSD,
+  calculateGlobalTotalPerformancePercent,
+  calculateGlobalDayPLPercent
+} from '@/lib/portfolioMath';
 
 // Helper to get DB/Auth safely in actions
 const getDb = () => getAdminDb();
@@ -24,7 +40,15 @@ async function getAuthenticatedUserId() {
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
 
-  if (!token) throw new Error('Unauthorized: No auth token cookie found');
+  // Development fallback: if no token and not in production, use a dev UID
+  if (!token) {
+    if (process.env.NODE_ENV !== 'production') {
+      const devUid = process.env.DEV_UID || 'dev-user-uid';
+      console.warn('[Auth] No auth token found. Using DEV_UID for local development.');
+      return devUid;
+    }
+    throw new Error('Unauthorized: No auth token cookie found');
+  }
 
   try {
     const decodedToken = await getAuth().verifyIdToken(token);
@@ -91,9 +115,16 @@ async function fetchFinnhubProfile(symbol: string) {
 
 export interface PortfolioSummary {
   cash: number;
-  totalValue: number;
-  dayPL: number;
-  dayPLPercent: number;
+  totalValue: number; // Net Worth (Global Equity) for backward compatibility
+  netWorth: number; // Disambiguated Net Worth
+  totalMarketValue: number;
+  totalCostBasis: number;
+  totalPerformanceUSD: number;
+  totalPerformancePercent: number;
+  dayPerformanceUSD: number;
+  dayPerformancePercent: number;
+  dayPL: number; // for backward compatibility
+  dayPLPercent: number; // for backward compatibility
   holdings: any[];
 }
 
@@ -123,7 +154,8 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
 
   const holdingsList = [];
   let totalMarketValue = 0;
-  let dayPL = 0;
+  let totalCostBasis = 0;
+  let dayPerformanceUSD = 0;
 
   for (const hDoc of holdingsSnap.docs) {
     const ticker = hDoc.id;
@@ -138,13 +170,16 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     const currentPrice = quoteData.c || 0;
     const previousClose = quoteData.pc || currentPrice;
     
-    const marketValue = holdingData.qty * currentPrice;
-    const costBase = holdingData.qty * (holdingData.avgPrice || 0);
-    const pl = marketValue - costBase;
-    const holdingDayPL = holdingData.qty * (currentPrice - previousClose);
+    // Core hold-level formulas using portfolioMath functions
+    const marketValue = calculateAssetMarketValue(holdingData.qty, currentPrice);
+    const costBase = calculateAssetCostBasis(holdingData.qty, holdingData.avgPrice || 0);
+    const pl = calculateAssetPLUSD(marketValue, costBase);
+    const plPercent = calculateAssetPLPercent(currentPrice, holdingData.avgPrice || 0);
+    const holdingDayPL = calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
 
-    totalMarketValue += marketValue;
-    dayPL += holdingDayPL;
+    totalMarketValue = safeAdd(totalMarketValue, marketValue);
+    totalCostBasis = safeAdd(totalCostBasis, costBase);
+    dayPerformanceUSD = safeAdd(dayPerformanceUSD, holdingDayPL);
 
     holdingsList.push({
       symbol: ticker,
@@ -155,18 +190,28 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       marketValue,
       dayPl: holdingDayPL,
       pl,
-      plPercent: costBase > 0 ? (pl / costBase) * 100 : 0
+      plPercent
     });
   }
 
-  const totalValue = cash + totalMarketValue;
-  const totalDayPLPercent = (totalValue - dayPL) > 0 ? (dayPL / (totalValue - dayPL)) * 100 : 0;
+  // Global calculations
+  const netWorth = calculateNetWorth(cash, totalMarketValue);
+  const totalPerformanceUSD = calculateGlobalTotalPerformanceUSD(totalMarketValue, totalCostBasis);
+  const totalPerformancePercent = calculateGlobalTotalPerformancePercent(totalPerformanceUSD, totalCostBasis);
+  const dayPerformancePercent = calculateGlobalDayPLPercent(dayPerformanceUSD, netWorth);
 
-  const summaryObj = {
+  const summaryObj: PortfolioSummary = {
     cash,
-    totalValue,
-    dayPL,
-    dayPLPercent: totalDayPLPercent,
+    totalValue: netWorth, // Backwards compatibility for UI displaying net worth
+    netWorth,
+    totalMarketValue,
+    totalCostBasis,
+    totalPerformanceUSD,
+    totalPerformancePercent,
+    dayPerformanceUSD,
+    dayPerformancePercent,
+    dayPL: dayPerformanceUSD, // Backwards compatibility for UI
+    dayPLPercent: dayPerformancePercent, // Backwards compatibility for UI
     holdings: holdingsList.sort((a, b) => b.marketValue - a.marketValue)
   };
 
@@ -207,7 +252,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   const currentPrice = quoteData.c;
   if (!currentPrice || currentPrice <= 0) throw new Error(`Could not fetch live price for ${ticker}`);
 
-  const totalAmount = currentPrice * quantity;
+  const totalAmount = safeMultiply(currentPrice, quantity);
 
   await getDb().runTransaction(async (transaction) => {
     const portfolioDoc = await transaction.get(portfolioRef);
@@ -219,10 +264,14 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       if (cash < totalAmount) throw new Error('Insufficient funds');
       
       const currentHolding = holdingDoc.exists ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
-      const newQty = currentHolding.qty + quantity;
-      const newAvgPrice = ((currentHolding.qty * currentHolding.avgPrice) + totalAmount) / newQty;
+      const newQty = safeAdd(currentHolding.qty || 0, quantity);
+      
+      // Precision average price calculation:
+      const oldCostBasis = safeMultiply(currentHolding.qty || 0, currentHolding.avgPrice || 0);
+      const newCostBasis = safeAdd(oldCostBasis, totalAmount);
+      const newAvgPrice = safeDivide(newCostBasis, newQty);
 
-      transaction.set(portfolioRef, { cash: cash - totalAmount }, { merge: true });
+      transaction.set(portfolioRef, { cash: safeSubtract(cash, totalAmount) }, { merge: true });
       transaction.set(holdingsRef, { qty: newQty, avgPrice: newAvgPrice }, { merge: true });
     } else {
       if (!holdingDoc.exists || holdingDoc.data()?.qty < quantity) {
@@ -230,13 +279,15 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       }
 
       const currentHolding = holdingDoc.data()!;
-      const newQty = currentHolding.qty - quantity;
+      const newQty = safeSubtract(currentHolding.qty || 0, quantity);
+      const avgPrice = currentHolding.avgPrice || 0; // retain avg price
 
-      transaction.set(portfolioRef, { cash: cash + totalAmount }, { merge: true });
+      transaction.set(portfolioRef, { cash: safeAdd(cash, totalAmount) }, { merge: true });
       if (newQty <= 0) {
         transaction.delete(holdingsRef);
       } else {
-        transaction.set(holdingsRef, { qty: newQty }, { merge: true });
+        // Enforce average price retention explicitly inside the database
+        transaction.set(holdingsRef, { qty: newQty, avgPrice }, { merge: true });
       }
     }
 

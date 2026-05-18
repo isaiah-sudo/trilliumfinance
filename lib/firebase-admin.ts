@@ -1,6 +1,7 @@
-import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
+import admin from 'firebase-admin';
 
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'trilliumfinance-e1e81';
 
@@ -11,23 +12,53 @@ function getFirebaseAdminApp() {
     return getApp();
   }
 
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  if (process.env.NODE_ENV === 'production') {
+    // 1. Check if GOOGLE_APPLICATION_CREDENTIALS is explicitly set in the environment
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      console.log(`[Firebase Admin] Production mode – using GOOGLE_APPLICATION_CREDENTIALS.`);
+      return initializeApp({
+        credential: admin.credential.applicationDefault()
+      });
+    }
 
-  if (privateKey && clientEmail) {
-    console.log(`[Firebase Admin] Initializing with provided credentials.`);
+    // 2. Check if explicit service account credentials are provided in env vars
+    if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      console.log(`[Firebase Admin] Production mode – using environment variable service account credentials.`);
+      return initializeApp({
+        credential: admin.credential.cert({
+          projectId: projectId,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        })
+      });
+    }
+
+    // 3. Check if local firebase-service-account.json exists in workspace
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const serviceAccountPath = path.join(process.cwd(), 'firebase-service-account.json');
+      if (fs.existsSync(serviceAccountPath)) {
+        console.log(`[Firebase Admin] Production mode – using local firebase-service-account.json.`);
+        return initializeApp({
+          credential: admin.credential.cert(serviceAccountPath)
+        });
+      }
+    } catch (e) {
+      console.warn('[Firebase Admin] Error checking for local service account file:', e);
+    }
+
+    // 4. Default fallback to application default credentials (e.g. when hosted on Google Cloud)
+    console.log(`[Firebase Admin] Production mode – using default credentials.`);
     return initializeApp({
-      credential: cert({
-        projectId: projectId,
-        clientEmail: clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
-      }),
+      credential: admin.credential.applicationDefault()
     });
+  } else {
+    console.log(`[Firebase Admin] Development mode – using emulators.`);
+    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+    return initializeApp({ projectId });
   }
-
-  console.log(`[Firebase Admin] Initializing with default credentials.`);
-  // This will work automatically on Firebase Hosting / Cloud Run if permissions are set
-  return initializeApp();
 }
 
 // Initialize the app once at module level, but catch errors

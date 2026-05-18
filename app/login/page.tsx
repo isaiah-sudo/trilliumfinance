@@ -18,7 +18,13 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await signInWithEmail(email, password);
+      const userCred = await signInWithEmail(email, password);
+      const idToken = await userCred.user.getIdToken();
+      await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
@@ -31,7 +37,13 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await signInWithGoogle();
+      const userCred = await signInWithGoogle();
+      const idToken = await userCred.user.getIdToken();
+      await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
