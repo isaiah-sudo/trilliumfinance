@@ -160,6 +160,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       holdingsRef.get()
     ]);
 
+<<<<<<< Updated upstream
     // Implement structural null-guards. If doc.exists is false, return fallback
     if (!portDoc.exists) {
       console.warn(`[getPortfolioSummary] Portfolio doc does not exist for user ${userId}. Returning fallback portfolio.`);
@@ -168,6 +169,76 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       userRef.set({ updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy user doc creation failed:', err));
       return fallback;
     }
+=======
+async function validateTradeAgainstRules(
+  userId: string,
+  ticker: string,
+  quantity: number,
+  type: 'BUY' | 'SELL'
+) {
+  // 1. Fetch user metadata
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const userData = userDoc.data();
+  if (!userData || userData.role !== 'student' || !userData.classId) {
+    return; // Main sandbox or no classroom constraints
+  }
+
+  const { classId } = userData;
+
+  // 2. Fetch classroom active rules
+  const classDoc = await adminDb.collection('classrooms').doc(classId).get();
+  if (!classDoc.exists) {
+    throw new Error('Enrolled classroom not found. Please contact your instructor.');
+  }
+
+  const classData = classDoc.data()!;
+  const rules = classData.rules || {};
+
+  // Check Whitelist (allowedAssets)
+  const upperTicker = ticker.toUpperCase();
+  if (rules.allowedAssets && rules.allowedAssets.length > 0) {
+    if (!rules.allowedAssets.includes(upperTicker)) {
+      throw new Error(`Transaction blocked: '${upperTicker}' is not on your teacher's approved assets list.`);
+    }
+  }
+
+  // Check Blacklist (blacklistedAssets)
+  if (rules.blacklistedAssets && rules.blacklistedAssets.length > 0) {
+    if (rules.blacklistedAssets.includes(upperTicker)) {
+      throw new Error(`Transaction blocked: Trading is banned for ticker '${upperTicker}' by your teacher.`);
+    }
+  }
+
+  // Check Day Trading Limit (maxDailyTrades)
+  if (rules.maxDailyTrades && rules.maxDailyTrades > 0) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const transactionsSnap = await adminDb
+      .collection('users')
+      .doc(userId)
+      .collection('transactions')
+      .where('timestamp', '>=', today)
+      .get();
+
+    if (transactionsSnap.size >= rules.maxDailyTrades) {
+      throw new Error(`Transaction blocked: Teacher has set a maximum of ${rules.maxDailyTrades} trades per day. You have reached this limit.`);
+    }
+  }
+}
+
+export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
+  if (quantity <= 0) throw new Error('Quantity must be greater than 0');
+  const userId = await getAuthenticatedUserId();
+
+  // --- INTERCEPTOR: Validate trade rules before checking funds/shares ---
+  await validateTradeAgainstRules(userId, ticker, quantity, type);
+  
+  const userRef = adminDb.collection('users').doc(userId);
+  const portfolioRef = userRef.collection('portfolio').doc('main');
+  const holdingsRef = portfolioRef.collection('holdings').doc(ticker.toUpperCase());
+  const transactionsRef = userRef.collection('transactions');
+>>>>>>> Stashed changes
 
     const portData = portDoc.data();
     if (!portData) {

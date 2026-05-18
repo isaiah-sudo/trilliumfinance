@@ -28,6 +28,11 @@ export default function LandingPage() {
               Sign In
             </Button>
           </Link>
+          <Link href="/edu/auth">
+            <Button variant="primary" className="px-8 py-3 text-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-emerald-500/20 border-0">
+              Go to Education Mode
+            </Button>
+          </Link>
         </div>
       </motion.div>
     </main>
