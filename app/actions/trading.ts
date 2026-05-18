@@ -279,49 +279,89 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
 }
 
 export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
-  if (quantity <= 0) throw new Error('Quantity must be greater than 0');
+  const shares = Number(quantity);
+  if (isNaN(shares) || shares <= 0) {
+    throw new Error('Quantity must be a valid number greater than 0');
+  }
+
   const userId = await getAuthenticatedUserId();
+  const db = getDb();
   
-  const userRef = getDb().collection('users').doc(userId);
+  const userRef = db.collection('users').doc(userId);
   const portfolioRef = userRef.collection('portfolio').doc('main');
   const holdingsRef = portfolioRef.collection('holdings').doc(ticker.toUpperCase());
-  const transactionsRef = userRef.collection('transactions');
+  const transactionsRef = userRef.collection('portfolio_history');
 
   const quoteData = await fetchFinnhubQuote(ticker);
   const currentPrice = quoteData.c;
-  if (!currentPrice || currentPrice <= 0) throw new Error(`Could not fetch live price for ${ticker}`);
+  const price = Number(currentPrice);
+  if (isNaN(price) || price <= 0) {
+    throw new Error(`Could not fetch live price for ${ticker}`);
+  }
 
-  const totalAmount = safeMultiply(currentPrice, quantity);
+  const totalAmount = safeMultiply(price, shares);
+  if (isNaN(totalAmount) || totalAmount <= 0) {
+    throw new Error('Invalid transaction value calculation');
+  }
 
-  await getDb().runTransaction(async (transaction) => {
+  await db.runTransaction(async (transaction) => {
     const portfolioDoc = await transaction.get(portfolioRef);
     const holdingDoc = await transaction.get(holdingsRef);
 
-    const cash = portfolioDoc.exists ? (portfolioDoc.data()?.cash ?? 10000) : 10000;
+    // Defensive structural defaults if portfolio doesn't exist
+    const portfolioData = portfolioDoc.exists ? portfolioDoc.data() : null;
+    const cash = Number(portfolioData?.cash ?? 10000);
+    if (isNaN(cash)) {
+      throw new Error('Invalid cash balance value in portfolio');
+    }
 
     if (type === 'BUY') {
-      if (cash < totalAmount) throw new Error('Insufficient funds');
+      if (cash < totalAmount) {
+        throw new Error('Insufficient funds');
+      }
       
+      // Defensive defaults for holding document
       const currentHolding = holdingDoc.exists ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
-      const newQty = safeAdd(currentHolding.qty || 0, quantity);
+      const currentQty = Number(currentHolding.qty ?? 0);
+      const currentAvgPrice = Number(currentHolding.avgPrice ?? 0);
+
+      if (isNaN(currentQty) || isNaN(currentAvgPrice)) {
+        throw new Error('Invalid portfolio holding quantities');
+      }
+
+      const newQty = safeAdd(currentQty, shares);
       
       // Precision average price calculation:
-      const oldCostBasis = safeMultiply(currentHolding.qty || 0, currentHolding.avgPrice || 0);
+      const oldCostBasis = safeMultiply(currentQty, currentAvgPrice);
       const newCostBasis = safeAdd(oldCostBasis, totalAmount);
       const newAvgPrice = safeDivide(newCostBasis, newQty);
+      const finalCash = safeSubtract(cash, totalAmount);
 
-      transaction.set(portfolioRef, { cash: safeSubtract(cash, totalAmount) }, { merge: true });
+      if (isNaN(newQty) || isNaN(newAvgPrice) || isNaN(finalCash)) {
+        throw new Error('Arithmetic NaN safety check failed during BUY transaction balancing');
+      }
+
+      transaction.set(portfolioRef, { cash: finalCash }, { merge: true });
       transaction.set(holdingsRef, { qty: newQty, avgPrice: newAvgPrice }, { merge: true });
     } else {
-      if (!holdingDoc.exists || holdingDoc.data()?.qty < quantity) {
+      // Sell logic
+      const currentHolding = holdingDoc.exists ? holdingDoc.data()! : null;
+      const currentQty = currentHolding ? Number(currentHolding.qty ?? 0) : 0;
+      const currentAvgPrice = currentHolding ? Number(currentHolding.avgPrice ?? 0) : 0;
+
+      if (!currentHolding || isNaN(currentQty) || currentQty < shares) {
         throw new Error('Insufficient shares to sell');
       }
 
-      const currentHolding = holdingDoc.data()!;
-      const newQty = safeSubtract(currentHolding.qty || 0, quantity);
-      const avgPrice = currentHolding.avgPrice || 0; // retain avg price
+      const newQty = safeSubtract(currentQty, shares);
+      const avgPrice = isNaN(currentAvgPrice) ? 0 : currentAvgPrice; // retain avg price
+      const finalCash = safeAdd(cash, totalAmount);
 
-      transaction.set(portfolioRef, { cash: safeAdd(cash, totalAmount) }, { merge: true });
+      if (isNaN(newQty) || isNaN(avgPrice) || isNaN(finalCash)) {
+        throw new Error('Arithmetic NaN safety check failed during SELL transaction balancing');
+      }
+
+      transaction.set(portfolioRef, { cash: finalCash }, { merge: true });
       if (newQty <= 0) {
         transaction.delete(holdingsRef);
       } else {
@@ -330,14 +370,15 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       }
     }
 
+    // Push transactional log history cleanly to portfolio_history sub-collection
     transaction.set(transactionsRef.doc(), {
       ticker: ticker.toUpperCase(),
-      quantity,
-      price: currentPrice,
+      quantity: shares,
+      price: price,
       totalAmount,
       type,
       timestamp: FieldValue.serverTimestamp(),
-      description: `${type} ${quantity} ${ticker.toUpperCase()} @ $${currentPrice.toFixed(2)}`
+      description: `${type} ${shares} ${ticker.toUpperCase()} @ $${price.toFixed(2)}`
     });
   });
 
