@@ -12,9 +12,10 @@
 .env.local
 .env.production
 .env.development
-!.env.example
+.env.example
 
 firebase-service-account.json
+firebase-service-account.backup.json
 
 .firebase/hosting.LmZpcmViYXNlXHRyaWxsaXVtZmluYW5jZS1lMWU4MVxob3N0aW5n.cache
 .firebase/trilliumfinance-e1e81/functions/.env
