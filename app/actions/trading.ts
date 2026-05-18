@@ -126,117 +126,156 @@ export interface PortfolioSummary {
   dayPL: number; // for backward compatibility
   dayPLPercent: number; // for backward compatibility
   holdings: any[];
+  balanceHistory?: any[]; // For backward compatibility and custom fallbacks
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
-  const userId = await getAuthenticatedUserId();
-  
-  // Use a direct approach to avoid NOT_FOUND errors
-  const userRef = getDb().collection('users').doc(userId);
-  const portfolioRef = userRef.collection('portfolio').doc('main');
-  const holdingsRef = portfolioRef.collection('holdings');
-
-  // Fetch everything at once
-  const [portDoc, holdingsSnap] = await Promise.all([
-    portfolioRef.get(),
-    holdingsRef.get()
-  ]);
-
-  let cash = 10000;
-  if (portDoc.exists) {
-    cash = portDoc.data()?.cash ?? 10000;
-  } else {
-    // Lazy creation
-    await portfolioRef.set({ cash: 10000 }, { merge: true });
-    // Also ensure user doc exists
-    await userRef.set({ updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-  }
-
-  const holdingsList = [];
-  let totalMarketValue = 0;
-  let totalCostBasis = 0;
-  let dayPerformanceUSD = 0;
-
-  for (const hDoc of holdingsSnap.docs) {
-    const ticker = hDoc.id;
-    const holdingData = hDoc.data();
-    if (!holdingData.qty || holdingData.qty <= 0) continue;
-
-    const [quoteData, profileData] = await Promise.all([
-      fetchFinnhubQuote(ticker),
-      fetchFinnhubProfile(ticker)
-    ]);
-
-    const currentPrice = quoteData.c || 0;
-    const previousClose = quoteData.pc || currentPrice;
-    
-    // Core hold-level formulas using portfolioMath functions
-    const marketValue = calculateAssetMarketValue(holdingData.qty, currentPrice);
-    const costBase = calculateAssetCostBasis(holdingData.qty, holdingData.avgPrice || 0);
-    const pl = calculateAssetPLUSD(marketValue, costBase);
-    const plPercent = calculateAssetPLPercent(currentPrice, holdingData.avgPrice || 0);
-    const holdingDayPL = calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
-
-    totalMarketValue = safeAdd(totalMarketValue, marketValue);
-    totalCostBasis = safeAdd(totalCostBasis, costBase);
-    dayPerformanceUSD = safeAdd(dayPerformanceUSD, holdingDayPL);
-
-    holdingsList.push({
-      symbol: ticker,
-      name: profileData.name,
-      qty: holdingData.qty,
-      avgPrice: holdingData.avgPrice || 0,
-      currentPrice,
-      marketValue,
-      dayPl: holdingDayPL,
-      pl,
-      plPercent
-    });
-  }
-
-  // Global calculations
-  const netWorth = calculateNetWorth(cash, totalMarketValue);
-  const totalPerformanceUSD = calculateGlobalTotalPerformanceUSD(totalMarketValue, totalCostBasis);
-  const totalPerformancePercent = calculateGlobalTotalPerformancePercent(totalPerformanceUSD, totalCostBasis);
-  const dayPerformancePercent = calculateGlobalDayPLPercent(dayPerformanceUSD, netWorth);
-
-  const summaryObj: PortfolioSummary = {
-    cash,
-    totalValue: netWorth, // Backwards compatibility for UI displaying net worth
-    netWorth,
-    totalMarketValue,
-    totalCostBasis,
-    totalPerformanceUSD,
-    totalPerformancePercent,
-    dayPerformanceUSD,
-    dayPerformancePercent,
-    dayPL: dayPerformanceUSD, // Backwards compatibility for UI
-    dayPLPercent: dayPerformancePercent, // Backwards compatibility for UI
-    holdings: holdingsList.sort((a, b) => b.marketValue - a.marketValue)
+  const fallback: PortfolioSummary = {
+    cash: 10000,
+    totalValue: 10000,
+    netWorth: 10000,
+    totalMarketValue: 0,
+    totalCostBasis: 0,
+    totalPerformanceUSD: 0,
+    totalPerformancePercent: 0,
+    dayPerformanceUSD: 0,
+    dayPerformancePercent: 0,
+    dayPL: 0,
+    dayPLPercent: 0,
+    holdings: [],
+    balanceHistory: []
   };
 
-  // Asynchronously ensure a snapshot is captured for this session/day
-  // We do not await this to avoid slowing down the UI load
-  const todayStr = new Date().toDateString();
   try {
-    const userDocSnap = await userRef.get();
-    if (userDocSnap.exists) {
-      const userDocData = userDocSnap.data();
-      if (userDocData?.lastSnapshotDate !== todayStr) {
-        capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Background Snapshot Error:', err));
-        userRef.set({ lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
-      }
-    } else {
-      // Lazy creation of user doc
-      userRef.set({ lastSnapshotDate: todayStr, updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
-      capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Initial Background Snapshot Error:', err));
-    }
-  } catch (err) {
-    console.error('Error checking for portfolio snapshot:', err);
-    // Continue anyway as this is non-critical for the immediate render
-  }
+    const userId = await getAuthenticatedUserId();
+    
+    // Use a direct approach to avoid NOT_FOUND errors
+    const userRef = getDb().collection('users').doc(userId);
+    const portfolioRef = userRef.collection('portfolio').doc('main');
+    const holdingsRef = portfolioRef.collection('holdings');
 
-  return summaryObj;
+    // Fetch everything at once
+    const [portDoc, holdingsSnap] = await Promise.all([
+      portfolioRef.get(),
+      holdingsRef.get()
+    ]);
+
+    // Implement structural null-guards. If doc.exists is false, return fallback
+    if (!portDoc.exists) {
+      console.warn(`[getPortfolioSummary] Portfolio doc does not exist for user ${userId}. Returning fallback portfolio.`);
+      // Lazy creation of required structures in database
+      portfolioRef.set({ cash: 10000, balanceHistory: [] }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy portfolio creation failed:', err));
+      userRef.set({ updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy user doc creation failed:', err));
+      return fallback;
+    }
+
+    const portData = portDoc.data();
+    if (!portData) {
+      console.warn(`[getPortfolioSummary] Portfolio data is empty for user ${userId}. Returning fallback.`);
+      return fallback;
+    }
+
+    // Check if fields like cash, holdings, or balanceHistory are missing/undefined
+    const cash = portData.cash !== undefined ? portData.cash : 10000;
+    const balanceHistory = portData.balanceHistory !== undefined ? portData.balanceHistory : (portData.balance_history !== undefined ? portData.balance_history : []);
+
+    if (portData.cash === undefined || portData.balanceHistory === undefined) {
+      console.warn(`[getPortfolioSummary] Essential portfolio fields are missing or undefined. Returning fallback.`);
+      return fallback;
+    }
+
+    const holdingsList = [];
+    let totalMarketValue = 0;
+    let totalCostBasis = 0;
+    let dayPerformanceUSD = 0;
+
+    if (holdingsSnap && holdingsSnap.docs && Array.isArray(holdingsSnap.docs)) {
+      for (const hDoc of holdingsSnap.docs) {
+        const ticker = hDoc.id;
+        const holdingData = hDoc.data();
+        if (!holdingData || !holdingData.qty || holdingData.qty <= 0) continue;
+
+        const [quoteData, profileData] = await Promise.all([
+          fetchFinnhubQuote(ticker),
+          fetchFinnhubProfile(ticker)
+        ]);
+
+        const currentPrice = quoteData.c || 0;
+        const previousClose = quoteData.pc || currentPrice;
+        
+        // Core hold-level formulas using portfolioMath functions
+        const marketValue = calculateAssetMarketValue(holdingData.qty, currentPrice);
+        const costBase = calculateAssetCostBasis(holdingData.qty, holdingData.avgPrice || 0);
+        const pl = calculateAssetPLUSD(marketValue, costBase);
+        const plPercent = calculateAssetPLPercent(currentPrice, holdingData.avgPrice || 0);
+        const holdingDayPL = calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
+
+        totalMarketValue = safeAdd(totalMarketValue, marketValue);
+        totalCostBasis = safeAdd(totalCostBasis, costBase);
+        dayPerformanceUSD = safeAdd(dayPerformanceUSD, holdingDayPL);
+
+        holdingsList.push({
+          symbol: ticker,
+          name: profileData.name,
+          qty: holdingData.qty,
+          avgPrice: holdingData.avgPrice || 0,
+          currentPrice,
+          marketValue,
+          dayPl: holdingDayPL,
+          pl,
+          plPercent
+        });
+      }
+    }
+
+    // Global calculations
+    const netWorth = calculateNetWorth(cash, totalMarketValue);
+    const totalPerformanceUSD = calculateGlobalTotalPerformanceUSD(totalMarketValue, totalCostBasis);
+    const totalPerformancePercent = calculateGlobalTotalPerformancePercent(totalPerformanceUSD, totalCostBasis);
+    const dayPerformancePercent = calculateGlobalDayPLPercent(dayPerformanceUSD, netWorth);
+
+    const summaryObj: PortfolioSummary = {
+      cash,
+      totalValue: netWorth, // Backwards compatibility for UI displaying net worth
+      netWorth,
+      totalMarketValue,
+      totalCostBasis,
+      totalPerformanceUSD,
+      totalPerformancePercent,
+      dayPerformanceUSD,
+      dayPerformancePercent,
+      dayPL: dayPerformanceUSD, // Backwards compatibility for UI
+      dayPLPercent: dayPerformancePercent, // Backwards compatibility for UI
+      holdings: holdingsList.sort((a, b) => b.marketValue - a.marketValue),
+      balanceHistory
+    };
+
+    // Asynchronously ensure a snapshot is captured for this session/day
+    // We do not await this to avoid slowing down the UI load
+    const todayStr = new Date().toDateString();
+    try {
+      const userDocSnap = await userRef.get();
+      if (userDocSnap.exists) {
+        const userDocData = userDocSnap.data();
+        if (userDocData?.lastSnapshotDate !== todayStr) {
+          capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Background Snapshot Error:', err));
+          userRef.set({ lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
+        }
+      } else {
+        // Lazy creation of user doc
+        userRef.set({ lastSnapshotDate: todayStr, updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
+        capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Initial Background Snapshot Error:', err));
+      }
+    } catch (err) {
+      console.error('Error checking for portfolio snapshot:', err);
+      // Continue anyway as this is non-critical for the immediate render
+    }
+
+    return summaryObj;
+  } catch (error) {
+    console.error('[getPortfolioSummary] Exception caught during portfolio load/parse:', error);
+    return fallback;
+  }
 }
 
 export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
@@ -379,56 +418,68 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   const endTimestamp = Math.floor(now.getTime() / 1000);
 
   // 1. Fetch User Portfolio History
-  const historySnap = await historyRef
-    .where('timestamp', '>=', new Date(start.getTime()))
-    .orderBy('timestamp', 'asc')
-    .get();
-
   let userPoints: { time: number; value: number }[] = [];
   
-  historySnap.docs.forEach(doc => {
-    const data = doc.data();
-    if (data.timestamp) {
-      userPoints.push({
-        time: Math.floor(data.timestamp.toDate().getTime() / 1000),
-        value: data.totalValue
+  try {
+    const historySnap = await historyRef
+      .where('timestamp', '>=', new Date(start.getTime()))
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    if (historySnap && historySnap.docs && Array.isArray(historySnap.docs)) {
+      historySnap.docs.forEach(doc => {
+        const data = doc.data();
+        if (data && data.timestamp) {
+          userPoints.push({
+            time: Math.floor(data.timestamp.toDate().getTime() / 1000),
+            value: data.totalValue !== undefined ? data.totalValue : 10000
+          });
+        }
       });
     }
-  });
+  } catch (err) {
+    console.error('Failed to fetch portfolio history snapshot:', err);
+  }
 
   // Empty state handling
-  if (userPoints.length === 0) {
+  if (!Array.isArray(userPoints) || userPoints.length === 0) {
     userPoints = [
       { time: startTimestamp, value: 10000 },
       { time: endTimestamp, value: 10000 }
     ];
   } else if (timeRange === '1D') {
     // Interpolate from 10000 if needed, but usually we just use the first point
-    if (userPoints[0].time > startTimestamp + 3600) {
+    if (userPoints[0] && userPoints[0].time > startTimestamp + 3600) {
       userPoints.unshift({ time: startTimestamp, value: 10000 });
     }
   }
 
   // Downsample Logic
-  if (timeRange === '1W' || timeRange === '1M') {
-    // Group by day, take last
-    const dailyMap = new Map<string, { time: number; value: number }>();
-    userPoints.forEach(p => {
-      // Use EST string for grouping
-      const dateStr = new Date(p.time * 1000).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-      dailyMap.set(dateStr, p); // overwrites so we keep the last one of the day
-    });
-    userPoints = Array.from(dailyMap.values());
-  } else if (timeRange === '1Y') {
-    // Group by week (using year-week string)
-    const weeklyMap = new Map<string, { time: number; value: number }>();
-    userPoints.forEach(p => {
-      const d = new Date(p.time * 1000);
-      // Hacky week grouping
-      const weekStr = `${d.getFullYear()}-${Math.floor(d.getTime() / (7 * 24 * 60 * 60 * 1000))}`;
-      weeklyMap.set(weekStr, p);
-    });
-    userPoints = Array.from(weeklyMap.values());
+  if (Array.isArray(userPoints)) {
+    if (timeRange === '1W' || timeRange === '1M') {
+      // Group by day, take last
+      const dailyMap = new Map<string, { time: number; value: number }>();
+      userPoints.forEach(p => {
+        if (p && p.time) {
+          // Use EST string for grouping
+          const dateStr = new Date(p.time * 1000).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+          dailyMap.set(dateStr, p); // overwrites so we keep the last one of the day
+        }
+      });
+      userPoints = Array.from(dailyMap.values());
+    } else if (timeRange === '1Y') {
+      // Group by week (using year-week string)
+      const weeklyMap = new Map<string, { time: number; value: number }>();
+      userPoints.forEach(p => {
+        if (p && p.time) {
+          const d = new Date(p.time * 1000);
+          // Hacky week grouping
+          const weekStr = `${d.getFullYear()}-${Math.floor(d.getTime() / (7 * 24 * 60 * 60 * 1000))}`;
+          weeklyMap.set(weekStr, p);
+        }
+      });
+      userPoints = Array.from(weeklyMap.values());
+    }
   }
 
   // 2. Fetch Benchmark (SPY)
@@ -437,10 +488,10 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=SPY&resolution=${resolution}&from=${startTimestamp}&to=${endTimestamp}&token=${getFinnhubToken()}`);
     if (res.ok) {
       const data = await res.json();
-      if (data.s === 'ok' && data.c && data.t) {
+      if (data && data.s === 'ok' && Array.isArray(data.t) && Array.isArray(data.c)) {
         spyPoints = data.t.map((timestamp: number, index: number) => ({
           time: timestamp,
-          value: data.c[index]
+          value: data.c[index] !== undefined ? data.c[index] : 0
         }));
       }
     }
@@ -448,7 +499,10 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     console.error('Failed to fetch SPY benchmark', error);
   }
 
-  return { portfolio: userPoints, benchmark: spyPoints };
+  return { 
+    portfolio: Array.isArray(userPoints) ? userPoints : [], 
+    benchmark: Array.isArray(spyPoints) ? spyPoints : [] 
+  };
 }
 
 export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follower' | 'day_trader') {

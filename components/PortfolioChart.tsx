@@ -121,8 +121,11 @@ export default function PortfolioChart({ data, timeRange, onTimeRangeChange }: P
   useEffect(() => {
     if (!seriesRef.current || !benchmarkSeriesRef.current || !data) return;
     
-    seriesRef.current.setData(data.portfolio || []);
-    benchmarkSeriesRef.current.setData(data.benchmark || []);
+    const portfolioData = Array.isArray(data.portfolio) ? data.portfolio : [];
+    const benchmarkData = Array.isArray(data.benchmark) ? data.benchmark : [];
+    
+    seriesRef.current.setData(portfolioData);
+    benchmarkSeriesRef.current.setData(benchmarkData);
     chartRef.current?.timeScale().fitContent();
   }, [data]);
 
