@@ -1,8 +1,5 @@
-'use server';
-
-import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
-import { FieldValue } from 'firebase-admin/firestore';
+import { db, auth } from '@/lib/firebase';
+import { doc, getDoc, collection, setDoc, runTransaction, serverTimestamp, getDocs, writeBatch, query, where, orderBy, deleteDoc } from 'firebase/firestore';
 import {
   safeRound,
   safeAdd,
@@ -20,10 +17,6 @@ import {
   calculateGlobalDayPLPercent
 } from '@/lib/portfolioMath';
 
-// Helper to get DB/Auth safely in actions
-const getDb = () => getAdminDb();
-const getAuth = () => getAdminAuth();
-
 // ----- Premade portfolio definitions -----
 const PREMADE_PORTFOLIOS: Record<string, { ticker: string; qty: number }[]> = {
   tech_heavy: [
@@ -37,32 +30,35 @@ const PREMADE_PORTFOLIOS: Record<string, { ticker: string; qty: number }[]> = {
 };
 
 async function getAuthenticatedUserId() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token')?.value;
-
-  // Development fallback: if no token and not in production, use a dev UID
-  if (!token) {
+  // Try to get currentUser synchronously if already loaded
+  let user = auth.currentUser;
+  
+  if (!user) {
+    // If not, wait for auth state to resolve (important for client-side routing)
+    await new Promise<void>((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged((u) => {
+        user = u;
+        unsubscribe();
+        resolve();
+      });
+    });
+  }
+  
+  if (!user) {
     if (process.env.NODE_ENV !== 'production') {
-      const devUid = process.env.DEV_UID || 'dev-user-uid';
-      console.warn('[Auth] No auth token found. Using DEV_UID for local development.');
+      const devUid = process.env.NEXT_PUBLIC_DEV_UID || 'dev-user-uid';
+      console.warn('[Auth] No auth token found. Using devUid for local development.');
       return devUid;
     }
-    throw new Error('Unauthorized: No auth token cookie found');
+    throw new Error('Unauthorized: No user is currently signed in.');
   }
 
-  try {
-    const decodedToken = await getAuth().verifyIdToken(token);
-    if (!decodedToken.uid) throw new Error('UID missing from token');
-    return decodedToken.uid;
-  } catch (error: any) {
-    console.error('Auth Verification Error:', error.message);
-    throw new Error(`Unauthorized: ${error.message}`);
-  }
+  return user.uid;
 }
 
 const getFinnhubToken = () => {
-  const token = process.env.FINNHUB_API_KEY;
-  if (!token) throw new Error('FINNHUB_API_KEY is not set in environment variables');
+  const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
+  if (!token) throw new Error('NEXT_PUBLIC_FINNHUB_API_KEY is not set in environment variables');
   return token;
 };
 
@@ -70,7 +66,7 @@ const getFinnhubToken = () => {
 const quoteCache = new Map<string, { promise: Promise<any>, timestamp: number }>();
 const CACHE_TTL = 60000; // 60 seconds
 
-async function fetchFinnhubQuote(symbol: string) {
+export async function fetchFinnhubQuote(symbol: string) {
   const symbolKey = symbol.toUpperCase();
   const now = Date.now();
   
@@ -85,14 +81,25 @@ async function fetchFinnhubQuote(symbol: string) {
   }
 
   // 2. Create the fetch operation
+  // Introduce a small delay to respect rate limits when not using cached data
   const fetchPromise = (async () => {
+    // Delay 200ms before each network request
+    await new Promise(resolve => setTimeout(resolve, 200));
     try {
       const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbolKey}&token=${getFinnhubToken()}`);
-      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+      if (!res.ok) {
+        // Handle rate limit (429) or other errors gracefully
+        if (res.status === 429) {
+          console.warn(`Rate limit hit for ${symbolKey}, returning fallback quote.`);
+        } else {
+          console.error(`Finnhub Fetch Error (${symbolKey}): HTTP ${res.status}`);
+        }
+        return { c: 0, pc: 0 };
+      }
       return await res.json();
     } catch (err: any) {
-      console.error(`Finnhub Fetch Error (${symbolKey}):`, err.message);
-      return { c: 0, pc: 0 }; // Return defaults on error so the app doesn't crash
+      console.error(`Finnhub Fetch Exception (${symbolKey}):`, err.message);
+      return { c: 0, pc: 0 };
     }
   })();
 
@@ -149,96 +156,25 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   try {
     const userId = await getAuthenticatedUserId();
     
-    // Use a direct approach to avoid NOT_FOUND errors
-    const userRef = getDb().collection('users').doc(userId);
-    const portfolioRef = userRef.collection('portfolio').doc('main');
-    const holdingsRef = portfolioRef.collection('holdings');
+    // Use modular client SDK approach
+    const userRef = doc(db, 'users', userId);
+    const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+    const holdingsRef = collection(db, 'users', userId, 'portfolio', 'main', 'holdings');
 
     // Fetch everything at once
     const [portDoc, holdingsSnap] = await Promise.all([
-      portfolioRef.get(),
-      holdingsRef.get()
+      getDoc(portfolioRef),
+      getDocs(holdingsRef)
     ]);
 
-<<<<<<< Updated upstream
     // Implement structural null-guards. If doc.exists is false, return fallback
-    if (!portDoc.exists) {
+    if (!portDoc.exists()) {
       console.warn(`[getPortfolioSummary] Portfolio doc does not exist for user ${userId}. Returning fallback portfolio.`);
       // Lazy creation of required structures in database
-      portfolioRef.set({ cash: 10000, balanceHistory: [] }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy portfolio creation failed:', err));
-      userRef.set({ updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy user doc creation failed:', err));
+      setDoc(portfolioRef, { cash: 10000, balanceHistory: [] }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy portfolio creation failed:', err));
+      setDoc(userRef, { updatedAt: serverTimestamp() }, { merge: true }).catch(err => console.error('[getPortfolioSummary] Lazy user doc creation failed:', err));
       return fallback;
     }
-=======
-async function validateTradeAgainstRules(
-  userId: string,
-  ticker: string,
-  quantity: number,
-  type: 'BUY' | 'SELL'
-) {
-  // 1. Fetch user metadata
-  const userDoc = await adminDb.collection('users').doc(userId).get();
-  const userData = userDoc.data();
-  if (!userData || userData.role !== 'student' || !userData.classId) {
-    return; // Main sandbox or no classroom constraints
-  }
-
-  const { classId } = userData;
-
-  // 2. Fetch classroom active rules
-  const classDoc = await adminDb.collection('classrooms').doc(classId).get();
-  if (!classDoc.exists) {
-    throw new Error('Enrolled classroom not found. Please contact your instructor.');
-  }
-
-  const classData = classDoc.data()!;
-  const rules = classData.rules || {};
-
-  // Check Whitelist (allowedAssets)
-  const upperTicker = ticker.toUpperCase();
-  if (rules.allowedAssets && rules.allowedAssets.length > 0) {
-    if (!rules.allowedAssets.includes(upperTicker)) {
-      throw new Error(`Transaction blocked: '${upperTicker}' is not on your teacher's approved assets list.`);
-    }
-  }
-
-  // Check Blacklist (blacklistedAssets)
-  if (rules.blacklistedAssets && rules.blacklistedAssets.length > 0) {
-    if (rules.blacklistedAssets.includes(upperTicker)) {
-      throw new Error(`Transaction blocked: Trading is banned for ticker '${upperTicker}' by your teacher.`);
-    }
-  }
-
-  // Check Day Trading Limit (maxDailyTrades)
-  if (rules.maxDailyTrades && rules.maxDailyTrades > 0) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const transactionsSnap = await adminDb
-      .collection('users')
-      .doc(userId)
-      .collection('transactions')
-      .where('timestamp', '>=', today)
-      .get();
-
-    if (transactionsSnap.size >= rules.maxDailyTrades) {
-      throw new Error(`Transaction blocked: Teacher has set a maximum of ${rules.maxDailyTrades} trades per day. You have reached this limit.`);
-    }
-  }
-}
-
-export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
-  if (quantity <= 0) throw new Error('Quantity must be greater than 0');
-  const userId = await getAuthenticatedUserId();
-
-  // --- INTERCEPTOR: Validate trade rules before checking funds/shares ---
-  await validateTradeAgainstRules(userId, ticker, quantity, type);
-  
-  const userRef = adminDb.collection('users').doc(userId);
-  const portfolioRef = userRef.collection('portfolio').doc('main');
-  const holdingsRef = portfolioRef.collection('holdings').doc(ticker.toUpperCase());
-  const transactionsRef = userRef.collection('transactions');
->>>>>>> Stashed changes
 
     const portData = portDoc.data();
     if (!portData) {
@@ -250,9 +186,10 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
     const cash = portData.cash !== undefined ? portData.cash : 10000;
     const balanceHistory = portData.balanceHistory !== undefined ? portData.balanceHistory : (portData.balance_history !== undefined ? portData.balance_history : []);
 
+    // If essential fields are missing, fall back to defaults but continue processing
     if (portData.cash === undefined || portData.balanceHistory === undefined) {
-      console.warn(`[getPortfolioSummary] Essential portfolio fields are missing or undefined. Returning fallback.`);
-      return fallback;
+      console.warn(`[getPortfolioSummary] Essential portfolio fields are missing or undefined. Using defaults.`);
+      // Proceed with defaults defined earlier (cash already set, balanceHistory fallback applied)
     }
 
     const holdingsList = [];
@@ -260,7 +197,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
     let totalCostBasis = 0;
     let dayPerformanceUSD = 0;
 
-    if (holdingsSnap && holdingsSnap.docs && Array.isArray(holdingsSnap.docs)) {
+    if (holdingsSnap && !holdingsSnap.empty) {
       for (const hDoc of holdingsSnap.docs) {
         const ticker = hDoc.id;
         const holdingData = hDoc.data();
@@ -325,16 +262,16 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
     // We do not await this to avoid slowing down the UI load
     const todayStr = new Date().toDateString();
     try {
-      const userDocSnap = await userRef.get();
-      if (userDocSnap.exists) {
+      const userDocSnap = await getDoc(userRef);
+      if (userDocSnap.exists()) {
         const userDocData = userDocSnap.data();
         if (userDocData?.lastSnapshotDate !== todayStr) {
           capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Background Snapshot Error:', err));
-          userRef.set({ lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
+          setDoc(userRef, { lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
         }
       } else {
         // Lazy creation of user doc
-        userRef.set({ lastSnapshotDate: todayStr, updatedAt: FieldValue.serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
+        setDoc(userRef, { lastSnapshotDate: todayStr, updatedAt: serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
         capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Initial Background Snapshot Error:', err));
       }
     } catch (err) {
@@ -349,6 +286,60 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   }
 }
 
+async function validateTradeAgainstRules(
+  userId: string,
+  ticker: string,
+  quantity: number,
+  type: 'BUY' | 'SELL'
+) {
+  // 1. Fetch user metadata
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  const userData = userDoc.data();
+  if (!userData || userData.role !== 'student' || !userData.classId) {
+    return; // Main sandbox or no classroom constraints
+  }
+
+  const { classId } = userData;
+
+  // 2. Fetch classroom active rules
+  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  if (!classDoc.exists()) {
+    throw new Error('Enrolled classroom not found. Please contact your instructor.');
+  }
+
+  const classData = classDoc.data()!;
+  const rules = classData.rules || {};
+
+  // Check Whitelist (allowedAssets)
+  const upperTicker = ticker.toUpperCase();
+  if (rules.allowedAssets && rules.allowedAssets.length > 0) {
+    if (!rules.allowedAssets.includes(upperTicker)) {
+      throw new Error(`Transaction blocked: '${upperTicker}' is not on your teacher's approved assets list.`);
+    }
+  }
+
+  // Check Blacklist (blacklistedAssets)
+  if (rules.blacklistedAssets && rules.blacklistedAssets.length > 0) {
+    if (rules.blacklistedAssets.includes(upperTicker)) {
+      throw new Error(`Transaction blocked: Trading is banned for ticker '${upperTicker}' by your teacher.`);
+    }
+  }
+
+  // Check Day Trading Limit (maxDailyTrades)
+  if (rules.maxDailyTrades && rules.maxDailyTrades > 0) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const transactionsRef = collection(db, 'users', userId, 'transactions');
+    const q = query(transactionsRef, where('timestamp', '>=', today));
+    const transactionsSnap = await getDocs(q);
+
+    if (transactionsSnap.size >= rules.maxDailyTrades) {
+      throw new Error(`Transaction blocked: Teacher has set a maximum of ${rules.maxDailyTrades} trades per day. You have reached this limit.`);
+    }
+  }
+}
+
 export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
   const shares = Number(quantity);
   if (isNaN(shares) || shares <= 0) {
@@ -356,12 +347,14 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   }
 
   const userId = await getAuthenticatedUserId();
-  const db = getDb();
+
+  // --- INTERCEPTOR: Validate trade rules before checking funds/shares ---
+  await validateTradeAgainstRules(userId, ticker, shares, type);
   
-  const userRef = db.collection('users').doc(userId);
-  const portfolioRef = userRef.collection('portfolio').doc('main');
-  const holdingsRef = portfolioRef.collection('holdings').doc(ticker.toUpperCase());
-  const transactionsRef = userRef.collection('portfolio_history');
+  const userRef = doc(db, 'users', userId);
+  const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+  const holdingsRef = doc(db, 'users', userId, 'portfolio', 'main', 'holdings', ticker.toUpperCase());
+  const transactionsCollectionRef = collection(db, 'users', userId, 'portfolio_history');
 
   const quoteData = await fetchFinnhubQuote(ticker);
   const currentPrice = quoteData.c;
@@ -375,12 +368,12 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
     throw new Error('Invalid transaction value calculation');
   }
 
-  await db.runTransaction(async (transaction) => {
+  await runTransaction(db, async (transaction) => {
     const portfolioDoc = await transaction.get(portfolioRef);
     const holdingDoc = await transaction.get(holdingsRef);
 
     // Defensive structural defaults if portfolio doesn't exist
-    const portfolioData = portfolioDoc.exists ? portfolioDoc.data() : null;
+    const portfolioData = portfolioDoc.exists() ? portfolioDoc.data() : null;
     const cash = Number(portfolioData?.cash ?? 10000);
     if (isNaN(cash)) {
       throw new Error('Invalid cash balance value in portfolio');
@@ -392,7 +385,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       }
       
       // Defensive defaults for holding document
-      const currentHolding = holdingDoc.exists ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
+      const currentHolding = holdingDoc.exists() ? holdingDoc.data()! : { qty: 0, avgPrice: 0 };
       const currentQty = Number(currentHolding.qty ?? 0);
       const currentAvgPrice = Number(currentHolding.avgPrice ?? 0);
 
@@ -416,7 +409,7 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       transaction.set(holdingsRef, { qty: newQty, avgPrice: newAvgPrice }, { merge: true });
     } else {
       // Sell logic
-      const currentHolding = holdingDoc.exists ? holdingDoc.data()! : null;
+      const currentHolding = holdingDoc.exists() ? holdingDoc.data()! : null;
       const currentQty = currentHolding ? Number(currentHolding.qty ?? 0) : 0;
       const currentAvgPrice = currentHolding ? Number(currentHolding.avgPrice ?? 0) : 0;
 
@@ -442,13 +435,14 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
     }
 
     // Push transactional log history cleanly to portfolio_history sub-collection
-    transaction.set(transactionsRef.doc(), {
+    const newTransactionRef = doc(transactionsCollectionRef);
+    transaction.set(newTransactionRef, {
       ticker: ticker.toUpperCase(),
       quantity: shares,
       price: price,
       totalAmount,
       type,
-      timestamp: FieldValue.serverTimestamp(),
+      timestamp: serverTimestamp(),
       description: `${type} ${shares} ${ticker.toUpperCase()} @ $${price.toFixed(2)}`
     });
   });
@@ -487,13 +481,13 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
   try {
     const userId = userIdOverride || await getAuthenticatedUserId();
     const portSummary = summary || await getPortfolioSummary();
-    const historyRef = getDb().collection('users').doc(userId).collection('portfolio_history');
+    const historyRef = collection(db, 'users', userId, 'portfolio_history');
     
     // Simple deduplication: check if we just took a snapshot in the last hour
     // (This is basic; could be more robust, but prevents spam)
-    
-    await historyRef.add({
-      timestamp: FieldValue.serverTimestamp(),
+    const newDocRef = doc(historyRef);
+    await setDoc(newDocRef, {
+      timestamp: serverTimestamp(),
       totalValue: portSummary.totalValue,
       cashBalance: portSummary.cash,
       holdingsValue: portSummary.totalValue - portSummary.cash
@@ -505,7 +499,7 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
 
 export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   const userId = await getAuthenticatedUserId();
-  const historyRef = getDb().collection('users').doc(userId).collection('portfolio_history');
+  const historyRef = collection(db, 'users', userId, 'portfolio_history');
   
   // Calculate timestamps
   const now = new Date();
@@ -533,14 +527,16 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   let userPoints: { time: number; value: number }[] = [];
   
   try {
-    const historySnap = await historyRef
-      .where('timestamp', '>=', new Date(start.getTime()))
-      .orderBy('timestamp', 'asc')
-      .get();
+    const q = query(
+      historyRef, 
+      where('timestamp', '>=', new Date(start.getTime())), 
+      orderBy('timestamp', 'asc')
+    );
+    const historySnap = await getDocs(q);
 
-    if (historySnap && historySnap.docs && Array.isArray(historySnap.docs)) {
-      historySnap.docs.forEach(doc => {
-        const data = doc.data();
+    if (historySnap && !historySnap.empty) {
+      historySnap.docs.forEach(d => {
+        const data = d.data();
         if (data && data.timestamp) {
           userPoints.push({
             time: Math.floor(data.timestamp.toDate().getTime() / 1000),
@@ -595,34 +591,42 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   }
 
   // 2. Fetch Benchmark (SPY)
-  let spyPoints: { time: number; value: number }[] = [];
-  try {
-    const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=SPY&resolution=${resolution}&from=${startTimestamp}&to=${endTimestamp}&token=${getFinnhubToken()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.s === 'ok' && Array.isArray(data.t) && Array.isArray(data.c)) {
-        spyPoints = data.t.map((timestamp: number, index: number) => ({
-          time: timestamp,
-          value: data.c[index] !== undefined ? data.c[index] : 0
-        }));
-      }
+  let spyPoints = generateMockSpyData(startTimestamp, endTimestamp);
+
+  // Helper to generate a simple random-walk mock dataset for SPY
+  function generateMockSpyData(fromSec: number, toSec: number) {
+    const points: { time: number; value: number }[] = [];
+    const interval = 60 * 60; // hourly points
+    let price = 500; // starting baseline
+    for (let t = fromSec; t <= toSec; t += interval) {
+      // Random walk +/- 1%
+      const change = (Math.random() - 0.5) * 0.02;
+      price = Math.max(10, price * (1 + change));
+      points.push({ time: t, value: Number(price.toFixed(2)) });
     }
-  } catch (error) {
-    console.error('Failed to fetch SPY benchmark', error);
+    return points;
+  }
+
+  // Deduplicate and sort points to satisfy lightweight-charts strictly ascending requirement
+  function deduplicateAndSort(data: {time: number, value: number}[]) {
+    const map = new Map<number, {time: number, value: number}>();
+    // Use the timestamp as the key to naturally deduplicate identical seconds (keeping the latest)
+    data.forEach(p => map.set(p.time, p));
+    return Array.from(map.values()).sort((a, b) => a.time - b.time);
   }
 
   return { 
-    portfolio: Array.isArray(userPoints) ? userPoints : [], 
-    benchmark: Array.isArray(spyPoints) ? spyPoints : [] 
+    portfolio: deduplicateAndSort(Array.isArray(userPoints) ? userPoints : []), 
+    benchmark: deduplicateAndSort(Array.isArray(spyPoints) ? spyPoints : []) 
   };
 }
 
 export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follower' | 'day_trader') {
   try {
     const userId = await getAuthenticatedUserId();
-    const userRef = getDb().collection('users').doc(userId);
-    const portfolioRef = userRef.collection('portfolio').doc('main');
-    const holdingsRef = portfolioRef.collection('holdings');
+    const userRef = doc(db, 'users', userId);
+    const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+    const holdingsRef = collection(db, 'users', userId, 'portfolio', 'main', 'holdings');
 
     // Fetch prices first (outside transaction to avoid timeout)
     const strategyHoldings = PREMADE_PORTFOLIOS[strategy] || [];
@@ -642,19 +646,19 @@ export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follow
     if (startingCash < 0) throw new Error('Starting value exceeds $10,000 limit');
 
     // Use a batch for faster, more reliable initialization
-    const batch = getDb().batch();
+    const batch = writeBatch(db);
 
     // Ensure user and portfolio exists
-    batch.set(userRef, { lastInitialized: FieldValue.serverTimestamp() }, { merge: true });
+    batch.set(userRef, { lastInitialized: serverTimestamp() }, { merge: true });
     batch.set(portfolioRef, { cash: startingCash, strategy }, { merge: true });
 
-    // Clear old holdings (requires a read, but we can do it outside or just delete and hope)
-    const currentHoldings = await holdingsRef.get();
-    currentHoldings.docs.forEach(doc => batch.delete(doc.ref));
+    // Clear old holdings
+    const currentHoldings = await getDocs(holdingsRef);
+    currentHoldings.docs.forEach(d => batch.delete(d.ref));
 
     // Add new ones
     processedHoldings.forEach(h => {
-      batch.set(holdingsRef.doc(h.ticker.toUpperCase()), { qty: h.qty, avgPrice: h.avgPrice });
+      batch.set(doc(holdingsRef, h.ticker.toUpperCase()), { qty: h.qty, avgPrice: h.avgPrice });
     });
 
     await batch.commit();

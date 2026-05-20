@@ -1,5 +1,3 @@
-'use server';
-
 export interface NewsArticle {
   id: number;
   headline: string;
@@ -44,20 +42,22 @@ const MOCK_NEWS: NewsArticle[] = [
 ];
 
 /**
- * Server Action to fetch general market news from Finnhub, cached for 1 hour.
+ * Client-side action to fetch general market news from Finnhub.
  * Always returns exactly three high-quality news articles.
  */
 export async function getDailyThreeNews(): Promise<NewsArticle[]> {
-  const token = process.env.FINNHUB_API_KEY;
+  const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
 
   if (!token) {
-    console.warn('[News Action] FINNHUB_API_KEY is not set. Falling back to premium mock news.');
+    console.warn('[News Action] NEXT_PUBLIC_FINNHUB_API_KEY is not set. Falling back to premium mock news.');
     return MOCK_NEWS;
   }
 
   try {
+    // Note: next.revalidate is a Next.js server feature. Since this is client-side, 
+    // the browser fetch cache is used instead.
     const res = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${token}`, {
-      next: { revalidate: 3600 },
+      cache: 'force-cache',
     });
 
     if (!res.ok) {

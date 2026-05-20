@@ -38,6 +38,9 @@ export default function PortfolioChart({ data, timeRange, onTimeRangeChange }: P
       },
       rightPriceScale: {
         borderVisible: false,
+        mode: 2, // PriceScaleMode.Percentage
+        autoScale: true,
+        alignLabels: true,
       },
       crosshair: {
         vertLine: {

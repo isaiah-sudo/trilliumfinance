@@ -1,5 +1,3 @@
-'use server';
-
 export interface CompanyProfile {
   name: string;
   ticker: string;
@@ -105,21 +103,20 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
 };
 
 /**
- * Server Action to fetch stock profile details from Finnhub, cached for 24 hours.
- * Uses native Next.js 15 fetch caching with 86400 seconds revalidation.
+ * Client-side action to fetch stock profile details from Finnhub, using standard fetch caching.
  */
 export async function getCompanyProfile(symbol: string): Promise<CompanyProfile> {
-  const token = process.env.FINNHUB_API_KEY;
+  const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
   const upperSymbol = symbol.toUpperCase();
 
   if (!token) {
-    console.warn('[StockDetails Action] FINNHUB_API_KEY not set. Serving rich mock fallback.');
+    console.warn('[StockDetails Action] NEXT_PUBLIC_FINNHUB_API_KEY not set. Serving rich mock fallback.');
     return getFallbackProfile(upperSymbol);
   }
 
   try {
     const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${upperSymbol}&token=${token}`, {
-      next: { revalidate: 86400 }, // 24-hour data revalidation
+      cache: 'force-cache'
     });
 
     if (!res.ok) {

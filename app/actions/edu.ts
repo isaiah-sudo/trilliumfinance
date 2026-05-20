@@ -1,47 +1,46 @@
-'use server';
+import { db, auth } from '@/lib/firebase';
+import { doc, getDoc, collection, setDoc, serverTimestamp, getDocs, writeBatch, query, where, limit } from 'firebase/firestore';
 
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
-import { FieldValue } from 'firebase-admin/firestore';
-
-// Helper to get authenticated UID on the server
+// Helper to get authenticated UID on the client
 async function getAuthenticatedUserId() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token')?.value;
-
-  if (!token) throw new Error('Unauthorized: No auth token cookie found');
-
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    if (!decodedToken.uid) throw new Error('UID missing from token');
-    return decodedToken.uid;
-  } catch (error: any) {
-    throw new Error(`Unauthorized: ${error.message}`);
+  let user = auth.currentUser;
+  
+  if (!user) {
+    await new Promise<void>((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged((u) => {
+        user = u;
+        unsubscribe();
+        resolve();
+      });
+    });
   }
+
+  if (!user) {
+    throw new Error('Unauthorized: No user is currently signed in.');
+  }
+
+  return user.uid;
 }
 
 /**
  * Assigns a user their educational role ('teacher' or 'student')
- * Sets both a secure Firebase Custom Claim and updates the Firestore user metadata.
+ * Updates the Firestore user metadata.
  */
 export async function setUserRole(role: 'teacher' | 'student', name: string) {
   const userId = await getAuthenticatedUserId();
 
   try {
-    // 1. Set Custom Claims for Route & API Middleware Protection
-    await adminAuth.setCustomUserClaims(userId, { role });
-
-    // 2. Persist in Firestore for client queries and relational consistency
-    const userRef = adminDb.collection('users').doc(userId);
-    await userRef.set({
+    // Persist in Firestore for client queries and relational consistency
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, {
       role,
       name,
-      updatedAt: FieldValue.serverTimestamp()
+      updatedAt: serverTimestamp()
     }, { merge: true });
 
     return { success: true, role };
   } catch (error: any) {
-    console.error('Failed to set user role claims:', error);
+    console.error('Failed to set user role:', error);
     throw new Error(error.message || 'Failed to assign role.');
   }
 }
@@ -64,7 +63,7 @@ export async function createClassroom(className: string, initialRules?: {
 
   try {
     // Create classroom document
-    const classroomRef = adminDb.collection('classrooms').doc();
+    const classroomRef = doc(collection(db, 'classrooms'));
     const rules = {
       maxDailyTrades: initialRules?.maxDailyTrades ?? 3,
       startingCash: initialRules?.startingCash ?? 50000,
@@ -72,17 +71,17 @@ export async function createClassroom(className: string, initialRules?: {
       blacklistedAssets: initialRules?.blacklistedAssets ?? []
     };
 
-    await classroomRef.set({
+    await setDoc(classroomRef, {
       classCode,
       name: className,
       teacherId: userId,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: serverTimestamp(),
       rules
     });
 
     // Save class relationship on the teacher's profile
-    const teacherRef = adminDb.collection('users').doc(userId);
-    await teacherRef.set({
+    const teacherRef = doc(db, 'users', userId);
+    await setDoc(teacherRef, {
       classId: classroomRef.id,
       classCode
     }, { merge: true });
@@ -104,11 +103,9 @@ export async function joinClassroom(classCode: string, studentName: string) {
 
   try {
     // 1. Find classroom with code
-    const classroomsSnap = await adminDb
-      .collection('classrooms')
-      .where('classCode', '==', upperCode)
-      .limit(1)
-      .get();
+    const classroomsRef = collection(db, 'classrooms');
+    const q = query(classroomsRef, where('classCode', '==', upperCode), limit(1));
+    const classroomsSnap = await getDocs(q);
 
     if (classroomsSnap.empty) {
       throw new Error(`Classroom code '${upperCode}' does not exist.`);
@@ -119,19 +116,19 @@ export async function joinClassroom(classCode: string, studentName: string) {
     const classId = classDoc.id;
 
     // 2. Register membership in `/classrooms/{classId}/members/{studentId}`
-    const memberRef = classDoc.ref.collection('members').doc(userId);
+    const memberRef = doc(db, 'classrooms', classId, 'members', userId);
     
     // Check custom rules to initialize portfolio with starting cash
     const startingCash = classData.rules?.startingCash ?? 50000;
 
     // 3. Create or update user metadata
-    const userRef = adminDb.collection('users').doc(userId);
-    const batch = adminDb.batch();
+    const userRef = doc(db, 'users', userId);
+    const batch = writeBatch(db);
 
     batch.set(memberRef, {
       studentId: userId,
       studentName,
-      joinedAt: FieldValue.serverTimestamp(),
+      joinedAt: serverTimestamp(),
       portfolioId: `edu_${classId}`
     });
 
@@ -143,7 +140,7 @@ export async function joinClassroom(classCode: string, studentName: string) {
     }, { merge: true });
 
     // Initialize custom student sandbox portfolio with the assigned cash balance
-    const portfolioRef = userRef.collection('portfolio').doc('main');
+    const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
     batch.set(portfolioRef, {
       cash: startingCash,
       isEdu: true,
@@ -166,28 +163,28 @@ export async function getClassroomRoster() {
   const userId = await getAuthenticatedUserId();
 
   // Find class owned by this teacher
-  const teacherDoc = await adminDb.collection('users').doc(userId).get();
+  const teacherDoc = await getDoc(doc(db, 'users', userId));
   const classId = teacherDoc.data()?.classId;
   if (!classId) throw new Error('No active classroom found for this teacher.');
 
-  const classRef = adminDb.collection('classrooms').doc(classId);
-  const membersSnap = await classRef.collection('members').get();
-  const classroomDoc = await classRef.get();
+  const classRef = doc(db, 'classrooms', classId);
+  const membersSnap = await getDocs(collection(db, 'classrooms', classId, 'members'));
+  const classroomDoc = await getDoc(classRef);
   const classroomData = classroomDoc.data();
 
   const roster = [];
 
-  for (const doc of membersSnap.docs) {
-    const data = doc.data();
+  for (const memberDoc of membersSnap.docs) {
+    const data = memberDoc.data();
     const studentId = data.studentId;
 
     // Fetch the student's portfolio and transaction counts
-    const portfolioRef = adminDb.collection('users').doc(studentId).collection('portfolio').doc('main');
-    const transactionsRef = adminDb.collection('users').doc(studentId).collection('transactions');
+    const portfolioRef = doc(db, 'users', studentId, 'portfolio', 'main');
+    const transactionsRef = collection(db, 'users', studentId, 'transactions');
 
     const [portDoc, transSnap] = await Promise.all([
-      portfolioRef.get(),
-      transactionsRef.get()
+      getDoc(portfolioRef),
+      getDocs(transactionsRef)
     ]);
 
     const portData = portDoc.data();
@@ -195,7 +192,7 @@ export async function getClassroomRoster() {
     
     // Fetch holding valuation
     let holdingsValue = 0;
-    const holdingsSnap = await portfolioRef.collection('holdings').get();
+    const holdingsSnap = await getDocs(collection(db, 'users', studentId, 'portfolio', 'main', 'holdings'));
     
     // We approximate or return simplified values since live fetch requires rate limit handling
     holdingsSnap.forEach(h => {
@@ -232,13 +229,13 @@ export async function updateClassroomRules(rules: {
 }) {
   const userId = await getAuthenticatedUserId();
 
-  const teacherDoc = await adminDb.collection('users').doc(userId).get();
+  const teacherDoc = await getDoc(doc(db, 'users', userId));
   const classId = teacherDoc.data()?.classId;
   if (!classId) throw new Error('No active classroom found.');
 
-  const classRef = adminDb.collection('classrooms').doc(classId);
+  const classRef = doc(db, 'classrooms', classId);
   
-  await classRef.set({
+  await setDoc(classRef, {
     rules: {
       maxDailyTrades: Number(rules.maxDailyTrades),
       startingCash: Number(rules.startingCash),
@@ -256,12 +253,12 @@ export async function updateClassroomRules(rules: {
 export async function getStudentRules() {
   const userId = await getAuthenticatedUserId();
 
-  const studentDoc = await adminDb.collection('users').doc(userId).get();
+  const studentDoc = await getDoc(doc(db, 'users', userId));
   const classId = studentDoc.data()?.classId;
   if (!classId) return null; // Not in a classroom
 
-  const classDoc = await adminDb.collection('classrooms').doc(classId).get();
-  if (!classDoc.exists) return null;
+  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  if (!classDoc.exists()) return null;
 
   const data = classDoc.data()!;
   
@@ -269,12 +266,9 @@ export async function getStudentRules() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const transactionsSnap = await adminDb
-    .collection('users')
-    .doc(userId)
-    .collection('transactions')
-    .where('timestamp', '>=', today)
-    .get();
+  const transactionsRef = collection(db, 'users', userId, 'transactions');
+  const q = query(transactionsRef, where('timestamp', '>=', today));
+  const transactionsSnap = await getDocs(q);
 
   return {
     classCode: data.classCode,

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, TrendingUp, Cpu, Zap, Leaf, Bitcoin, Eye, ShoppingCart, X, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { handleTrade, getMarketQuotes } from '@/app/actions/trading';
+import { handleTrade, getMarketQuotes, fetchFinnhubQuote } from '@/app/actions/trading';
 import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
 
 const BASE_STOCKS = [
@@ -43,7 +43,7 @@ const BASE_STOCKS = [
   { ticker: 'COP', name: 'ConocoPhillips', category: 'Energy' },
   { ticker: 'SLB', name: 'Schlumberger N.V.', category: 'Energy' },
   { ticker: 'EOG', name: 'EOG Resources', category: 'Energy' },
-  { ticker: 'PXD', name: 'Pioneer Natural', category: 'Energy' },
+  { ticker: 'BP', name: 'BP plc', category: 'Energy' },
   { ticker: 'MPC', name: 'Marathon Petroleum', category: 'Energy' },
   { ticker: 'PSX', name: 'Phillips 66', category: 'Energy' },
   { ticker: 'VLO', name: 'Valero Energy', category: 'Energy' },
@@ -100,40 +100,90 @@ export default function MarketExplorer() {
 
   useEffect(() => {
     let mounted = true;
+    let rotationIndex = 0;
+    const tickers = BASE_STOCKS.map(s => s.ticker);
 
-    const fetchPrices = async () => {
-      try {
-        const tickers = BASE_STOCKS.map(s => s.ticker);
-        const quotes = await getMarketQuotes(tickers);
-        
-        if (mounted && quotes.length > 0) {
+    const initializeCacheAndSeed = async () => {
+      // 1. First, try to load from session storage cache to prevent $0 prices
+      const cached = sessionStorage.getItem('trillium_stock_seed');
+      if (cached) {
+        try {
+          const parsedCache = JSON.parse(cached);
           setStocks(prev => prev.map(stock => {
-            const quote = quotes.find(q => q.ticker === stock.ticker);
-            if (quote) {
-              return { 
-                ...stock, 
-                price: quote.price, 
-                change: quote.change, 
-                loading: false 
-              };
+            const cachedStock = parsedCache.find((c: any) => c.ticker === stock.ticker);
+            if (cachedStock) {
+              return { ...stock, price: cachedStock.price, change: cachedStock.change, loading: false };
             }
             return stock;
           }));
+        } catch (e) {
+          console.error("Failed to parse cache", e);
+        }
+      }
+
+      // 2. Fetch the top 3 high-priority stocks immediately (e.g. AAPL, MSFT, NVDA)
+      try {
+        const top3 = tickers.slice(0, 3);
+        const quotes = await getMarketQuotes(top3);
+        
+        if (mounted && quotes.length > 0) {
+          setStocks(prev => {
+            const updated = prev.map(stock => {
+              const quote = quotes.find(q => q.ticker === stock.ticker);
+              if (quote) {
+                return { ...stock, price: quote.price, change: quote.change, loading: false };
+              }
+              return stock;
+            });
+            sessionStorage.setItem('trillium_stock_seed', JSON.stringify(updated));
+            return updated;
+          });
         }
       } catch (err) {
-        console.error('Failed to fetch live quotes', err);
+        console.error('Initial top-3 fetch failed', err);
       }
     };
 
-    // Initial fetch
-    fetchPrices();
+    // Staggered Round-Robin Polling Engine
+    const tickRotation = async () => {
+      if (!mounted) return;
+      
+      const ticker = tickers[rotationIndex];
+      try {
+        const quote = await fetchFinnhubQuote(ticker);
+        if (mounted && quote.c) {
+          setStocks(prev => {
+            const updated = prev.map(stock => {
+              if (stock.ticker === ticker) {
+                const price = quote.c || stock.price;
+                const pc = quote.pc || price;
+                const change = pc > 0 ? ((price - pc) / pc) * 100 : stock.change;
+                return { ...stock, price, change, loading: false };
+              }
+              return stock;
+            });
+            // Update cache silently
+            sessionStorage.setItem('trillium_stock_seed', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error(`Rotation fetch failed for ${ticker}`, err);
+      }
+      
+      // Increment rotation and wrap around
+      rotationIndex = (rotationIndex + 1) % tickers.length;
+    };
 
-    // Set interval for every 60 seconds to respect API rate limits (60 req/min)
-    const interval = setInterval(fetchPrices, 60000);
+    initializeCacheAndSeed();
+
+    // Fire one request exactly every 4 seconds
+    // 25 stocks * 4 seconds = 100 seconds per full loop (15 reqs/minute, well below 30 req/min limit)
+    const intervalId = setInterval(tickRotation, 4000);
 
     return () => {
       mounted = false;
-      clearInterval(interval);
+      clearInterval(intervalId);
     };
   }, []);
 
