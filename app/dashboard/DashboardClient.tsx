@@ -10,22 +10,42 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 
 interface TrophyCardProps {
+  id: string;
   title: string;
   description: string;
   iconType: string;
-  rank: 'gold' | 'silver' | 'copper';
+  difficulty?: 'gold' | 'silver' | 'copper';
+  isSelected?: boolean;
+  onClickAction?: () => void;
 }
 
-function TrophyCard({ title, description, iconType, rank }: TrophyCardProps) {
+function TrophyCard({ id, title, description, iconType, difficulty, isSelected, onClickAction }: TrophyCardProps) {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+
+  const getDifficulty = (tid: string): 'gold' | 'silver' | 'copper' => {
+    if (difficulty) return difficulty;
+    switch (tid) {
+      case 'WHALE':
+      case 'DAY_TRADER':
+        return 'gold';
+      case 'DIVERSIFIED':
+      case 'DIAMOND_HANDS':
+        return 'silver';
+      default:
+        return 'copper';
+    }
+  };
+
+  const rank = getDifficulty(id);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
     const y = e.clientY - rect.top - rect.height / 2;
-    const rotateX = -(y / (rect.height / 2)) * 15;
-    const rotateY = (x / (rect.width / 2)) * 15;
+    const rotateX = -(y / (rect.height / 2)) * 20;
+    const rotateY = (x / (rect.width / 2)) * 20;
     setCoords({ x: rotateY, y: rotateX });
   };
 
@@ -47,55 +67,76 @@ function TrophyCard({ title, description, iconType, rank }: TrophyCardProps) {
 
   const rankStyles = {
     gold: {
-      border: 'border-amber-400/50 bg-amber-500/5 hover:border-amber-400 shadow-[0_0_15px_rgba(234,179,8,0.1)] hover:shadow-[0_0_25px_rgba(234,179,8,0.3)]',
-      iconColor: 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]',
+      border: 'border-amber-400/50 bg-amber-500/5 hover:border-amber-400 shadow-[0_0_20px_rgba(234,179,8,0.08)] hover:shadow-[0_0_30px_rgba(234,179,8,0.25)]',
+      iconColor: 'text-amber-400 fill-amber-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]',
       glow: 'bg-amber-500/10',
     },
     silver: {
-      border: 'border-slate-300/50 bg-slate-400/5 hover:border-slate-300 shadow-[0_0_15px_rgba(148,163,184,0.1)] hover:shadow-[0_0_25px_rgba(148,163,184,0.3)]',
-      iconColor: 'text-slate-300 fill-slate-300 drop-shadow-[0_0_8px_rgba(148,163,184,0.6)]',
+      border: 'border-slate-300/50 bg-slate-400/5 hover:border-slate-300 shadow-[0_0_20px_rgba(148,163,184,0.08)] hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]',
+      iconColor: 'text-slate-300 fill-slate-300 drop-shadow-[0_0_10px_rgba(148,163,184,0.6)]',
       glow: 'bg-slate-400/10',
     },
     copper: {
-      border: 'border-amber-700/50 bg-amber-800/5 hover:border-amber-600 shadow-[0_0_15px_rgba(180,83,9,0.1)] hover:shadow-[0_0_25px_rgba(180,83,9,0.3)]',
-      iconColor: 'text-amber-600 fill-amber-600 drop-shadow-[0_0_8px_rgba(180,83,9,0.6)]',
+      border: 'border-amber-700/50 bg-amber-800/5 hover:border-amber-600 shadow-[0_0_20px_rgba(180,83,9,0.08)] hover:shadow-[0_0_30px_rgba(180,83,9,0.25)]',
+      iconColor: 'text-amber-600 fill-amber-600 drop-shadow-[0_0_10px_rgba(180,83,9,0.6)]',
       glow: 'bg-amber-700/10',
     }
   };
 
   const style = rankStyles[rank];
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    setIsClicked(!isClicked);
+    if (onClickAction) {
+      onClickAction();
+    }
+  };
+
   return (
     <div
+      onClick={handleCardClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
-      className={`relative w-[130px] h-[130px] md:w-[140px] md:h-[140px] aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden transition-all duration-200 cursor-default select-none ${style.border}`}
+      className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden transition-all duration-200 cursor-pointer select-none ${style.border} ${
+        isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-[0_0_25px_rgba(59,130,246,0.4)]' : ''
+      }`}
       style={{
         transformStyle: 'preserve-3d',
-        transform: `perspective(1000px) rotateX(${coords.y}deg) rotateY(${coords.x}deg)`,
+        transform: `perspective(1000px) rotateX(${coords.y}deg) rotateY(${coords.x}deg) ${isHovered ? 'scale3d(1.05, 1.05, 1.05)' : 'scale3d(1, 1, 1)'}`,
       }}
     >
       <div className={`absolute inset-0 opacity-40 blur-xl transition-opacity duration-300 ${style.glow} ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
 
-      <div className="flex flex-col items-center justify-center gap-2 pointer-events-none" style={{ transform: 'translateZ(20px)' }}>
-        <IconComponent className={`h-8 w-8 ${style.iconColor}`} />
-        <span className="text-[11px] font-extrabold text-slate-200 text-center tracking-tight px-2">{title}</span>
+      <div 
+        className="flex flex-col items-center justify-center gap-2 pointer-events-none transition-all duration-200" 
+        style={{ transform: isHovered ? 'translateZ(35px) scale(0.95)' : 'translateZ(0px)' }}
+      >
+        <IconComponent className={`h-10 w-10 ${style.iconColor}`} />
+        <span className="text-[12px] font-extrabold text-slate-100 text-center tracking-tight px-3">{title}</span>
+        <span className={`text-[9px] font-bold uppercase tracking-widest ${
+          rank === 'gold' ? 'text-amber-400' : rank === 'silver' ? 'text-slate-300' : 'text-amber-600'
+        }`}>
+          {rank}
+        </span>
       </div>
 
       <div
-        className={`absolute inset-0 bg-[#0b0f19]/90 backdrop-blur-[8px] flex flex-col items-center justify-center p-3 text-center transition-all duration-300 ${
-          isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+        className={`absolute inset-0 bg-[#0b0f19]/95 backdrop-blur-[10px] flex flex-col items-center justify-center p-4 text-center transition-all duration-300 ${
+          isClicked ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
         }`}
       >
-        <span className={`text-[10px] font-extrabold tracking-widest uppercase mb-1 ${
+        <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${
           rank === 'gold' ? 'text-amber-400' : rank === 'silver' ? 'text-slate-300' : 'text-amber-600'
         }`}>
           {rank} Trophy
         </span>
-        <p className="text-[9px] font-bold text-slate-300 leading-tight">
+        <p className="text-[10px] font-bold text-slate-300 leading-normal mb-3">
           {description}
         </p>
+        <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">
+          Click to close
+        </span>
       </div>
     </div>
   );
@@ -109,6 +150,8 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
+  const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -125,6 +168,33 @@ export default function DashboardPage() {
       console.error('Failed to load achievements', e);
     }
   };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('top_trophy_selections');
+    if (saved) {
+      try {
+        setSelectedTrophyIds(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('top_trophy_selections');
+    if (!saved && unlockedAchievements.length > 0) {
+      const ACHIEVEMENT_PRIORITY = ['WHALE', 'DIVERSIFIED', 'DAY_TRADER', 'DIAMOND_HANDS', 'FIRST_TRADE'];
+      const defaultTrophies = ACHIEVEMENTS.filter((ach) => unlockedAchievements.includes(ach.id))
+        .sort((a, b) => {
+          const idxA = ACHIEVEMENT_PRIORITY.indexOf(a.id);
+          const idxB = ACHIEVEMENT_PRIORITY.indexOf(b.id);
+          return (idxA > -1 ? idxA : 99) - (idxB > -1 ? idxB : 99);
+        })
+        .slice(0, 3)
+        .map(t => t.id);
+      setSelectedTrophyIds(defaultTrophies);
+    }
+  }, [unlockedAchievements]);
 
   useEffect(() => {
     if (!user) return;
@@ -314,34 +384,35 @@ export default function DashboardPage() {
               </div>
 
               {/* Right Side: Top Trophies */}
-              <div className="flex-[2] md:pl-8 md:border-l border-slate-700/50 mt-8 md:mt-0">
-                <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-4 text-center md:text-left">Top Trophies</h3>
+              <div className="flex-[2] md:pl-8 md:border-l border-slate-700/50 mt-8 md:mt-0 flex flex-col">
+                <div className="flex justify-between items-center mb-6 w-full">
+                  <button 
+                    onClick={() => setCustomizerOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-[10px] font-extrabold text-slate-300 hover:text-white hover:border-slate-500 transition-all shadow-inner uppercase tracking-wider"
+                  >
+                    ⚙️ Customize Trophies
+                  </button>
+                  <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase text-right">Top Trophies</h3>
+                </div>
                 
-                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                <div className="flex flex-wrap gap-6 justify-center items-center mx-auto w-full">
                   {(() => {
-                    const ACHIEVEMENT_PRIORITY = ['WHALE', 'DIVERSIFIED', 'DAY_TRADER', 'DIAMOND_HANDS', 'FIRST_TRADE'];
-                    const unlockedTrophies = ACHIEVEMENTS.filter((ach) => unlockedAchievements.includes(ach.id))
-                      .sort((a, b) => {
-                        const idxA = ACHIEVEMENT_PRIORITY.indexOf(a.id);
-                        const idxB = ACHIEVEMENT_PRIORITY.indexOf(b.id);
-                        return (idxA > -1 ? idxA : 99) - (idxB > -1 ? idxB : 99);
-                      });
-
-                    if (unlockedTrophies.length === 0) {
+                    if (selectedTrophyIds.length === 0) {
                       return (
-                        <div className="text-slate-500 text-xs font-semibold py-8 italic">No trophies unlocked yet. Keep trading!</div>
+                        <div className="text-slate-500 text-xs font-semibold py-8 italic text-center w-full">No trophies selected. Click Customize to curate your showcase!</div>
                       );
                     }
 
-                    return unlockedTrophies.slice(0, 3).map((trophy, index) => {
-                      const ranks: ('gold' | 'silver' | 'copper')[] = ['gold', 'silver', 'copper'];
+                    return selectedTrophyIds.map((tid) => {
+                      const trophy = ACHIEVEMENTS.find(a => a.id === tid);
+                      if (!trophy) return null;
                       return (
                         <TrophyCard
-                          key={trophy.id}
+                          key={tid}
+                          id={trophy.id}
                           title={trophy.title}
                           description={trophy.description}
                           iconType={trophy.iconType}
-                          rank={ranks[index]}
                         />
                       );
                     });
@@ -349,6 +420,114 @@ export default function DashboardPage() {
                 </div>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Customizer Modal */}
+        <AnimatePresence>
+          {customizerOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-6"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-white font-extrabold text-xl tracking-tight">Curate Your Trophy Showcase</h3>
+                    <p className="text-slate-400 text-xs mt-1">Select up to 3 unlocked trophies to showcase prominently on your dashboard profile.</p>
+                  </div>
+                  <button 
+                    onClick={() => setCustomizerOpen(false)} 
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Selected Top Trophies Showcase */}
+                <div>
+                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
+                  <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-2xl bg-[#0f111a]/50 border border-slate-800 shadow-inner">
+                    {selectedTrophyIds.length === 0 ? (
+                      <div className="flex items-center justify-center text-slate-500 text-xs italic py-12 w-full">No trophies selected. Select from below to populate.</div>
+                    ) : (
+                      selectedTrophyIds.map((tid) => {
+                        const trophy = ACHIEVEMENTS.find(a => a.id === tid);
+                        if (!trophy) return null;
+                        return (
+                          <TrophyCard
+                            key={`selected-${tid}`}
+                            id={trophy.id}
+                            title={trophy.title}
+                            description={trophy.description}
+                            iconType={trophy.iconType}
+                            onClickAction={() => {
+                              const updated = selectedTrophyIds.filter(id => id !== tid);
+                              setSelectedTrophyIds(updated);
+                              localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                            }}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Styled Separating Line */}
+                <div className="relative py-2 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700/50"></div>
+                  </div>
+                  <span className="relative bg-[#1a2133] px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Available Unlocked Trophies
+                  </span>
+                </div>
+
+                {/* Unlocked Trophies Selection */}
+                <div>
+                  <div className="flex flex-wrap gap-6 justify-center p-4 rounded-2xl bg-[#0f111a]/30 border border-slate-800/30">
+                    {(() => {
+                      const unlockedOnly = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
+                      if (unlockedOnly.length === 0) {
+                        return (
+                          <div className="text-slate-500 text-xs italic py-8 text-center w-full">Keep trading and completing achievements to unlock trophies!</div>
+                        );
+                      }
+                      return unlockedOnly.map((trophy) => {
+                        const isSelected = selectedTrophyIds.includes(trophy.id);
+                        return (
+                          <TrophyCard
+                            key={`unlocked-${trophy.id}`}
+                            id={trophy.id}
+                            title={trophy.title}
+                            description={trophy.description}
+                            iconType={trophy.iconType}
+                            isSelected={isSelected}
+                            onClickAction={() => {
+                              if (isSelected) {
+                                const updated = selectedTrophyIds.filter(id => id !== trophy.id);
+                                setSelectedTrophyIds(updated);
+                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                              } else {
+                                if (selectedTrophyIds.length >= 3) {
+                                  alert("You can select a maximum of 3 top trophies. Deselect one first!");
+                                  return;
+                                }
+                                const updated = [...selectedTrophyIds, trophy.id];
+                                setSelectedTrophyIds(updated);
+                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                              }
+                            }}
+                          />
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </motion.div>

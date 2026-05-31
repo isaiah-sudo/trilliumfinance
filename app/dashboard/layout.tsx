@@ -33,7 +33,6 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { name: 'News', href: '/dashboard/news' },
     { name: 'Chat', href: '/dashboard/chat' },
     { name: 'Rankings', href: '/dashboard/leaderboard' },
-    { name: 'Achievements', href: '/dashboard/achievements' },
   ];
 
   return (
@@ -43,7 +42,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 w-full max-w-[1100px] mx-auto px-4 pt-6">
+        <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
           <header className="flex h-[64px] items-center justify-between rounded-2xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 px-5 shadow-xl">
             <div className="flex items-center gap-8">
               <Link href="/dashboard" className="flex items-center gap-3">
