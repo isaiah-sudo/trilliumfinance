@@ -43,8 +43,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="flex h-[64px] items-center justify-between rounded-2xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 px-5 shadow-xl">
-            <div className="flex items-center gap-8">
+          <header className="grid grid-cols-2 lg:grid-cols-3 h-[64px] items-center rounded-2xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 px-5 shadow-xl">
+            {/* Logo Section */}
+            <div className="flex items-center justify-start">
               <Link href="/dashboard" className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
                   <TrilliumLogoMark />
@@ -53,33 +54,104 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                   Trillium <span className="text-blue-500">Finance</span>
                 </span>
               </Link>
-
-              <nav className="hidden items-center gap-6 lg:flex ml-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className={`text-sm font-semibold transition-colors ${
-                      pathname === link.href
-                        ? 'text-blue-400'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
-              </nav>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Level Badge */}
-              <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner">
-                <div className="flex items-center gap-1.5">
-                  <TreePine className="h-4 w-4 text-green-500" />
-                  <span className="text-xs font-bold text-slate-300">Novice</span>
+            {/* Navigation Center Section */}
+            <nav className="hidden lg:flex items-center justify-center w-full">
+              <div className="flex items-center justify-between w-full max-w-md px-2">
+                {navLinks.map((link) => {
+                  const details: Record<string, { title: string; desc: string; icon: string }> = {
+                    Portfolio: {
+                      title: 'Portfolio Overview',
+                      desc: 'Track net worth, analyze stock holdings, and view performance charts.',
+                      icon: '💼',
+                    },
+                    Explore: {
+                      title: 'Market Explorer',
+                      desc: 'Discover hot assets, search stocks, and check live company profiles.',
+                      icon: '🔍',
+                    },
+                    News: {
+                      title: 'Daily News Feed',
+                      desc: 'Read real-time global news digests curated for active traders.',
+                      icon: '📰',
+                    },
+                    Chat: {
+                      title: 'Community Chat',
+                      desc: 'Share live trade updates and strategies with fellow community members.',
+                      icon: '💬',
+                    },
+                    Rankings: {
+                      title: 'Global Rankings',
+                      desc: 'Climb the global trading leaderboard and compare portfolio stats.',
+                      icon: '🏆',
+                    },
+                  };
+
+                  const linkDetail = details[link.name] || { title: link.name, desc: '', icon: '✨' };
+
+                  return (
+                    <div key={link.name} className="relative group py-2">
+                      <Link
+                        href={link.href}
+                        className={`text-sm font-semibold transition-all duration-200 px-3 py-1.5 rounded-lg ${
+                          pathname === link.href
+                            ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
+                        }`}
+                      >
+                        {link.name}
+                      </Link>
+
+                      {/* Dropdown Container */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-60 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-[#1e293b]/95 border border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg">{linkDetail.icon}</span>
+                          <span className="text-xs font-bold text-white tracking-wide">{linkDetail.title}</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-400 font-medium">
+                          {linkDetail.desc}
+                        </p>
+                        <div className="mt-2.5 pt-2 border-t border-slate-700/50 flex justify-between items-center">
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-500">Go to tab</span>
+                          <span className="text-[10px] text-blue-400">→</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </nav>
+
+            {/* Profile & Settings Section */}
+            <div className="flex items-center justify-end gap-3">
+              {/* Level Badge with interactive XP hover info */}
+              <div className="relative group cursor-pointer">
+                <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner hover:bg-slate-700/30 transition-all duration-200">
+                  <div className="flex items-center gap-1.5">
+                    <TreePine className="h-4 w-4 text-green-500" />
+                    <span className="text-xs font-bold text-slate-300">Novice</span>
+                  </div>
+                  <div className="w-16 h-1.5 rounded-full bg-[#0f111a] overflow-hidden">
+                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+                  </div>
                 </div>
-                <div className="w-16 h-1.5 rounded-full bg-[#0f111a] overflow-hidden">
-                  <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+
+                {/* Level Badge Tooltip / Dropdown */}
+                <div className="absolute right-0 top-full mt-2.5 w-52 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-[#1e293b]/95 border border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-400">Novice Rank</span>
+                    <span className="text-[10px] font-bold text-slate-400">35% progress</span>
+                  </div>
+                  
+                  <div className="space-y-1 mb-2.5">
+                    <div className="text-xs font-bold text-white">35 XP Accumulated</div>
+                    <div className="text-[10px] text-slate-400 font-semibold">65 XP needed for Rookie Level</div>
+                  </div>
+
+                  <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+                  </div>
                 </div>
               </div>
 
