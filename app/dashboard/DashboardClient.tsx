@@ -3,10 +3,103 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
+
+interface TrophyCardProps {
+  title: string;
+  description: string;
+  iconType: string;
+  rank: 'gold' | 'silver' | 'copper';
+}
+
+function TrophyCard({ title, description, iconType, rank }: TrophyCardProps) {
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    const rotateX = -(y / (rect.height / 2)) * 15;
+    const rotateY = (x / (rect.width / 2)) * 15;
+    setCoords({ x: rotateY, y: rotateX });
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setCoords({ x: 0, y: 0 });
+  };
+
+  const IconComponent = (() => {
+    switch (iconType) {
+      case 'Rocket': return Rocket;
+      case 'Gem': return Gem;
+      case 'Crown': return Crown;
+      case 'PieChart': return PieChart;
+      case 'Zap': return Zap;
+      default: return Trophy;
+    }
+  })();
+
+  const rankStyles = {
+    gold: {
+      border: 'border-amber-400/50 bg-amber-500/5 hover:border-amber-400 shadow-[0_0_15px_rgba(234,179,8,0.1)] hover:shadow-[0_0_25px_rgba(234,179,8,0.3)]',
+      iconColor: 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]',
+      glow: 'bg-amber-500/10',
+    },
+    silver: {
+      border: 'border-slate-300/50 bg-slate-400/5 hover:border-slate-300 shadow-[0_0_15px_rgba(148,163,184,0.1)] hover:shadow-[0_0_25px_rgba(148,163,184,0.3)]',
+      iconColor: 'text-slate-300 fill-slate-300 drop-shadow-[0_0_8px_rgba(148,163,184,0.6)]',
+      glow: 'bg-slate-400/10',
+    },
+    copper: {
+      border: 'border-amber-700/50 bg-amber-800/5 hover:border-amber-600 shadow-[0_0_15px_rgba(180,83,9,0.1)] hover:shadow-[0_0_25px_rgba(180,83,9,0.3)]',
+      iconColor: 'text-amber-600 fill-amber-600 drop-shadow-[0_0_8px_rgba(180,83,9,0.6)]',
+      glow: 'bg-amber-700/10',
+    }
+  };
+
+  const style = rankStyles[rank];
+
+  return (
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      className={`relative w-[130px] h-[130px] md:w-[140px] md:h-[140px] aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden transition-all duration-200 cursor-default select-none ${style.border}`}
+      style={{
+        transformStyle: 'preserve-3d',
+        transform: `perspective(1000px) rotateX(${coords.y}deg) rotateY(${coords.x}deg)`,
+      }}
+    >
+      <div className={`absolute inset-0 opacity-40 blur-xl transition-opacity duration-300 ${style.glow} ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+
+      <div className="flex flex-col items-center justify-center gap-2 pointer-events-none" style={{ transform: 'translateZ(20px)' }}>
+        <IconComponent className={`h-8 w-8 ${style.iconColor}`} />
+        <span className="text-[11px] font-extrabold text-slate-200 text-center tracking-tight px-2">{title}</span>
+      </div>
+
+      <div
+        className={`absolute inset-0 bg-[#0b0f19]/90 backdrop-blur-[8px] flex flex-col items-center justify-center p-3 text-center transition-all duration-300 ${
+          isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+        }`}
+      >
+        <span className={`text-[10px] font-extrabold tracking-widest uppercase mb-1 ${
+          rank === 'gold' ? 'text-amber-400' : rank === 'silver' ? 'text-slate-300' : 'text-amber-600'
+        }`}>
+          {rank} Trophy
+        </span>
+        <p className="text-[9px] font-bold text-slate-300 leading-tight">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -15,6 +108,7 @@ export default function DashboardPage() {
   const { portfolio, loading: storeLoading, error: storeError, fetchPortfolio, executeTrade } = usePortfolioStore();
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
+  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -24,6 +118,12 @@ export default function DashboardPage() {
 
   const loadData = async () => {
     await fetchPortfolio();
+    try {
+      const achievements = await getUserAchievements();
+      setUnlockedAchievements(achievements);
+    } catch (e) {
+      console.error('Failed to load achievements', e);
+    }
   };
 
   useEffect(() => {
@@ -133,38 +233,46 @@ export default function DashboardPage() {
         transition={{ delay: 0.1 }}
         className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl"
       >
-        <h2 className="text-teal-400 text-[15px] font-semibold mb-6">Financial Summary</h2>
+        <h2 className="text-teal-400 text-xl md:text-2xl font-extrabold tracking-tight mb-6">Financial Summary</h2>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-          <div className="col-span-2 md:col-span-1">
-            <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Net Worth</div>
-            <div className="text-3xl font-extrabold text-white tracking-tight">{formatCurrency(portfolio.totalValue)}</div>
-          </div>
-          
-          <div>
-            <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Market Value</div>
-            <div className="text-xl font-bold text-white tracking-tight">{formatCurrency(marketValue)}</div>
-          </div>
-          
-          <div>
-            <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Total Performance</div>
-            <div className={`text-xl font-bold tracking-tight ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.totalPerformanceUSD)}
+        <div className="flex flex-col gap-6">
+          {/* Top Layer: Net Worth */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30">
+            <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
+            <div className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight">
+              {formatCurrency(portfolio.totalValue)}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.totalPerformancePercent)}</div>
           </div>
-          
-          <div>
-            <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Day Performance</div>
-            <div className={`text-xl font-bold tracking-tight ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)}
+
+          {/* Lower Layer: Supporting Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Available Cash */}
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
+              <div className="text-xl font-extrabold text-white tracking-tight">{formatCurrency(portfolio.cash)}</div>
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-1">{portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)}</div>
-          </div>
-          
-          <div>
-            <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-2">Available Cash</div>
-            <div className="text-xl font-bold text-white tracking-tight">{formatCurrency(portfolio.cash)}</div>
+
+            {/* Total Performance */}
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
+              <div className={`text-xl font-extrabold tracking-tight ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.totalPerformanceUSD)}
+              </div>
+              <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.totalPerformancePercent)}
+              </div>
+            </div>
+
+            {/* Day Performance */}
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
+              <div className={`text-xl font-extrabold tracking-tight ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)}
+              </div>
+              <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -209,11 +317,35 @@ export default function DashboardPage() {
               <div className="flex-[2] md:pl-8 md:border-l border-slate-700/50 mt-8 md:mt-0">
                 <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-4 text-center md:text-left">Top Trophies</h3>
                 
-                <div className="flex gap-4 justify-center md:justify-start">
-                  <div className="w-[140px] h-[100px] rounded-2xl border border-yellow-500/50 bg-yellow-500/5 flex flex-col items-center justify-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
-                    <Heart className="h-6 w-6 text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
-                    <span className="text-[10px] font-bold text-slate-300 text-center mt-1">First Trade</span>
-                  </div>
+                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                  {(() => {
+                    const ACHIEVEMENT_PRIORITY = ['WHALE', 'DIVERSIFIED', 'DAY_TRADER', 'DIAMOND_HANDS', 'FIRST_TRADE'];
+                    const unlockedTrophies = ACHIEVEMENTS.filter((ach) => unlockedAchievements.includes(ach.id))
+                      .sort((a, b) => {
+                        const idxA = ACHIEVEMENT_PRIORITY.indexOf(a.id);
+                        const idxB = ACHIEVEMENT_PRIORITY.indexOf(b.id);
+                        return (idxA > -1 ? idxA : 99) - (idxB > -1 ? idxB : 99);
+                      });
+
+                    if (unlockedTrophies.length === 0) {
+                      return (
+                        <div className="text-slate-500 text-xs font-semibold py-8 italic">No trophies unlocked yet. Keep trading!</div>
+                      );
+                    }
+
+                    return unlockedTrophies.slice(0, 3).map((trophy, index) => {
+                      const ranks: ('gold' | 'silver' | 'copper')[] = ['gold', 'silver', 'copper'];
+                      return (
+                        <TrophyCard
+                          key={trophy.id}
+                          title={trophy.title}
+                          description={trophy.description}
+                          iconType={trophy.iconType}
+                          rank={ranks[index]}
+                        />
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </motion.div>
