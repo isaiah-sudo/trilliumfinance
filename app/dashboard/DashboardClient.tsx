@@ -14,7 +14,7 @@ interface TrophyCardProps {
   title: string;
   description: string;
   iconType: string;
-  difficulty?: 'gold' | 'silver' | 'copper';
+  difficulty?: 'gem' | 'gold' | 'silver' | 'copper';
   isSelected?: boolean;
   onClickAction?: () => void;
 }
@@ -24,14 +24,21 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
 
-  const getDifficulty = (tid: string): 'gold' | 'silver' | 'copper' => {
+  const getDifficulty = (tid: string): 'gem' | 'gold' | 'silver' | 'copper' => {
     if (difficulty) return difficulty;
     switch (tid) {
+      case 'BULL_MARKET':
+      case 'FINANCIAL_GURU':
+      case 'HIGH_ROLLER':
+        return 'gem';
       case 'WHALE':
       case 'DAY_TRADER':
+      case 'RISK_TAKER':
         return 'gold';
       case 'DIVERSIFIED':
       case 'DIAMOND_HANDS':
+      case 'COMMUNITY_LEADER':
+      case 'BEAR_SURVIVOR':
         return 'silver';
       default:
         return 'copper';
@@ -66,20 +73,33 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   })();
 
   const rankStyles = {
+    gem: {
+      border: 'border-fuchsia-500/40 bg-fuchsia-950/15 hover:border-fuchsia-400 shadow-[0_0_20px_rgba(217,70,239,0.06)] hover:shadow-[0_0_30px_rgba(217,70,239,0.4)]',
+      iconColor: 'text-fuchsia-400 fill-fuchsia-400/20 drop-shadow-[0_0_10px_rgba(217,70,239,0.5)]',
+      glow: 'bg-fuchsia-500/10',
+      label: 'Gem (Legendary)',
+      textColor: 'text-fuchsia-400',
+    },
     gold: {
-      border: 'border-amber-400/50 bg-amber-500/5 hover:border-amber-400 shadow-[0_0_20px_rgba(234,179,8,0.08)] hover:shadow-[0_0_30px_rgba(234,179,8,0.25)]',
-      iconColor: 'text-amber-400 fill-amber-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]',
+      border: 'border-amber-500/40 bg-amber-950/15 hover:border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.06)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]',
+      iconColor: 'text-amber-400 fill-amber-400/20 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]',
       glow: 'bg-amber-500/10',
+      label: 'Gold (Epic)',
+      textColor: 'text-amber-400',
     },
     silver: {
-      border: 'border-slate-300/50 bg-slate-400/5 hover:border-slate-300 shadow-[0_0_20px_rgba(148,163,184,0.08)] hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]',
-      iconColor: 'text-slate-300 fill-slate-300 drop-shadow-[0_0_10px_rgba(148,163,184,0.6)]',
+      border: 'border-slate-400/40 bg-slate-800/25 hover:border-slate-300 shadow-[0_0_20px_rgba(148,163,184,0.06)] hover:shadow-[0_0_30px_rgba(148,163,184,0.3)]',
+      iconColor: 'text-slate-300 fill-slate-300/20 drop-shadow-[0_0_10px_rgba(148,163,184,0.5)]',
       glow: 'bg-slate-400/10',
+      label: 'Silver (Rare)',
+      textColor: 'text-slate-300',
     },
     copper: {
-      border: 'border-amber-700/50 bg-amber-800/5 hover:border-amber-600 shadow-[0_0_20px_rgba(180,83,9,0.08)] hover:shadow-[0_0_30px_rgba(180,83,9,0.25)]',
-      iconColor: 'text-amber-600 fill-amber-600 drop-shadow-[0_0_10px_rgba(180,83,9,0.6)]',
-      glow: 'bg-amber-700/10',
+      border: 'border-orange-700/40 bg-orange-950/15 hover:border-orange-600 shadow-[0_0_20px_rgba(194,65,12,0.06)] hover:shadow-[0_0_30px_rgba(194,65,12,0.35)]',
+      iconColor: 'text-orange-500 fill-orange-500/20 drop-shadow-[0_0_10px_rgba(194,65,12,0.5)]',
+      glow: 'bg-orange-700/10',
+      label: 'Copper (Common)',
+      textColor: 'text-orange-500',
     }
   };
 
@@ -98,7 +118,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
-      className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden transition-all duration-200 cursor-pointer select-none ${style.border} ${
+      className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden cursor-pointer select-none transition-[border-color,background-color,box-shadow,ring] duration-200 ${style.border} ${
         isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-[0_0_25px_rgba(59,130,246,0.4)]' : ''
       }`}
       style={{
@@ -114,10 +134,8 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       >
         <IconComponent className={`h-10 w-10 ${style.iconColor}`} />
         <span className="text-[12px] font-extrabold text-slate-100 text-center tracking-tight px-3">{title}</span>
-        <span className={`text-[9px] font-bold uppercase tracking-widest ${
-          rank === 'gold' ? 'text-amber-400' : rank === 'silver' ? 'text-slate-300' : 'text-amber-600'
-        }`}>
-          {rank}
+        <span className={`text-[9px] font-bold uppercase tracking-widest ${style.textColor}`}>
+          {style.label}
         </span>
       </div>
 
@@ -126,10 +144,8 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
           isClicked ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
         }`}
       >
-        <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${
-          rank === 'gold' ? 'text-amber-400' : rank === 'silver' ? 'text-slate-300' : 'text-amber-600'
-        }`}>
-          {rank} Trophy
+        <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${style.textColor}`}>
+          {style.label}
         </span>
         <p className="text-[10px] font-bold text-slate-300 leading-normal mb-3">
           {description}
@@ -483,9 +499,7 @@ export default function DashboardPage() {
                   <span className="relative bg-[#1a2133] px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     Available Unlocked Trophies
                   </span>
-                </div>
-
-                {/* Unlocked Trophies Selection */}
+                </div>                {/* Unlocked Trophies Selection */}
                 <div>
                   <div className="flex flex-wrap gap-6 justify-center p-4 rounded-2xl bg-[#0f111a]/30 border border-slate-800/30">
                     {(() => {
@@ -497,30 +511,75 @@ export default function DashboardPage() {
                       }
                       return unlockedOnly.map((trophy) => {
                         const isSelected = selectedTrophyIds.includes(trophy.id);
+
+                        const getDifficulty = (tid: string): string => {
+                          switch (tid) {
+                            case 'BULL_MARKET':
+                            case 'FINANCIAL_GURU':
+                            case 'HIGH_ROLLER':
+                              return 'Gem (Legendary)';
+                            case 'WHALE':
+                            case 'DAY_TRADER':
+                            case 'RISK_TAKER':
+                              return 'Gold (Epic)';
+                            case 'DIVERSIFIED':
+                            case 'DIAMOND_HANDS':
+                            case 'COMMUNITY_LEADER':
+                            case 'BEAR_SURVIVOR':
+                              return 'Silver (Rare)';
+                            default:
+                              return 'Copper (Common)';
+                          }
+                        };
+
+                        const getRarityClass = (tid: string): string => {
+                          switch (tid) {
+                            case 'BULL_MARKET':
+                            case 'FINANCIAL_GURU':
+                            case 'HIGH_ROLLER':
+                              return 'text-fuchsia-400 font-extrabold drop-shadow-[0_0_8px_rgba(217,70,239,0.3)]';
+                            case 'WHALE':
+                            case 'DAY_TRADER':
+                            case 'RISK_TAKER':
+                              return 'text-amber-400 font-bold';
+                            case 'DIVERSIFIED':
+                            case 'DIAMOND_HANDS':
+                            case 'COMMUNITY_LEADER':
+                            case 'BEAR_SURVIVOR':
+                              return 'text-slate-300 font-semibold';
+                            default:
+                              return 'text-orange-500 font-medium';
+                          }
+                        };
+
                         return (
-                          <TrophyCard
-                            key={`unlocked-${trophy.id}`}
-                            id={trophy.id}
-                            title={trophy.title}
-                            description={trophy.description}
-                            iconType={trophy.iconType}
-                            isSelected={isSelected}
-                            onClickAction={() => {
-                              if (isSelected) {
-                                const updated = selectedTrophyIds.filter(id => id !== trophy.id);
-                                setSelectedTrophyIds(updated);
-                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
-                              } else {
-                                if (selectedTrophyIds.length >= 3) {
-                                  alert("You can select a maximum of 3 top trophies. Deselect one first!");
-                                  return;
+                          <div key={`unlocked-${trophy.id}`} className="flex flex-col items-center gap-2 p-2 bg-[#1e293b]/20 border border-slate-800/30 rounded-2xl hover:bg-[#1e293b]/40 transition-colors duration-200">
+                            <TrophyCard
+                              id={trophy.id}
+                              title={trophy.title}
+                              description={trophy.description}
+                              iconType={trophy.iconType}
+                              isSelected={isSelected}
+                              onClickAction={() => {
+                                if (isSelected) {
+                                  const updated = selectedTrophyIds.filter(id => id !== trophy.id);
+                                  setSelectedTrophyIds(updated);
+                                  localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                                } else {
+                                  if (selectedTrophyIds.length >= 3) {
+                                    alert("You can select a maximum of 3 top trophies. Deselect one first!");
+                                    return;
+                                  }
+                                  const updated = [...selectedTrophyIds, trophy.id];
+                                  setSelectedTrophyIds(updated);
+                                  localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
                                 }
-                                const updated = [...selectedTrophyIds, trophy.id];
-                                setSelectedTrophyIds(updated);
-                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
-                              }
-                            }}
-                          />
+                              }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">
+                              Rarity: <span className={getRarityClass(trophy.id)}>{getDifficulty(trophy.id)}</span>
+                            </span>
+                          </div>
                         );
                       });
                     })()}
