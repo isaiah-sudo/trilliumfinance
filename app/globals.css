@@ -6,3 +6,28 @@
 html.dark {
   color-scheme: dark;
 }
+
+/* Custom font styling options */
+.font-txt-sans {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.font-txt-serif {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+}
+.font-txt-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.font-num-sans {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
+.font-num-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums;
+}
+.font-num-serif {
+  font-family: Georgia, Cambria, serif !important;
+  font-variant-numeric: tabular-nums;
+}
+

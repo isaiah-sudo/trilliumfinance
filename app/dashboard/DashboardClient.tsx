@@ -8,6 +8,7 @@ import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
+import { useSettings } from '@/context/SettingsContext';
 
 interface TrophyCardProps {
   id: string;
@@ -20,6 +21,7 @@ interface TrophyCardProps {
 }
 
 function TrophyCard({ id, title, description, iconType, difficulty, isSelected, onClickAction }: TrophyCardProps) {
+  const { detailedTrophies } = useSettings();
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
@@ -48,6 +50,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   const rank = getDifficulty(id);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!detailedTrophies) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
     const y = e.clientY - rect.top - rect.height / 2;
@@ -106,6 +109,12 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   const style = rankStyles[rank];
 
   const handleCardClick = (e: React.MouseEvent) => {
+    if (!detailedTrophies) {
+      if (onClickAction) {
+        onClickAction();
+      }
+      return;
+    }
     setIsClicked(!isClicked);
     if (onClickAction) {
       onClickAction();
@@ -116,21 +125,21 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
     <div
       onClick={handleCardClick}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => { if (detailedTrophies) setIsHovered(true); }}
       onMouseLeave={handleMouseLeave}
       className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden cursor-pointer select-none transition-[border-color,background-color,box-shadow,ring] duration-200 ${style.border} ${
         isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-[0_0_25px_rgba(59,130,246,0.4)]' : ''
       }`}
       style={{
         transformStyle: 'preserve-3d',
-        transform: `perspective(1000px) rotateX(${coords.y}deg) rotateY(${coords.x}deg) ${isHovered ? 'scale3d(1.05, 1.05, 1.05)' : 'scale3d(1, 1, 1)'}`,
+        transform: `perspective(1000px) rotateX(${coords.y}deg) rotateY(${coords.x}deg) ${isHovered && detailedTrophies ? 'scale3d(1.05, 1.05, 1.05)' : 'scale3d(1, 1, 1)'}`,
       }}
     >
-      <div className={`absolute inset-0 opacity-40 blur-xl transition-opacity duration-300 ${style.glow} ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`absolute inset-0 opacity-40 blur-xl transition-opacity duration-300 ${style.glow} ${isHovered && detailedTrophies ? 'opacity-100' : 'opacity-0'}`} />
 
       <div 
         className="flex flex-col items-center justify-center gap-2 pointer-events-none transition-all duration-200" 
-        style={{ transform: isHovered ? 'translateZ(35px) scale(0.95)' : 'translateZ(0px)' }}
+        style={{ transform: isHovered && detailedTrophies ? 'translateZ(35px) scale(0.95)' : 'translateZ(0px)' }}
       >
         <IconComponent className={`h-10 w-10 ${style.iconColor}`} />
         <span className="text-[12px] font-extrabold text-slate-100 text-center tracking-tight px-3">{title}</span>
@@ -139,27 +148,30 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
         </span>
       </div>
 
-      <div
-        className={`absolute inset-0 bg-[#0b0f19]/95 backdrop-blur-[10px] flex flex-col items-center justify-center p-4 text-center transition-all duration-300 ${
-          isClicked ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
-        }`}
-      >
-        <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${style.textColor}`}>
-          {style.label}
-        </span>
-        <p className="text-[10px] font-bold text-slate-300 leading-normal mb-3">
-          {description}
-        </p>
-        <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">
-          Click to close
-        </span>
-      </div>
+      {detailedTrophies && (
+        <div
+          className={`absolute inset-0 bg-[#0b0f19]/95 backdrop-blur-[10px] flex flex-col items-center justify-center p-4 text-center transition-all duration-300 ${
+            isClicked ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
+          }`}
+        >
+          <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${style.textColor}`}>
+            {style.label}
+          </span>
+          <p className="text-[10px] font-bold text-slate-300 leading-normal mb-3">
+            {description}
+          </p>
+          <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">
+            Click to close
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   
   const { portfolio, loading: storeLoading, error: storeError, fetchPortfolio, executeTrade } = usePortfolioStore();
@@ -325,7 +337,7 @@ export default function DashboardPage() {
           {/* Top Layer: Net Worth */}
           <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30">
             <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-            <div className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight">
+            <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
               {formatCurrency(portfolio.totalValue)}
             </div>
           </div>
@@ -335,16 +347,16 @@ export default function DashboardPage() {
             {/* Available Cash */}
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
-              <div className="text-xl font-extrabold text-white tracking-tight">{formatCurrency(portfolio.cash)}</div>
+              <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>{formatCurrency(portfolio.cash)}</div>
             </div>
 
             {/* Total Performance */}
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
-              <div className={`text-xl font-extrabold tracking-tight ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+              <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.totalPerformanceUSD)}
               </div>
-              <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+              <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
                 {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.totalPerformancePercent)}
               </div>
             </div>
@@ -352,10 +364,10 @@ export default function DashboardPage() {
             {/* Day Performance */}
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
-              <div className={`text-xl font-extrabold tracking-tight ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+              <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)}
               </div>
-              <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+              <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
                 {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)}
               </div>
             </div>
@@ -384,7 +396,7 @@ export default function DashboardPage() {
               <div className="flex-1">
                 <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-4">Your Experience</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-extrabold text-blue-500">10</span>
+                  <span className={`text-4xl font-extrabold text-blue-500 font-num-${numberFont}`}>10</span>
                   <span className="text-sm font-bold text-slate-400">XP</span>
                 </div>
                 
@@ -614,8 +626,8 @@ export default function DashboardPage() {
 
         <div className="mb-8">
           <div className="flex items-baseline gap-3">
-            <div className="text-3xl font-extrabold text-white tracking-tight">{formatCurrency(marketValue)}</div>
-            <div className={`text-[13px] font-bold ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+            <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>{formatCurrency(marketValue)}</div>
+            <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
               {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)} ({portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)})
             </div>
           </div>
@@ -657,11 +669,11 @@ export default function DashboardPage() {
               <tr>
                 <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Symbol</th>
                 <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px]">Name</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right">Qty</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right">Avg Price</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right">Market Value</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right">Day P/L</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right">P/L %</th>
+                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Qty</th>
+                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Avg Price</th>
+                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Market Value</th>
+                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Day P/L</th>
+                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>P/L %</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30 text-slate-300">
@@ -673,13 +685,13 @@ export default function DashboardPage() {
                 <tr key={h.symbol} className="hover:bg-slate-800/30 transition-colors">
                   <td className="py-4 pr-4 text-blue-400 font-bold">{h.symbol}</td>
                   <td className="py-4 px-4">{h.name}</td>
-                  <td className="py-4 px-4 text-right">{h.qty}</td>
-                  <td className="py-4 px-4 text-right">{formatCurrency(h.avgPrice)}</td>
-                  <td className="py-4 px-4 text-right text-white font-bold">{formatCurrency(h.marketValue)}</td>
-                  <td className={`py-4 px-4 text-right ${h.dayPl >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{h.qty}</td>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{formatCurrency(h.avgPrice)}</td>
+                  <td className={`py-4 px-4 text-right text-white font-bold font-num-${numberFont}`}>{formatCurrency(h.marketValue)}</td>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                     {h.dayPl >= 0 ? '+' : ''}{formatCurrency(h.dayPl)}
                   </td>
-                  <td className={`py-4 px-4 text-right ${h.plPercent >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.plPercent >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                     {h.plPercent >= 0 ? '+' : ''}{formatPercent(h.plPercent)}
                   </td>
                 </tr>

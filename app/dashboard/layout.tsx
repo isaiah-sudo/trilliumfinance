@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { Settings, LogOut, TreePine } from 'lucide-react';
-import { PropsWithChildren } from 'react';
+import { Settings, LogOut, TreePine, X } from 'lucide-react';
+import { PropsWithChildren, useState } from 'react';
+import { useSettings, FontType } from '@/context/SettingsContext';
 
 function TrilliumLogoMark() {
   return (
@@ -26,6 +27,20 @@ function TrilliumLogoMark() {
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const {
+    theme,
+    numberFont,
+    textFont,
+    detailedTrophies,
+    isSettingsOpen,
+    setTheme,
+    setNumberFont,
+    setTextFont,
+    setDetailedTrophies,
+    setIsSettingsOpen,
+  } = useSettings();
+
+  const [activeTab, setActiveTab] = useState<'Graphics' | 'Market' | 'Filters' | 'Linked'>('Graphics');
 
   const navLinks = [
     { name: 'Portfolio', href: '/dashboard' },
@@ -37,20 +52,20 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen flex-col bg-[#0f111a] text-slate-200 font-sans relative overflow-hidden">
+      <div className={`flex min-h-screen flex-col bg-slate-50 dark:bg-[#0f111a] text-slate-800 dark:text-slate-200 font-txt-${textFont} relative overflow-hidden`}>
         {/* Ambient Glow Effects */}
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="grid grid-cols-2 lg:grid-cols-3 h-[64px] items-center rounded-2xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 px-5 shadow-xl">
+          <header className="grid grid-cols-2 lg:grid-cols-3 h-[64px] items-center rounded-2xl bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 px-5 shadow-xl">
             {/* Logo Section */}
             <div className="flex items-center justify-start">
               <Link href="/dashboard" className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
                   <TrilliumLogoMark />
                 </div>
-                <span className="text-[17px] font-bold text-white tracking-wide">
+                <span className="text-[17px] font-bold text-slate-900 dark:text-white tracking-wide">
                   Trillium <span className="text-blue-500">Finance</span>
                 </span>
               </Link>
@@ -96,23 +111,23 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                         href={link.href}
                         className={`text-sm font-semibold transition-all duration-200 px-3 py-1.5 rounded-lg ${
                           pathname === link.href
-                            ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
+                            ? 'text-blue-600 bg-blue-500/10 border border-blue-500/20'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/40 border border-transparent'
                         }`}
                       >
                         {link.name}
                       </Link>
 
                       {/* Dropdown Container */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-60 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-[#1e293b]/95 border border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-60 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-white/95 dark:bg-[#1e293b]/95 border border-slate-200 dark:border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-lg">{linkDetail.icon}</span>
-                          <span className="text-xs font-bold text-white tracking-wide">{linkDetail.title}</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-white tracking-wide">{linkDetail.title}</span>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-slate-400 font-medium">
+                        <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
                           {linkDetail.desc}
                         </p>
-                        <div className="mt-2.5 pt-2 border-t border-slate-700/50 flex justify-between items-center">
+                        <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-700/50 flex justify-between items-center">
                           <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-500">Go to tab</span>
                           <span className="text-[10px] text-blue-400">→</span>
                         </div>
@@ -127,49 +142,52 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             <div className="flex items-center justify-end gap-3">
               {/* Level Badge with interactive XP hover info */}
               <div className="relative group cursor-pointer">
-                <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner hover:bg-slate-700/30 transition-all duration-200">
+                <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-200">
                   <div className="flex items-center gap-1.5">
                     <TreePine className="h-4 w-4 text-green-500" />
-                    <span className="text-xs font-bold text-slate-300">Novice</span>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Novice</span>
                   </div>
-                  <div className="w-16 h-1.5 rounded-full bg-[#0f111a] overflow-hidden">
+                  <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
                     <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
                   </div>
                 </div>
 
                 {/* Level Badge Tooltip / Dropdown */}
-                <div className="absolute right-0 top-full mt-2.5 w-52 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-[#1e293b]/95 border border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
+                <div className="absolute right-0 top-full mt-2.5 w-52 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-white/95 dark:bg-[#1e293b]/95 border border-slate-200 dark:border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-400">Novice Rank</span>
-                    <span className="text-[10px] font-bold text-slate-400">35% progress</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-500">Novice Rank</span>
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">35% progress</span>
                   </div>
                   
                   <div className="space-y-1 mb-2.5">
-                    <div className="text-xs font-bold text-white">35 XP Accumulated</div>
-                    <div className="text-[10px] text-slate-400 font-semibold">65 XP needed for Rookie Level</div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-white">35 XP Accumulated</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">65 XP needed for Rookie Level</div>
                   </div>
 
-                  <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-900 overflow-hidden">
                     <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
                   </div>
                 </div>
               </div>
 
               {/* Settings */}
-              <button className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-colors shadow-inner"
+              >
                 <Settings className="h-4 w-4" />
               </button>
 
               {/* Personal Toggle */}
-              <button className="hidden sm:flex items-center gap-2 rounded-xl bg-slate-800/50 px-3 py-1.5 border border-slate-700/50 shadow-inner hover:bg-slate-700/50 transition-colors">
-                <span className="text-xs font-semibold text-slate-300">Personal</span>
+              <button className="hidden sm:flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Personal</span>
                 <span className="text-sm">🔥</span>
               </button>
 
               {/* Logout */}
               <button
                 onClick={() => signOut()}
-                className="flex items-center gap-2 rounded-xl bg-slate-800/50 px-4 py-1.5 border border-slate-700/50 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors shadow-inner"
+                className="flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-4 py-1.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors shadow-inner"
               >
                 Logout
               </button>
@@ -180,6 +198,149 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             {children}
           </main>
         </div>
+
+        {/* Settings Popup Modal */}
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <div className="bg-white dark:bg-[#1a2133] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 w-full max-w-xl shadow-2xl relative">
+              
+              {/* Top Left Title and Clean X in top right */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-slate-900 dark:text-white font-extrabold text-2xl tracking-tight">
+                    {activeTab}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Tab Navigation Buttons under the title */}
+              <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700/50 pb-3 overflow-x-auto">
+                {(['Graphics', 'Market', 'Filters', 'Linked'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+                      activeTab === tab
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content Panel */}
+              <div className="min-h-[220px] py-2">
+                {activeTab === 'Graphics' && (
+                  <div className="space-y-6">
+                    {/* Theme Mode Toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-white">Theme Mode</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Toggle between dark and light themes</div>
+                      </div>
+                      <button
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          theme === 'dark' ? 'bg-blue-600' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Font Changer for Text */}
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-white">Text Font</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose typeface for menus and descriptions</div>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {(['sans', 'serif', 'mono'] as const).map((font) => (
+                          <button
+                            key={`text-${font}`}
+                            onClick={() => setTextFont(font)}
+                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                              textFont === font
+                                ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
+                                : 'bg-transparent border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                            }`}
+                          >
+                            {font.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Font Changer for Numbers */}
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-white">Number Font</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose layout style for prices and charts</div>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {(['sans', 'serif', 'mono'] as const).map((font) => (
+                          <button
+                            key={`num-${font}`}
+                            onClick={() => setNumberFont(font)}
+                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                              numberFont === font
+                                ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
+                                : 'bg-transparent border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                            }`}
+                          >
+                            {font.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Switch for Detailed Trophies */}
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-white">Detailed Trophies</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Show interactive animations and details on trophy hover</div>
+                      </div>
+                      <button
+                        onClick={() => setDetailedTrophies(!detailedTrophies)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          detailedTrophies ? 'bg-blue-600' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            detailedTrophies ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab !== 'Graphics' && (
+                  <div className="flex flex-col items-center justify-center text-center py-12">
+                    <span className="text-3xl mb-2">⚙️</span>
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">{activeTab} Settings</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Configuring {activeTab.toLowerCase()} properties will be supported in a future update.</p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </ProtectedRoute>
   );
