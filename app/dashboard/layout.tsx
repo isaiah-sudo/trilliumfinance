@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
 import { Settings, LogOut, TreePine, X } from 'lucide-react';
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useState, useEffect } from 'react';
 import { useSettings, FontType } from '@/context/SettingsContext';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 function TrilliumLogoMark() {
   return (
@@ -39,6 +40,14 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     setDetailedTrophies,
     setIsSettingsOpen,
   } = useSettings();
+
+  const { levelInfo, streakCount, fetchAchievementsAndStreak } = usePortfolioStore();
+
+  useEffect(() => {
+    if (user) {
+      fetchAchievementsAndStreak();
+    }
+  }, [user, fetchAchievementsAndStreak]);
 
   const [activeTab, setActiveTab] = useState<'Graphics' | 'Market' | 'Filters' | 'Linked'>('Graphics');
 
@@ -141,31 +150,90 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             {/* Profile & Settings Section */}
             <div className="flex items-center justify-end gap-3">
               {/* Level Badge with interactive XP hover info */}
-              <div className="relative group cursor-pointer">
-                <div className="hidden sm:flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-200">
-                  <div className="flex items-center gap-1.5">
-                    <TreePine className="h-4 w-4 text-green-500" />
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Novice</span>
+              <div className="relative group cursor-pointer h-[38px] w-[150px] hidden sm:block">
+                <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-500 ease-out w-full group-hover:w-[550px] z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
+                  
+                  {/* Streak Map: left aligned, visible only when hovered */}
+                  <div className="opacity-0 w-0 group-hover:w-[360px] group-hover:opacity-100 transition-all duration-500 ease-out flex items-center gap-3 overflow-hidden whitespace-nowrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">Streak Map:</span>
+                    <div className="relative flex-1 flex items-center justify-between h-8 min-w-[260px] px-2">
+                      {/* Dotted line */}
+                      <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-600 h-0" />
+                      
+                      {/* Filled green line */}
+                      {streakCount > 1 && (
+                        <div 
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
+                          style={{ 
+                            width: `${((streakCount - 1) / 6) * 100}%`,
+                            maxWidth: 'calc(100% - 20px)' 
+                          }} 
+                        />
+                      )}
+
+                      {/* 7 circles */}
+                      {Array.from({ length: 7 }).map((_, index) => {
+                        const day = index + 1;
+                        const isDone = day <= streakCount;
+                        const isMilestone = day === 7;
+                        return (
+                          <div key={day} className="relative z-10 flex flex-col items-center group/day">
+                            <div 
+                              className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all duration-300 border-2 ${
+                                isDone 
+                                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
+                                  : 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500'
+                              }`}
+                            >
+                              {isMilestone ? '👑' : day}
+                            </div>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-1.5 opacity-0 pointer-events-none group-hover/day:opacity-100 transition-opacity duration-200 bg-slate-900 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap z-[60]">
+                              Day {day}: {isMilestone ? '+40 XP' : '+10 XP'} {isDone ? '(Done)' : ''}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
-                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+
+                  {/* Badge Details: right aligned */}
+                  <div className="flex items-center gap-3 shrink-0 ml-auto">
+                    <div className="flex items-center gap-1.5">
+                      <TreePine className="h-4 w-4 text-green-500" />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {levelInfo?.name || 'Novice'}
+                      </span>
+                    </div>
+                    <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
+                      <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                    </div>
                   </div>
                 </div>
 
                 {/* Level Badge Tooltip / Dropdown */}
                 <div className="absolute right-0 top-full mt-2.5 w-52 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-white/95 dark:bg-[#1e293b]/95 border border-slate-200 dark:border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-500">Novice Rank</span>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">35% progress</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-500">
+                      {levelInfo?.name || 'Novice'} Rank
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      {Math.round(levelInfo?.progress || 0)}% progress
+                    </span>
                   </div>
                   
                   <div className="space-y-1 mb-2.5">
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">35 XP Accumulated</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">65 XP needed for Rookie Level</div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-white">
+                      {levelInfo?.accumulated || 0} XP Accumulated
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                      {levelInfo?.xpNeeded || 0} XP needed for {levelInfo?.nextName || 'Rookie'} Level
+                    </div>
                   </div>
 
                   <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-900 overflow-hidden">
-                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '35%' }} />
+                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                   </div>
                 </div>
               </div>

@@ -9,6 +9,8 @@ import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
+import { AnimatedNumber } from '@/components/ui';
+
 
 interface TrophyCardProps {
   id: string;
@@ -82,6 +84,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       glow: 'bg-fuchsia-500/10',
       label: 'Gem (Legendary)',
       textColor: 'text-fuchsia-400',
+      xpAmount: 100
     },
     gold: {
       border: 'border-amber-500/40 bg-amber-950/15 hover:border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.06)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]',
@@ -89,6 +92,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       glow: 'bg-amber-500/10',
       label: 'Gold (Epic)',
       textColor: 'text-amber-400',
+      xpAmount: 50
     },
     silver: {
       border: 'border-slate-400/40 bg-slate-800/25 hover:border-slate-300 shadow-[0_0_20px_rgba(148,163,184,0.06)] hover:shadow-[0_0_30px_rgba(148,163,184,0.3)]',
@@ -96,6 +100,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       glow: 'bg-slate-400/10',
       label: 'Silver (Rare)',
       textColor: 'text-slate-300',
+      xpAmount: 25
     },
     copper: {
       border: 'border-orange-700/40 bg-orange-950/15 hover:border-orange-600 shadow-[0_0_20px_rgba(194,65,12,0.06)] hover:shadow-[0_0_30px_rgba(194,65,12,0.35)]',
@@ -103,6 +108,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
       glow: 'bg-orange-700/10',
       label: 'Copper (Common)',
       textColor: 'text-orange-500',
+      xpAmount: 10
     }
   };
 
@@ -154,8 +160,11 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
             isClicked ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
           }`}
         >
-          <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1.5 ${style.textColor}`}>
+          <span className={`text-[11px] font-extrabold tracking-widest uppercase mb-1 ${style.textColor}`}>
             {style.label}
+          </span>
+          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mb-2">
+            +{style.xpAmount} XP Gain
           </span>
           <p className="text-[10px] font-bold text-slate-300 leading-normal mb-3">
             {description}
@@ -174,10 +183,19 @@ export default function DashboardPage() {
   const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   
-  const { portfolio, loading: storeLoading, error: storeError, fetchPortfolio, executeTrade } = usePortfolioStore();
+  const { 
+    portfolio, 
+    loading: storeLoading, 
+    error: storeError, 
+    fetchPortfolio, 
+    executeTrade, 
+    xp, 
+    levelInfo, 
+    unlockedAchievements, 
+    fetchAchievementsAndStreak 
+  } = usePortfolioStore();
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
-  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
 
@@ -189,12 +207,7 @@ export default function DashboardPage() {
 
   const loadData = async () => {
     await fetchPortfolio();
-    try {
-      const achievements = await getUserAchievements();
-      setUnlockedAchievements(achievements);
-    } catch (e) {
-      console.error('Failed to load achievements', e);
-    }
+    await fetchAchievementsAndStreak();
   };
 
   useEffect(() => {
@@ -338,7 +351,7 @@ export default function DashboardPage() {
           <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30">
             <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
             <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
-              {formatCurrency(portfolio.totalValue)}
+              <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} />
             </div>
           </div>
 
@@ -347,17 +360,21 @@ export default function DashboardPage() {
             {/* Available Cash */}
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
-              <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>{formatCurrency(portfolio.cash)}</div>
+              <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+                <AnimatedNumber value={portfolio.cash} formatter={formatCurrency} />
+              </div>
             </div>
 
             {/* Total Performance */}
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.totalPerformanceUSD)}
+                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
+                <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatCurrency} />
               </div>
               <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.totalPerformancePercent)}
+                {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
+                <AnimatedNumber value={portfolio.totalPerformancePercent} formatter={formatPercent} />
               </div>
             </div>
 
@@ -365,10 +382,12 @@ export default function DashboardPage() {
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)}
+                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
+                <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatCurrency} />
               </div>
               <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)}
+                {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
+                <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
               </div>
             </div>
           </div>
@@ -396,18 +415,23 @@ export default function DashboardPage() {
               <div className="flex-1">
                 <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-4">Your Experience</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className={`text-4xl font-extrabold text-blue-500 font-num-${numberFont}`}>10</span>
+                  <span className={`text-4xl font-extrabold text-blue-500 font-num-${numberFont}`}>
+                    <AnimatedNumber value={xp} formatter={(val) => Math.round(val).toString()} />
+                  </span>
                   <span className="text-sm font-bold text-slate-400">XP</span>
                 </div>
                 
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-300 mb-2">
-                  <div className="flex items-center gap-1.5"><TreePine className="h-4 w-4 text-green-500" /> Novice</div>
-                  <div className="text-slate-500">Next: Rookie</div>
+                  <div className="flex items-center gap-1.5">
+                    <TreePine className="h-4 w-4 text-green-500" />
+                    <span>{levelInfo?.name || 'Novice'}</span>
+                  </div>
+                  <div className="text-slate-500">Next: {levelInfo?.nextName || 'Rookie'}</div>
                 </div>
                 
                 {/* Progress Bar */}
                 <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                   <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: '10%' }} />
+                   <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                 </div>
               </div>
 
@@ -626,9 +650,16 @@ export default function DashboardPage() {
 
         <div className="mb-8">
           <div className="flex items-baseline gap-3">
-            <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>{formatCurrency(marketValue)}</div>
+            <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+              <AnimatedNumber value={marketValue} formatter={formatCurrency} />
+            </div>
             <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatCurrency(portfolio.dayPerformanceUSD)} ({portfolio.dayPerformanceUSD >= 0 ? '+' : ''}{formatPercent(portfolio.dayPerformancePercent)})
+              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
+              <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatCurrency} />
+              <span> (</span>
+              {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
+              <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+              <span>)</span>
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">
