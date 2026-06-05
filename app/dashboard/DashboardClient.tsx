@@ -256,6 +256,17 @@ export default function DashboardPage() {
     }
   }, [user, authLoading]);
 
+  useEffect(() => {
+    if (customizerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [customizerOpen]);
+
   const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!tradeTicker) return;
     setTradeLoading(true);
@@ -273,6 +284,7 @@ export default function DashboardPage() {
   };
 
   const formatCurrency = (val: number) => val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const formatNumberNoCurrency = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatPercent = (val: number) => val.toFixed(2) + '%';
 
   if (authLoading) {
@@ -361,7 +373,7 @@ export default function DashboardPage() {
             <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
               <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-                <AnimatedNumber value={portfolio.cash} formatter={formatCurrency} />
+                <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} />
               </div>
             </div>
 
@@ -370,7 +382,7 @@ export default function DashboardPage() {
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatCurrency} />
+                <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatNumberNoCurrency} />
               </div>
               <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
                 {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
@@ -383,7 +395,7 @@ export default function DashboardPage() {
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatCurrency} />
+                <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
               </div>
               <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
                 {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
@@ -475,156 +487,6 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        {/* Customizer Modal */}
-        <AnimatePresence>
-          {customizerOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-6"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-white font-extrabold text-xl tracking-tight">Curate Your Trophy Showcase</h3>
-                    <p className="text-slate-400 text-xs mt-1">Select up to 3 unlocked trophies to showcase prominently on your dashboard profile.</p>
-                  </div>
-                  <button 
-                    onClick={() => setCustomizerOpen(false)} 
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Selected Top Trophies Showcase */}
-                <div>
-                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
-                  <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-2xl bg-[#0f111a]/50 border border-slate-800 shadow-inner">
-                    {selectedTrophyIds.length === 0 ? (
-                      <div className="flex items-center justify-center text-slate-500 text-xs italic py-12 w-full">No trophies selected. Select from below to populate.</div>
-                    ) : (
-                      selectedTrophyIds.map((tid) => {
-                        const trophy = ACHIEVEMENTS.find(a => a.id === tid);
-                        if (!trophy) return null;
-                        return (
-                          <TrophyCard
-                            key={`selected-${tid}`}
-                            id={trophy.id}
-                            title={trophy.title}
-                            description={trophy.description}
-                            iconType={trophy.iconType}
-                            onClickAction={() => {
-                              const updated = selectedTrophyIds.filter(id => id !== tid);
-                              setSelectedTrophyIds(updated);
-                              localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
-                            }}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Styled Separating Line */}
-                <div className="relative py-2 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-700/50"></div>
-                  </div>
-                  <span className="relative bg-[#1a2133] px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    Available Unlocked Trophies
-                  </span>
-                </div>                {/* Unlocked Trophies Selection */}
-                <div>
-                  <div className="flex flex-wrap gap-6 justify-center p-4 rounded-2xl bg-[#0f111a]/30 border border-slate-800/30">
-                    {(() => {
-                      const unlockedOnly = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
-                      if (unlockedOnly.length === 0) {
-                        return (
-                          <div className="text-slate-500 text-xs italic py-8 text-center w-full">Keep trading and completing achievements to unlock trophies!</div>
-                        );
-                      }
-                      return unlockedOnly.map((trophy) => {
-                        const isSelected = selectedTrophyIds.includes(trophy.id);
-
-                        const getDifficulty = (tid: string): string => {
-                          switch (tid) {
-                            case 'BULL_MARKET':
-                            case 'FINANCIAL_GURU':
-                            case 'HIGH_ROLLER':
-                              return 'Gem (Legendary)';
-                            case 'WHALE':
-                            case 'DAY_TRADER':
-                            case 'RISK_TAKER':
-                              return 'Gold (Epic)';
-                            case 'DIVERSIFIED':
-                            case 'DIAMOND_HANDS':
-                            case 'COMMUNITY_LEADER':
-                            case 'BEAR_SURVIVOR':
-                              return 'Silver (Rare)';
-                            default:
-                              return 'Copper (Common)';
-                          }
-                        };
-
-                        const getRarityClass = (tid: string): string => {
-                          switch (tid) {
-                            case 'BULL_MARKET':
-                            case 'FINANCIAL_GURU':
-                            case 'HIGH_ROLLER':
-                              return 'text-fuchsia-400 font-extrabold drop-shadow-[0_0_8px_rgba(217,70,239,0.3)]';
-                            case 'WHALE':
-                            case 'DAY_TRADER':
-                            case 'RISK_TAKER':
-                              return 'text-amber-400 font-bold';
-                            case 'DIVERSIFIED':
-                            case 'DIAMOND_HANDS':
-                            case 'COMMUNITY_LEADER':
-                            case 'BEAR_SURVIVOR':
-                              return 'text-slate-300 font-semibold';
-                            default:
-                              return 'text-orange-500 font-medium';
-                          }
-                        };
-
-                        return (
-                          <div key={`unlocked-${trophy.id}`} className="flex flex-col items-center gap-2 p-2 bg-[#1e293b]/20 border border-slate-800/30 rounded-2xl hover:bg-[#1e293b]/40 transition-colors duration-200">
-                            <TrophyCard
-                              id={trophy.id}
-                              title={trophy.title}
-                              description={trophy.description}
-                              iconType={trophy.iconType}
-                              isSelected={isSelected}
-                              onClickAction={() => {
-                                if (isSelected) {
-                                  const updated = selectedTrophyIds.filter(id => id !== trophy.id);
-                                  setSelectedTrophyIds(updated);
-                                  localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
-                                } else {
-                                  if (selectedTrophyIds.length >= 3) {
-                                    alert("You can select a maximum of 3 top trophies. Deselect one first!");
-                                    return;
-                                  }
-                                  const updated = [...selectedTrophyIds, trophy.id];
-                                  setSelectedTrophyIds(updated);
-                                  localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
-                                }
-                              }}
-                            />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">
-                              Rarity: <span className={getRarityClass(trophy.id)}>{getDifficulty(trophy.id)}</span>
-                            </span>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* Market Value Card with Chart */}
@@ -651,11 +513,11 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex items-baseline gap-3">
             <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-              <AnimatedNumber value={marketValue} formatter={formatCurrency} />
+              <AnimatedNumber value={marketValue} formatter={formatNumberNoCurrency} />
             </div>
             <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
               {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-              <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatCurrency} />
+              <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
               <span> (</span>
               {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
               <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
@@ -717,10 +579,10 @@ export default function DashboardPage() {
                   <td className="py-4 pr-4 text-blue-400 font-bold">{h.symbol}</td>
                   <td className="py-4 px-4">{h.name}</td>
                   <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{h.qty}</td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{formatCurrency(h.avgPrice)}</td>
-                  <td className={`py-4 px-4 text-right text-white font-bold font-num-${numberFont}`}>{formatCurrency(h.marketValue)}</td>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{formatNumberNoCurrency(h.avgPrice)}</td>
+                  <td className={`py-4 px-4 text-right text-white font-bold font-num-${numberFont}`}>{formatNumberNoCurrency(h.marketValue)}</td>
                   <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                    {h.dayPl >= 0 ? '+' : ''}{formatCurrency(h.dayPl)}
+                    {h.dayPl >= 0 ? '+' : ''}{formatNumberNoCurrency(h.dayPl)}
                   </td>
                   <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.plPercent >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                     {h.plPercent >= 0 ? '+' : ''}{formatPercent(h.plPercent)}
@@ -731,6 +593,157 @@ export default function DashboardPage() {
           </table>
         </div>
       </motion.div>
+
+      {/* Customizer Modal */}
+      <AnimatePresence>
+        {customizerOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-6"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-white font-extrabold text-xl tracking-tight">Curate Your Trophy Showcase</h3>
+                  <p className="text-slate-400 text-xs mt-1">Select up to 3 unlocked trophies to showcase prominently on your dashboard profile.</p>
+                </div>
+                <button 
+                  onClick={() => setCustomizerOpen(false)} 
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Selected Top Trophies Showcase */}
+              <div>
+                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
+                <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-2xl bg-[#0f111a]/50 border border-slate-800 shadow-inner">
+                  {selectedTrophyIds.length === 0 ? (
+                    <div className="flex items-center justify-center text-slate-500 text-xs italic py-12 w-full">No trophies selected. Select from below to populate.</div>
+                  ) : (
+                    selectedTrophyIds.map((tid) => {
+                      const trophy = ACHIEVEMENTS.find(a => a.id === tid);
+                      if (!trophy) return null;
+                      return (
+                        <TrophyCard
+                          key={`selected-${tid}`}
+                          id={trophy.id}
+                          title={trophy.title}
+                          description={trophy.description}
+                          iconType={trophy.iconType}
+                          onClickAction={() => {
+                            const updated = selectedTrophyIds.filter(id => id !== tid);
+                            setSelectedTrophyIds(updated);
+                            localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                          }}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Styled Separating Line */}
+              <div className="relative py-2 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-700/50"></div>
+                </div>
+                <span className="relative bg-[#1a2133] px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Available Unlocked Trophies
+                </span>
+              </div>              {/* Unlocked Trophies Selection */}
+              <div>
+                <div className="flex flex-wrap gap-6 justify-center p-4 rounded-2xl bg-[#0f111a]/30 border border-slate-800/30">
+                  {(() => {
+                    const unlockedOnly = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
+                    if (unlockedOnly.length === 0) {
+                      return (
+                        <div className="text-slate-500 text-xs italic py-8 text-center w-full">Keep trading and completing achievements to unlock trophies!</div>
+                      );
+                    }
+                    return unlockedOnly.map((trophy) => {
+                      const isSelected = selectedTrophyIds.includes(trophy.id);
+
+                      const getDifficulty = (tid: string): string => {
+                        switch (tid) {
+                          case 'BULL_MARKET':
+                          case 'FINANCIAL_GURU':
+                          case 'HIGH_ROLLER':
+                            return 'Gem (Legendary)';
+                          case 'WHALE':
+                          case 'DAY_TRADER':
+                          case 'RISK_TAKER':
+                            return 'Gold (Epic)';
+                          case 'DIVERSIFIED':
+                          case 'DIAMOND_HANDS':
+                          case 'COMMUNITY_LEADER':
+                          case 'BEAR_SURVIVOR':
+                            return 'Silver (Rare)';
+                          default:
+                            return 'Copper (Common)';
+                        }
+                      };
+
+                      const getRarityClass = (tid: string): string => {
+                        switch (tid) {
+                          case 'BULL_MARKET':
+                          case 'FINANCIAL_GURU':
+                          case 'HIGH_ROLLER':
+                            return 'text-fuchsia-400 font-extrabold drop-shadow-[0_0_8px_rgba(217,70,239,0.3)]';
+                          case 'WHALE':
+                          case 'DAY_TRADER':
+                          case 'RISK_TAKER':
+                            return 'text-amber-400 font-bold';
+                          case 'DIVERSIFIED':
+                          case 'DIAMOND_HANDS':
+                          case 'COMMUNITY_LEADER':
+                          case 'BEAR_SURVIVOR':
+                            return 'text-slate-300 font-semibold';
+                          default:
+                            return 'text-orange-500 font-medium';
+                        }
+                      };
+
+                      return (
+                        <div key={`unlocked-${trophy.id}`} className="flex flex-col items-center gap-2 p-2 bg-[#1e293b]/20 border border-slate-800/30 rounded-2xl hover:bg-[#1e293b]/40 transition-colors duration-200">
+                          <TrophyCard
+                            id={trophy.id}
+                            title={trophy.title}
+                            description={trophy.description}
+                            iconType={trophy.iconType}
+                            isSelected={isSelected}
+                            onClickAction={() => {
+                              if (isSelected) {
+                                const updated = selectedTrophyIds.filter(id => id !== trophy.id);
+                                setSelectedTrophyIds(updated);
+                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                              } else {
+                                if (selectedTrophyIds.length >= 3) {
+                                  alert("You can select a maximum of 3 top trophies. Deselect one first!");
+                                  return;
+                                }
+                                const updated = [...selectedTrophyIds, trophy.id];
+                                setSelectedTrophyIds(updated);
+                                localStorage.setItem('top_trophy_selections', JSON.stringify(updated));
+                              }
+                            }}
+                          />
+                          <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">
+                            Rarity: <span className={getRarityClass(trophy.id)}>{getDifficulty(trophy.id)}</span>
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Trade Modal */}
       <AnimatePresence>

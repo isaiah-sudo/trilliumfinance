@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   }, [user, fetchAchievementsAndStreak]);
 
   const [activeTab, setActiveTab] = useState<'Graphics' | 'Market' | 'Filters' | 'Linked'>('Graphics');
+  const [isBadgeHovered, setIsBadgeHovered] = useState(false);
 
   const navLinks = [
     { name: 'Portfolio', href: '/dashboard' },
@@ -67,9 +68,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="grid grid-cols-2 lg:grid-cols-3 h-[64px] items-center rounded-2xl bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 px-5 shadow-xl">
+          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border-t border-t-white/60 dark:border-t-white/10 border-x border-slate-200 dark:border-slate-700/50 border-b-4 border-b-slate-300 dark:border-b-[#0b0f19]/85 shadow-sm transition-all duration-300">
             {/* Logo Section */}
-            <div className="flex items-center justify-start">
+            <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
                   <TrilliumLogoMark />
@@ -81,33 +82,38 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             </div>
 
             {/* Navigation Center Section */}
-            <nav className="hidden lg:flex items-center justify-center w-full">
-              <div className="flex items-center justify-between w-full max-w-md px-2">
+            <nav 
+              className="hidden lg:flex items-center justify-center transition-all duration-500 ease-out absolute left-1/2 z-40"
+              style={{ 
+                transform: isBadgeHovered ? 'translate(-50%, 0) translateX(-200px)' : 'translate(-50%, 0)' 
+              }}
+            >
+              <div className="flex items-center gap-[100px] px-2 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
                     Portfolio: {
-                      title: 'Portfolio Overview',
-                      desc: 'Track net worth, analyze stock holdings, and view performance charts.',
+                      title: 'My Portfolio',
+                      desc: 'See how much money you have, what stocks you own, and watch your progress grow on simple charts.',
                       icon: '💼',
                     },
                     Explore: {
                       title: 'Market Explorer',
-                      desc: 'Discover hot assets, search stocks, and check live company profiles.',
+                      desc: 'Look for fun companies to invest in, search for stocks, and see what different businesses do.',
                       icon: '🔍',
                     },
                     News: {
                       title: 'Daily News Feed',
-                      desc: 'Read real-time global news digests curated for active traders.',
+                      desc: 'Read quick updates about what is happening in the world and how it changes the stock market.',
                       icon: '📰',
                     },
                     Chat: {
                       title: 'Community Chat',
-                      desc: 'Share live trade updates and strategies with fellow community members.',
+                      desc: 'Talk with other kids, share your trading ideas, and learn new tips together.',
                       icon: '💬',
                     },
                     Rankings: {
-                      title: 'Global Rankings',
-                      desc: 'Climb the global trading leaderboard and compare portfolio stats.',
+                      title: 'Global Leaderboard',
+                      desc: 'See your place on the leaderboard, compete with friends, and see who is the top trader.',
                       icon: '🏆',
                     },
                   };
@@ -118,10 +124,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                     <div key={link.name} className="relative group py-2">
                       <Link
                         href={link.href}
-                        className={`text-sm font-semibold transition-all duration-200 px-3 py-1.5 rounded-lg ${
+                        className={`text-sm font-semibold transition-all duration-300 px-3.5 py-1.5 rounded-xl border flex items-center justify-center hover:-translate-y-[1px] active:translate-y-[1px] ${
                           pathname === link.href
-                            ? 'text-blue-600 bg-blue-500/10 border border-blue-500/20'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/40 border border-transparent'
+                            ? 'text-blue-600 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-gradient-to-b hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/50 dark:hover:to-slate-800/20 border-t-transparent border-x-transparent border-b-2 border-b-transparent hover:border-t-white/30 dark:hover:border-t-slate-700/50 hover:border-x-slate-200/40 dark:hover:border-x-slate-800/50 hover:border-b-slate-300 dark:hover:border-b-slate-900 shadow-sm'
                         }`}
                       >
                         {link.name}
@@ -148,10 +154,19 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-3 shrink-0">
+              {/* Divider line that slides with the experience bar */}
+              <div className="h-[64px] w-[1px] bg-slate-200 dark:bg-slate-700/50 transition-all duration-500 ease-out hidden sm:block" />
+
               {/* Level Badge with interactive XP hover info */}
-              <div className="relative group cursor-pointer h-[38px] w-[150px] hidden sm:block">
-                <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-500 ease-out w-full group-hover:w-[550px] z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
+              <div 
+                onMouseEnter={() => setIsBadgeHovered(true)}
+                onMouseLeave={() => setIsBadgeHovered(false)}
+                className={`relative group cursor-pointer h-[38px] transition-all duration-500 ease-out hidden sm:block ${
+                  isBadgeHovered ? 'w-[550px]' : 'w-[200px]'
+                }`}
+              >
+                <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-500 ease-out w-full z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
                   
                   {/* Streak Map: left aligned, visible only when hovered */}
                   <div className="opacity-0 w-0 group-hover:w-[360px] group-hover:opacity-100 transition-all duration-500 ease-out flex items-center gap-3 overflow-hidden whitespace-nowrap">
@@ -207,7 +222,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                       </span>
                     </div>
                     <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
-                      <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                      <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                     </div>
                   </div>
                 </div>
@@ -233,7 +248,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                   </div>
 
                   <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-900 overflow-hidden">
-                    <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                    <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                   </div>
                 </div>
               </div>
