@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -192,6 +192,7 @@ export default function DashboardPage() {
     xp, 
     levelInfo, 
     unlockedAchievements, 
+    streakCount,
     fetchAchievementsAndStreak 
   } = usePortfolioStore();
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
@@ -204,6 +205,26 @@ export default function DashboardPage() {
   const [tradeQty, setTradeQty] = useState(1);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
+
+  const [activeWidget, setActiveWidget] = useState<string | null>(null);
+  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+
+  useEffect(() => {
+    const savedWidget = localStorage.getItem('dashboard_active_widget');
+    if (savedWidget) {
+      setActiveWidget(savedWidget);
+    }
+  }, []);
+
+  const handleSelectWidget = (widgetName: string | null) => {
+    setActiveWidget(widgetName);
+    if (widgetName) {
+      localStorage.setItem('dashboard_active_widget', widgetName);
+    } else {
+      localStorage.removeItem('dashboard_active_widget');
+    }
+    setWidgetModalOpen(false);
+  };
 
   const loadData = async () => {
     await fetchPortfolio();
@@ -257,7 +278,7 @@ export default function DashboardPage() {
   }, [user, authLoading]);
 
   useEffect(() => {
-    if (customizerOpen) {
+    if (customizerOpen || widgetModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -265,7 +286,7 @@ export default function DashboardPage() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [customizerOpen]);
+  }, [customizerOpen, widgetModalOpen]);
 
   const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!tradeTicker) return;
@@ -442,8 +463,85 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Progress Bar */}
-                <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                   <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                <div className="group/xpbar relative w-full h-1.5 hover:h-5 rounded-full bg-slate-800 cursor-pointer overflow-hidden transition-all duration-350 flex items-center justify-center">
+                   <div className="absolute left-0 top-0 h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-350" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                   <span className="relative z-10 text-[9px] font-black text-white opacity-0 group-hover/xpbar:opacity-100 transition-opacity duration-300 tracking-wider">
+                     {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
+                   </span>
+                </div>
+
+                {/* Widget Slot Container */}
+                <div className="mt-6">
+                  <h4 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-2">Custom Widget</h4>
+                  {activeWidget === 'streak' ? (
+                    <div className="relative w-full p-4 rounded-xl bg-[#0f111a]/60 border border-slate-700/40 shadow-inner flex flex-col justify-center min-h-[90px]">
+                      {/* Mini X Button in Top Right */}
+                      <button 
+                        onClick={() => setWidgetModalOpen(true)}
+                        className="absolute top-2.5 right-2.5 text-slate-500 hover:text-white transition-colors"
+                        title="Change widget"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+
+                      {/* Streak Map Content */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Login Streak Map: {streakCount} Days
+                          </span>
+                        </div>
+                        <div className="relative w-full flex items-center justify-between h-8 px-2 mt-1">
+                          {/* Dotted line */}
+                          <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-700 h-0" />
+                          
+                          {/* Filled green line */}
+                          {streakCount > 1 && (
+                            <div 
+                              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
+                              style={{ 
+                                width: `${((streakCount - 1) / 6) * 100}%`,
+                                maxWidth: 'calc(100% - 20px)' 
+                              }} 
+                            />
+                          )}
+
+                          {/* 7 circles */}
+                          {Array.from({ length: 7 }).map((_, index) => {
+                            const day = index + 1;
+                            const isDone = day <= streakCount;
+                            const isMilestone = day === 7;
+                            return (
+                              <div key={day} className="relative z-10 flex flex-col items-center group/day">
+                                <div 
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all duration-350 border-2 ${
+                                    isDone 
+                                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
+                                      : 'bg-slate-800 border-slate-700 text-slate-500'
+                                  }`}
+                                >
+                                  {isMilestone ? '👑' : day}
+                                </div>
+                                <div className="absolute bottom-full mb-1.5 opacity-0 pointer-events-none group-hover/day:opacity-100 transition-opacity duration-200 bg-slate-900 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap z-[60]">
+                                  Day {day}: {isMilestone ? '+40 XP' : '+10 XP'} {isDone ? '(Done)' : ''}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setWidgetModalOpen(true)}
+                      className="w-full h-[90px] rounded-xl border border-dashed border-slate-700 hover:border-slate-500 bg-[#0f111a]/20 hover:bg-[#0f111a]/40 transition-all duration-300 flex items-center justify-center group"
+                    >
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <span className="text-2xl text-slate-500 group-hover:text-blue-500 transition-colors group-hover:scale-110 duration-300">+</span>
+                        <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-300 transition-colors uppercase tracking-wider">Add Widget</span>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -801,6 +899,101 @@ export default function DashboardPage() {
                   >
                     {tradeLoading ? 'Processing...' : 'Sell'}
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Widget Modal */}
+      <AnimatePresence>
+        {widgetModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-white font-extrabold text-xl tracking-tight">Select a Widget</h3>
+                  <p className="text-slate-400 text-xs mt-1 font-semibold">Choose a widget to display under your level details.</p>
+                </div>
+                <button 
+                  onClick={() => setWidgetModalOpen(false)} 
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Grid Layout: 2 rows and 4 columns */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                {/* Streak Map Widget */}
+                <div 
+                  onClick={() => handleSelectWidget('streak')}
+                  className="relative cursor-pointer group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 hover:border-emerald-500/60 transition-all duration-300 min-h-[120px] text-center"
+                >
+                  <Flame className="h-8 w-8 text-emerald-400 mb-2 group-hover:animate-bounce" />
+                  <span className="text-xs font-bold text-slate-100">Streak Map</span>
+                  <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Track Daily Streak</span>
+                </div>
+
+                {/* Locked Widget 2 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <PieChart className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Value Sparkline</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 3 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Zap className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Quick Trade</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 4 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Rocket className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Market Watch</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 5 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Crown className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Leaderboard</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 6 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Trophy className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Trophy Case</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 7 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Heart className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">Daily Quest</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                </div>
+
+                {/* Locked Widget 8 */}
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <Gem className="h-8 w-8 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-500">AI Advisor</span>
+                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
               </div>
             </motion.div>
