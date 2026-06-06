@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border-t border-t-white/60 dark:border-t-white/10 border-x border-slate-200 dark:border-slate-700/50 border-b-4 border-b-slate-300 dark:border-b-[#0b0f19]/85 shadow-sm transition-all duration-300">
+          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-700/50 shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#070a13] transition-all duration-300">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-3">
@@ -82,12 +82,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             </div>
 
             {/* Navigation Center Section */}
-            <nav 
-              className="hidden lg:flex items-center justify-center transition-all duration-500 ease-out absolute left-1/2 z-40"
-              style={{ 
-                transform: isBadgeHovered ? 'translate(-50%, 0) translateX(-200px)' : 'translate(-50%, 0)' 
-              }}
-            >
+            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-4">
               <div className="flex items-center gap-[100px] px-2 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
@@ -153,17 +148,18 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
               </div>
             </nav>
 
+            {/* Divider line that slides with the experience bar */}
+            <div className="h-[64px] w-[1px] bg-slate-200 dark:bg-slate-700/50 transition-all duration-500 ease-out hidden sm:block" />
+
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-3 shrink-0">
-              {/* Divider line that slides with the experience bar */}
-              <div className="h-[64px] w-[1px] bg-slate-200 dark:bg-slate-700/50 transition-all duration-500 ease-out hidden sm:block" />
+            <div className="flex items-center justify-end gap-3 shrink-0 ml-3">
 
               {/* Level Badge with interactive XP hover info */}
               <div 
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
                 className={`relative group cursor-pointer h-[38px] transition-all duration-500 ease-out hidden sm:block ${
-                  isBadgeHovered ? 'w-[550px]' : 'w-[200px]'
+                  isBadgeHovered ? 'w-[550px]' : 'w-[160px]'
                 }`}
               >
                 <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-500 ease-out w-full z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
@@ -221,7 +217,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                         {levelInfo?.name || 'Novice'}
                       </span>
                     </div>
-                    <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
+                    <div className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                     </div>
                   </div>
@@ -259,12 +255,6 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-colors shadow-inner"
               >
                 <Settings className="h-4 w-4" />
-              </button>
-
-              {/* Personal Toggle */}
-              <button className="hidden sm:flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Personal</span>
-                <span className="text-sm">🔥</span>
               </button>
 
               {/* Logout */}
