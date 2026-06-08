@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { Settings, LogOut, TreePine, X } from 'lucide-react';
+import { Settings, LogOut, TreePine, X, ChevronLeft } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-700/50 shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#070a13] transition-all duration-300">
+          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-700/50 shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] transition-all duration-300">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-3">
@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                     <div key={link.name} className="relative group py-2">
                       <Link
                         href={link.href}
-                        className={`text-sm font-semibold transition-all duration-300 px-3.5 py-1.5 rounded-xl border flex items-center justify-center hover:-translate-y-[1px] active:translate-y-[1px] ${
+                        className={`text-sm font-semibold transition-all duration-300 px-3.5 py-1.5 rounded-xl border flex items-center justify-center hover:-translate-y-[1px] active:translate-y-[3px] active:shadow-[inset_0_4px_6px_rgba(0,0,0,0.12)] dark:active:shadow-[inset_0_4px_6px_rgba(0,0,0,0.5)] active:bg-slate-200/50 dark:active:bg-[#121622]/50 active:border-slate-300 dark:active:border-slate-800 ${
                           pathname === link.href
                             ? 'text-blue-600 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-gradient-to-b hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/50 dark:hover:to-slate-800/20 border-t-transparent border-x-transparent border-b-2 border-b-transparent hover:border-t-white/30 dark:hover:border-t-slate-700/50 hover:border-x-slate-200/40 dark:hover:border-x-slate-800/50 hover:border-b-slate-300 dark:hover:border-b-slate-900 shadow-sm'
@@ -149,7 +149,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line that slides with the experience bar */}
-            <div className="h-[64px] w-[1px] bg-slate-200 dark:bg-slate-700/50 transition-all duration-500 ease-out hidden sm:block" />
+            <div className="h-[64px] w-[1px] bg-[#cbd5e1] dark:bg-[#121622] transition-all duration-500 ease-out hidden sm:block" />
 
             {/* Profile & Settings Section */}
             <div className="flex items-center justify-end gap-3 shrink-0 ml-3">
@@ -159,9 +159,16 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
                 className={`relative group cursor-pointer h-[38px] transition-all duration-500 ease-out hidden sm:block ${
-                  isBadgeHovered ? 'w-[550px]' : 'w-[160px]'
+                  isBadgeHovered ? 'w-[560px]' : 'w-[160px]'
                 }`}
               >
+                {/* Arrow indicating expand/collapse pointing left when collapsed, positioned to the left of the bar */}
+                <ChevronLeft 
+                  className={`absolute -left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 transition-all duration-500 ease-out ${
+                    isBadgeHovered ? 'rotate-180 text-blue-500' : 'animate-pulse'
+                  }`} 
+                />
+
                 <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-inner hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-all duration-500 ease-out w-full z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
                   
                   {/* Streak Map: left aligned, visible only when hovered */}
@@ -217,34 +224,21 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                         {levelInfo?.name || 'Novice'}
                       </span>
                     </div>
-                    <div className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
+                    <div className={`relative rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden transition-all duration-500 ease-out flex items-center justify-center shadow-inner ${
+                      isBadgeHovered ? 'w-28 h-5 px-2' : 'w-12 h-1.5'
+                    }`}>
+                      <div 
+                        className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-500 ease-out" 
+                        style={{ width: `${levelInfo?.progress || 0}%` }} 
+                      />
+                      <span className={`relative z-10 text-[9px] font-extrabold tracking-wide text-white transition-opacity duration-300 whitespace-nowrap flex items-center gap-1 select-none ${
+                        isBadgeHovered ? 'opacity-100 delay-150' : 'opacity-0 pointer-events-none'
+                      }`}>
+                        <span>{levelInfo?.accumulated || 0}</span>
+                        <span className="opacity-60">/</span>
+                        <span>{levelInfo?.maxXp || 100} XP</span>
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                {/* Level Badge Tooltip / Dropdown */}
-                <div className="absolute right-0 top-full mt-2.5 w-52 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-white/95 dark:bg-[#1e293b]/95 border border-slate-200 dark:border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-green-500">
-                      {levelInfo?.name || 'Novice'} Rank
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      {Math.round(levelInfo?.progress || 0)}% progress
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-1 mb-2.5">
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">
-                      {levelInfo?.accumulated || 0} XP Accumulated
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                      {levelInfo?.xpNeeded || 0} XP needed for {levelInfo?.nextName || 'Rookie'} Level
-                    </div>
-                  </div>
-
-                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-900 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" style={{ width: `${levelInfo?.progress || 0}%` }} />
                   </div>
                 </div>
               </div>

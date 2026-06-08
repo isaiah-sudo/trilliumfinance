@@ -381,7 +381,7 @@ export default function DashboardPage() {
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
             <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
             <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
               <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} />
@@ -389,9 +389,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Lower Layer: Supporting Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Available Cash */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
               <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
                 <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} />
@@ -399,7 +399,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Total Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
@@ -412,7 +412,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Day Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
