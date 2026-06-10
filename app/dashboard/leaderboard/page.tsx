@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { Trophy, Medal, Star, Award, TrendingUp } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry } from '@/app/actions/leaderboard';
 
+export const dynamic = 'force-dynamic';
+
+
 export default function LeaderboardPage() {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);

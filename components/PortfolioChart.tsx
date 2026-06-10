@@ -1,147 +1,131 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, LineSeries } from 'lightweight-charts';
-import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine
+} from 'recharts';
 
-interface PortfolioChartProps {
-  data: { portfolio: any[]; benchmark: any[] };
-  timeRange: '1D' | '1W' | '1M' | '1Y';
-  onTimeRangeChange: (range: '1D' | '1W' | '1M' | '1Y') => void;
+interface ChartPoint {
+  time: number;
+  value: number;
 }
 
-export default function PortfolioChart({ data, timeRange, onTimeRangeChange }: PortfolioChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
-  const benchmarkSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
-  const [hoverPrice, setHoverPrice] = useState<number | null>(null);
-  const [isMarketClosed, setIsMarketClosed] = useState(false);
+interface PortfolioChartProps {
+  data: { portfolio: ChartPoint[]; benchmark: ChartPoint[] };
+  timeRange: '1D' | '1W' | '1M' | '1Y';
+  onTimeRangeChange: (range: '1D' | '1W' | '1M' | '1Y') => void;
+  onHover?: (data: { portfolio: number; spy: number; time: number } | null) => void;
+}
 
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
+export default function PortfolioChart({
+  data,
+  timeRange,
+  onTimeRangeChange,
+  onHover
+}: PortfolioChartProps) {
+  const [isHovering, setIsHovering] = useState(false);
 
-    // Create Chart
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#64748b',
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { color: 'rgba(51, 65, 85, 0.3)' },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderVisible: false,
-      },
-      rightPriceScale: {
-        borderVisible: false,
-        mode: 2, // PriceScaleMode.Percentage
-        autoScale: true,
-        alignLabels: true,
-      },
-      crosshair: {
-        vertLine: {
-          color: 'rgba(45, 212, 191, 0.4)',
-          width: 1,
-          style: 3,
-          labelBackgroundColor: '#2dd4bf',
-        },
-        horzLine: {
-          color: 'rgba(45, 212, 191, 0.4)',
-          width: 1,
-          style: 3,
-          labelBackgroundColor: '#2dd4bf',
-        },
-      },
-    });
+  // Combine portfolio and benchmark data for Recharts, ensuring exactly 78 points
+  const chartData = useMemo(() => {
+    const portfolio = Array.isArray(data?.portfolio) ? data.portfolio : [];
+    const benchmark = Array.isArray(data?.benchmark) ? data.benchmark : [];
+    
+    const pointsCount = Math.max(portfolio.length, benchmark.length);
+    if (pointsCount === 0) return [];
 
-    // Add Portfolio Line
-    const mainSeries = chart.addSeries(LineSeries, {
-      color: '#2dd4bf',
-      lineWidth: 2,
-      crosshairMarkerVisible: true,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
+    const combined = [];
+    for (let i = 0; i < pointsCount; i++) {
+      const portPt = portfolio[i];
+      const benchPt = benchmark[i];
+      const time = portPt?.time || benchPt?.time || 0;
 
-    // Add Benchmark Line
-    const benchmarkSeries = chart.addSeries(LineSeries, {
-      color: '#64748b',
-      lineWidth: 1,
-      lineStyle: 2, // Dashed
-      crosshairMarkerVisible: true,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
+      combined.push({
+        index: i,
+        time,
+        portfolioValue: portPt?.value ?? 0,
+        spyValue: benchPt?.value ?? 0,
+        // formatted date for tooltip/XAxis
+        dateStr: new Date(time * 1000).toLocaleDateString('en-US', {
+          timeZone: 'America/New_York',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      });
+    }
 
-    chartRef.current = chart;
-    seriesRef.current = mainSeries;
-    benchmarkSeriesRef.current = benchmarkSeries;
-
-    // Handle Resize
-    const handleResize = () => {
-      chart.applyOptions({ width: chartContainerRef.current?.clientWidth });
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Crosshair move event for Market Timer
-    chart.subscribeCrosshairMove((param) => {
-      if (param.time && param.point && mainSeries) {
-        const price = param.seriesData.get(mainSeries) as any;
-        setHoverPrice(price?.value ?? null);
-        
-        // EST Logic check (simple approximation: market open 9:30 AM to 4:00 PM EST)
-        // If the timestamp hour (converted to EST) is outside this, we can flag it.
-        const date = new Date((param.time as number) * 1000);
+    // Truncate post-market data points for 1D chart to prevent flatlines
+    if (timeRange === '1D') {
+      return combined.filter(pt => {
+        const date = new Date(pt.time * 1000);
         const estDateStr = date.toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false });
-        const estHour = parseInt(estDateStr.split(', ')[1].split(':')[0]);
-        const estMin = parseInt(estDateStr.split(', ')[1].split(':')[1]);
+        const parts = estDateStr.split(', ');
+        if (!parts[1]) return true;
+        const timeParts = parts[1].split(':');
+        const estHour = parseInt(timeParts[0]);
+        const estMin = parseInt(timeParts[1]);
+        const minutesSinceMidnight = estHour * 60 + estMin;
         
-        const isClosed = estHour < 9 || (estHour === 9 && estMin < 30) || estHour >= 16;
-        
-        if (timeRange === '1D') {
-          setIsMarketClosed(isClosed);
-        } else {
-          setIsMarketClosed(false);
-        }
+        // Hide points after 4:00 PM EST (960 minutes)
+        return minutesSinceMidnight <= 16 * 60;
+      });
+    }
 
-      } else {
-        setHoverPrice(null);
-        setIsMarketClosed(false);
+    return combined;
+  }, [data, timeRange]);
+
+  // Determine if the return is positive over the selected timeframe
+  const isPositive = useMemo(() => {
+    if (chartData.length < 2) return true;
+    const startValue = chartData[0].portfolioValue;
+    const endValue = chartData[chartData.length - 1].portfolioValue;
+    return endValue >= startValue;
+  }, [chartData]);
+
+  // Color scheme: Emerald Green if positive, Rose Red if negative
+  const primaryColor = isPositive ? '#10b981' : '#f43f5e';
+  const secondaryColor = '#64748b'; // Slate gray
+
+  const handleMouseMove = (state: any) => {
+    if (state && state.activePayload && state.activePayload.length > 0) {
+      const activePoint = state.activePayload[0].payload;
+      setIsHovering(true);
+      if (onHover) {
+        onHover({
+          portfolio: activePoint.portfolioValue,
+          spy: activePoint.spyValue,
+          time: activePoint.time
+        });
       }
-    });
+    }
+  };
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, [timeRange]);
-
-  // Update Data when prop changes
-  useEffect(() => {
-    if (!seriesRef.current || !benchmarkSeriesRef.current || !data) return;
-    
-    const portfolioData = Array.isArray(data.portfolio) ? data.portfolio : [];
-    const benchmarkData = Array.isArray(data.benchmark) ? data.benchmark : [];
-    
-    seriesRef.current.setData(portfolioData);
-    benchmarkSeriesRef.current.setData(benchmarkData);
-    chartRef.current?.timeScale().fitContent();
-  }, [data]);
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (onHover) {
+      onHover(null);
+    }
+  };
 
   return (
-    <div className="relative w-full h-[300px]">
+    <div className="w-full flex flex-col">
       {/* Chart Controls */}
-      <div className="absolute top-0 right-0 z-10 flex gap-2">
-        {['1D', '1W', '1M', '1Y'].map(range => (
+      <div className="flex justify-end gap-2 mb-4">
+        {(['1D', '1W', '1M', '1Y'] as const).map((range) => (
           <button
             key={range}
-            onClick={() => onTimeRangeChange(range as any)}
-            className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-              timeRange === range ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'
+            onClick={() => onTimeRangeChange(range)}
+            className={`px-4 py-1.5 rounded-xl text-xs font-extrabold tracking-wider transition-all duration-200 border ${
+              timeRange === range
+                ? 'bg-teal-500/10 text-teal-400 border-teal-500/30 shadow-[0_0_15px_rgba(20,184,166,0.15)]'
+                : 'bg-[#0f111a]/40 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
             {range}
@@ -149,20 +133,67 @@ export default function PortfolioChart({ data, timeRange, onTimeRangeChange }: P
         ))}
       </div>
 
-      {/* Dynamic Hover Tooltip / Status */}
-      <div className="absolute top-0 left-0 z-10 pointer-events-none">
-        {hoverPrice !== null && (
-          <div className="flex items-baseline gap-2">
-            {!isMarketClosed ? (
-              <span className="text-2xl font-bold text-white">${hoverPrice.toFixed(2)}</span>
-            ) : (
-              <span className="text-sm font-bold text-slate-400 bg-slate-800/80 px-2 py-1 rounded">Market Closed</span>
-            )}
+      {/* Chart Container */}
+      <div className="w-full h-[320px] relative select-none">
+        {chartData.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm italic">
+            No chart data available.
           </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              margin={{ top: 10, right: 5, left: 5, bottom: 5 }}
+            >
+              <XAxis dataKey="index" hide />
+              <YAxis domain={['auto', 'auto']} hide />
+              
+              <Tooltip
+                trigger="hover"
+                content={() => null} // Hide default tooltip card
+                cursor={{
+                  stroke: '#475569',
+                  strokeWidth: 1.5,
+                  strokeDasharray: '4 4'
+                }}
+              />
+
+              {/* SPY Benchmark Line */}
+              <Line
+                type="monotone"
+                dataKey="spyValue"
+                stroke={secondaryColor}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+                dot={false}
+                activeDot={false}
+                opacity={0.4}
+              />
+
+              {/* Portfolio Value Line */}
+              <Line
+                type="monotone"
+                dataKey="portfolioValue"
+                stroke={primaryColor}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={
+                  isHovering
+                    ? {
+                        r: 6,
+                        stroke: primaryColor,
+                        strokeWidth: 2,
+                        fill: '#0f172a'
+                      }
+                    : false
+                }
+              />
+            </LineChart>
+          </ResponsiveContainer>
         )}
       </div>
-
-      <div ref={chartContainerRef} className="w-full h-full mt-8" />
     </div>
   );
 }

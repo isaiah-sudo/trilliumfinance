@@ -3,6 +3,9 @@
 import { ComingSoon } from '@/components/ComingSoon';
 import { Sparkles } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
+
 export default function ChatPage() {
   return (
     <ComingSoon

@@ -199,6 +199,7 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number } | null>(null);
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -609,31 +610,60 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-8">
-          <div className="flex items-baseline gap-3">
-            <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-              <AnimatedNumber value={marketValue} formatter={formatNumberNoCurrency} />
+          {hoveredData ? (
+            <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
+              <div className="flex items-baseline gap-4">
+                <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+                  ${hoveredData.portfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-sm font-semibold text-slate-400">
+                  SPY: ${hoveredData.spy.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="text-xs text-teal-400 font-extrabold tracking-widest uppercase">
+                {new Date(hoveredData.time * 1000).toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })} EST
+              </div>
             </div>
-            <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-              {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-              <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
-              <span> (</span>
-              {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
-              <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
-              <span>)</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">
-            <div className="flex items-center gap-2 text-teal-400">
-              <div className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)]" /> Portfolio
-            </div>
-            <div className="flex items-center gap-2 text-slate-400">
-              <div className="w-2 h-2 rounded-full bg-slate-400" /> SPY
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-3">
+                <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+                  <AnimatedNumber value={marketValue} formatter={formatNumberNoCurrency} />
+                </div>
+                <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
+                  <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
+                  <span> (</span>
+                  {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
+                  <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+                  <span>)</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">
+                <div className="flex items-center gap-2 text-teal-400">
+                  <div className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)]" /> Portfolio
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-400" /> SPY
+                </div>
+              </div>
+            </>
+          )}
         </div>
-
+ 
         <div className="w-full mt-4">
-          <PortfolioChart data={chartData || { portfolio: [], benchmark: [] }} timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+          <PortfolioChart 
+            data={chartData || { portfolio: [], benchmark: [] }} 
+            timeRange={timeRange} 
+            onTimeRangeChange={setTimeRange}
+            onHover={setHoveredData}
+          />
         </div>
       </motion.div>
 

@@ -517,125 +517,141 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
 
 export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   const userId = await getAuthenticatedUserId();
-  const historyRef = collection(db, 'users', userId, 'portfolio_history');
   
   // Calculate timestamps
   const now = new Date();
   let start = new Date();
-  let resolution = '15'; // for finnhub SPY
   
   if (timeRange === '1D') {
     start.setHours(0, 0, 0, 0); // start of today
-    resolution = '5';
   } else if (timeRange === '1W') {
     start.setDate(now.getDate() - 7);
-    resolution = '60';
   } else if (timeRange === '1M') {
     start.setMonth(now.getMonth() - 1);
-    resolution = 'D';
   } else if (timeRange === '1Y') {
     start.setFullYear(now.getFullYear() - 1);
-    resolution = 'W';
   }
 
   const startTimestamp = Math.floor(start.getTime() / 1000);
   const endTimestamp = Math.floor(now.getTime() / 1000);
 
-  // 1. Fetch User Portfolio History
-  let userPoints: { time: number; value: number }[] = [];
-  
-  try {
+  // Fetch from portfolio_snapshots (new schema) and fallback to portfolio_history (old schema)
+  let rawPoints: { time: number; value: number; spyValue?: number }[] = [];
+
+  const fetchCollectionData = async (collectionName: string) => {
+    const colRef = collection(db, 'users', userId, collectionName);
     const q = query(
-      historyRef, 
-      where('timestamp', '>=', new Date(start.getTime())), 
+      colRef,
+      where('timestamp', '>=', new Date(start.getTime())),
       orderBy('timestamp', 'asc')
     );
-    const historySnap = await getDocs(q);
-
-    if (historySnap && !historySnap.empty) {
-      historySnap.docs.forEach(d => {
-        const data = d.data();
+    const snap = await getDocs(q);
+    const pts: typeof rawPoints = [];
+    if (snap && !snap.empty) {
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
         if (data && data.timestamp) {
-          userPoints.push({
+          pts.push({
             time: Math.floor(data.timestamp.toDate().getTime() / 1000),
-            value: data.totalValue !== undefined ? data.totalValue : 10000
+            value: data.totalValue !== undefined ? data.totalValue : 10000,
+            spyValue: data.spyValue,
           });
         }
       });
     }
+    return pts;
+  };
+
+  try {
+    rawPoints = await fetchCollectionData('portfolio_snapshots');
+    if (rawPoints.length === 0) {
+      // Fallback to legacy portfolio_history
+      rawPoints = await fetchCollectionData('portfolio_history');
+    }
   } catch (err) {
-    console.error('Failed to fetch portfolio history snapshot:', err);
+    console.error('Failed to fetch snapshot data:', err);
   }
 
-  // Empty state handling
-  if (!Array.isArray(userPoints) || userPoints.length === 0) {
-    userPoints = [
+  // Handle empty state
+  if (rawPoints.length === 0) {
+    rawPoints = [
       { time: startTimestamp, value: 10000 },
       { time: endTimestamp, value: 10000 }
     ];
-  } else if (timeRange === '1D') {
-    // Interpolate from 10000 if needed, but usually we just use the first point
-    if (userPoints[0] && userPoints[0].time > startTimestamp + 3600) {
-      userPoints.unshift({ time: startTimestamp, value: 10000 });
-    }
   }
 
-  // Downsample Logic
-  if (Array.isArray(userPoints)) {
-    if (timeRange === '1W' || timeRange === '1M') {
-      // Group by day, take last
-      const dailyMap = new Map<string, { time: number; value: number }>();
-      userPoints.forEach(p => {
-        if (p && p.time) {
-          // Use EST string for grouping
-          const dateStr = new Date(p.time * 1000).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-          dailyMap.set(dateStr, p); // overwrites so we keep the last one of the day
+  // Generate fallback/mock SPY data if it's missing from snapshots
+  const baselineSpy = 510.25;
+  rawPoints = rawPoints.map((pt, index) => {
+    if (pt.spyValue !== undefined && pt.spyValue > 0) {
+      return pt;
+    }
+    // Random walk fallback for SPY if not recorded in snapshot
+    const pctChange = (index / Math.max(1, rawPoints.length - 1)) * 0.02 - 0.01;
+    return {
+      ...pt,
+      spyValue: Number((baselineSpy * (1 + pctChange)).toFixed(2))
+    };
+  });
+
+  // Resample helper to guarantee exactly 78 points evenly distributed
+  function resampleData(data: typeof rawPoints, targetCount = 78): { time: number; value: number; spyValue: number }[] {
+    if (data.length === 0) return [];
+    if (data.length === 1) {
+      const pt = data[0];
+      return Array.from({ length: targetCount }, (_, i) => ({
+        time: pt.time + i * 60,
+        value: pt.value,
+        spyValue: pt.spyValue || baselineSpy
+      }));
+    }
+
+    const result: { time: number; value: number; spyValue: number }[] = [];
+    const minTime = data[0].time;
+    const maxTime = data[data.length - 1].time;
+    const timeStep = (maxTime - minTime) / (targetCount - 1);
+
+    for (let i = 0; i < targetCount; i++) {
+      const targetTime = minTime + i * timeStep;
+      
+      // Find the two closest points to interpolate
+      let left = 0;
+      let right = data.length - 1;
+      while (left < right - 1) {
+        const mid = Math.floor((left + right) / 2);
+        if (data[mid].time <= targetTime) {
+          left = mid;
+        } else {
+          right = mid;
         }
+      }
+
+      const p0 = data[left];
+      const p1 = data[right];
+      
+      let value = p0.value;
+      let spyValue = p0.spyValue || baselineSpy;
+      
+      if (p1.time !== p0.time) {
+        const t = (targetTime - p0.time) / (p1.time - p0.time);
+        value = p0.value + t * (p1.value - p0.value);
+        spyValue = (p0.spyValue || baselineSpy) + t * ((p1.spyValue || baselineSpy) - (p0.spyValue || baselineSpy));
+      }
+      
+      result.push({
+        time: Math.round(targetTime),
+        value: Number(value.toFixed(2)),
+        spyValue: Number(spyValue.toFixed(2))
       });
-      userPoints = Array.from(dailyMap.values());
-    } else if (timeRange === '1Y') {
-      // Group by week (using year-week string)
-      const weeklyMap = new Map<string, { time: number; value: number }>();
-      userPoints.forEach(p => {
-        if (p && p.time) {
-          const d = new Date(p.time * 1000);
-          // Hacky week grouping
-          const weekStr = `${d.getFullYear()}-${Math.floor(d.getTime() / (7 * 24 * 60 * 60 * 1000))}`;
-          weeklyMap.set(weekStr, p);
-        }
-      });
-      userPoints = Array.from(weeklyMap.values());
     }
+    return result;
   }
 
-  // 2. Fetch Benchmark (SPY)
-  let spyPoints = generateMockSpyData(startTimestamp, endTimestamp);
+  const resampled = resampleData(rawPoints, 78);
 
-  // Helper to generate a simple random-walk mock dataset for SPY
-  function generateMockSpyData(fromSec: number, toSec: number) {
-    const points: { time: number; value: number }[] = [];
-    const interval = 60 * 60; // hourly points
-    let price = 500; // starting baseline
-    for (let t = fromSec; t <= toSec; t += interval) {
-      // Random walk +/- 1%
-      const change = (Math.random() - 0.5) * 0.02;
-      price = Math.max(10, price * (1 + change));
-      points.push({ time: t, value: Number(price.toFixed(2)) });
-    }
-    return points;
-  }
-
-  // Deduplicate and sort points to satisfy lightweight-charts strictly ascending requirement
-  function deduplicateAndSort(data: {time: number, value: number}[]) {
-    const map = new Map<number, {time: number, value: number}>();
-    // Use the timestamp as the key to naturally deduplicate identical seconds (keeping the latest)
-    data.forEach(p => map.set(p.time, p));
-    return Array.from(map.values()).sort((a, b) => a.time - b.time);
-  }
-
-  return { 
-    portfolio: deduplicateAndSort(Array.isArray(userPoints) ? userPoints : []), 
-    benchmark: deduplicateAndSort(Array.isArray(spyPoints) ? spyPoints : []) 
+  return {
+    portfolio: resampled.map(r => ({ time: r.time, value: r.value })),
+    benchmark: resampled.map(r => ({ time: r.time, value: r.spyValue }))
   };
 }
 

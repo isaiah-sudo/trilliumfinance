@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { Trophy, Rocket, Gem, Crown, PieChart, Zap, CheckCircle2, Lock } from 'lucide-react';
 import { ACHIEVEMENTS, getUserAchievements, Achievement } from '@/app/actions/achievements';
 
+export const dynamic = 'force-dynamic';
+
+
 const iconMap: Record<string, any> = {
   Rocket,
   Gem,
