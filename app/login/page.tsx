@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
@@ -15,44 +15,50 @@ export default function LoginPage() {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const router = useRouter();
 
+  // Prefetch dashboard early to optimize post-login routing
+  useEffect(() => {
+    router.prefetch('/dashboard');
+  }, [router]);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const userCred = await signInWithEmail(email, password);
-      const idToken = await userCred.user.getIdToken();
-      await fetch('/api/auth/cookie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
+      await signInWithEmail(email, password);
+      // Route optimistically - AuthContext will handle cookie sync in the background
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
-    } finally {
+      console.error('Email login flow error:', err);
+      setError(err.message || 'An error occurred during sign-in.');
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
     setError('');
+    setLoading(true);
     try {
-      const userCred = await signInWithGoogle();
-      const idToken = await userCred.user.getIdToken();
-      await fetch('/api/auth/cookie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
+      // Isolate popup trigger: Must be absolute first async action of user click
+      await signInWithGoogle();
+      // Route optimistically
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
-    } finally {
+      console.error('Google login flow error:', err);
+      // Explicitly reset loading immediately to unfreeze UI
       setLoading(false);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in popup was closed before completion. Please try again.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Popup blocker blocked the sign-in window. Please enable popups.');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        setError('Popup request cancelled. Only one popup can be active at a time.');
+      } else {
+        setError(err.message || 'An error occurred during Google sign-in.');
+      }
     }
   };
+
 
   return (
     <div className="relative flex min-h-screen flex-col lg:flex-row bg-slate-50 dark:bg-slate-950">
