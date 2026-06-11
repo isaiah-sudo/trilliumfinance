@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, PropsWithChildren } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onIdTokenChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 interface AuthContextValue {
@@ -20,12 +20,45 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      // Removed document.cookie assignment here. The login/signup pages now handle setting the HTTP-only cookie via API.
+    // Safety timeout: force loading to false if Firebase auth fails to respond in 1200ms
+    const safetyTimeout = setTimeout(() => {
       setLoading(false);
+    }, 1200);
+
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      // Optimistically set user state and resolve loading immediately
+      setUser(firebaseUser);
+      setLoading(false);
+      clearTimeout(safetyTimeout);
+      
+      try {
+        if (firebaseUser) {
+          const idToken = await firebaseUser.getIdToken();
+          // Fire off cookie synchronization in the background
+          fetch('/api/auth/cookie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          }).catch((error) => {
+            console.error('Background auth cookie synchronization failed:', error);
+          });
+        } else {
+          // Clear cookie on logout in the background
+          fetch('/api/auth/cookie', {
+            method: 'DELETE',
+          }).catch((error) => {
+            console.error('Background auth cookie removal failed:', error);
+          });
+        }
+      } catch (error) {
+        console.error('Error during onIdTokenChanged processing:', error);
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      clearTimeout(safetyTimeout);
+      unsubscribe();
+    };
   }, []);
 
   return (
@@ -40,3 +73,4 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
  * Returns `{ user, loading }`. `user` is `null` when not signed in.
  */
 export const useAuth = () => useContext(AuthContext);
+
