@@ -29,8 +29,20 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      await signUpWithEmail(email, password);
-      // Route optimistically - AuthContext will handle cookie sync in the background
+      const userCredential = await signUpWithEmail(email, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      // Sync cookie synchronously to avoid middleware redirect race conditions
+      const res = await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to synchronize auth cookie.');
+      }
+
       router.push('/dashboard/setup');
     } catch (err: any) {
       console.error('Email signup flow error:', err);
@@ -44,8 +56,20 @@ export default function SignupPage() {
     setLoading(true);
     try {
       // Isolate popup trigger: Must be absolute first async action of user click
-      await signInWithGoogle();
-      // Route optimistically
+      const userCredential = await signInWithGoogle();
+      const idToken = await userCredential.user.getIdToken();
+
+      // Sync cookie synchronously to avoid middleware redirect race conditions
+      const res = await fetch('/api/auth/cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to synchronize auth cookie.');
+      }
+
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Google signup flow error:', err);
