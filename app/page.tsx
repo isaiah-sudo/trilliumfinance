@@ -19,6 +19,21 @@ import {
   ChevronRight
 } from 'lucide-react';
 
+function TrilliumLogoMark() {
+  return (
+    <svg
+      viewBox="330 330 320 320"
+      aria-hidden="true"
+      className="h-5 w-5 text-slate-950 transition-all duration-300 [&_path]:fill-current"
+    >
+      <path d="M460 478v2c-1.65 1.5-3.404 2.82-5.176 4.172-4.331 4.34-5.255 8.855-5.262 14.828.145 5.502.343 9.008 4.438 13 7.41 5.527 13.79 6.867 23 6 7.996-2.028 14.412-6.118 19-13l1 10h-2l-.062 3.125c-1.96 15.159-14.199 28.396-25.594 37.46-27.369 20.233-63.328 23.847-96.281 19.29A148.4 148.4 0 0 1 338 565c1.454-17.931 17.3-38.924 29-52h2c.26-.584.52-1.168.79-1.77 8.19-15.088 30.315-26.191 46.21-31.105 7.189-2.028 14.545-3.128 21.938-4.125l3.158-.453c6.991-.823 12.347-.118 18.904 2.453" />
+      <path d="M579.281 485.082c9.715 4.91 18.383 10.933 26.719 17.918l2.582 2.02c13.975 11.446 24.002 29.217 32.293 44.918.49.924.978 1.85 1.482 2.802l1.385 2.662 1.246 2.39c.949 2.07 1.546 3.985 2.012 6.208-28.394 16.311-70.951 15.934-101.937 8.188-16.248-4.75-30.312-11.896-42.442-23.672-2.571-2.553-2.571-2.553-5.422-4.703C495 542 495 542 494.375 539.75c.78-3.429 2.377-5.721 4.313-8.625C501.186 527.08 503 522.801 503 518l3.727.105q2.448.043 4.898.082l2.45.077c7.394.09 12.492-2.125 17.925-7.264 4.145-5.574 3.869-12.36 3-19-2.09-5.383-5.933-9.049-10-13v-2c16.74-5.58 38.982.717 54.281 8.082" />
+      <path d="M489 338c4.223 1.646 7.072 4.77 10.188 7.938l1.745 1.763c5.046 5.162 9.65 10.589 14.067 16.299.737.92 1.475 1.84 2.234 2.79C530.117 383.27 538.371 401.614 543 422l.688 2.953c1.464 7.609 1.515 15.193 1.562 22.922l.028 3.28c-.023 5.672-.357 10.494-2.278 15.845l-6.8 1.36q-3.498.7-6.993 1.406l-1.982.399-5.71 1.151A298 298 0 0 1 512 473l2-1c.428-10.103.238-18.735-6-27v-2l-1.687-.812C504 441 504 441 501.5 439.375c-2.609-1.696-2.609-1.696-6.5-1.375v-2c-7.266 1.498-13.166 3.113-18 9-3.206 5.088-5.144 10.055-5.098 16.11l.01 2.285.026 2.355.013 2.402q.02 2.925.049 5.848c-5.807-.725-11.305-2.028-16.951-3.54-3.496-.908-6.826-1.572-10.428-1.897L441 468c-7.162-10.742-4.002-32.947-1.812-45.125.531-2.652 1.155-5.247 1.812-7.875l.488-1.955c7.427-28.739 24.967-51.418 46.184-71.557 1.55-1.404 1.55-1.404 1.328-3.488" />
+      <path d="m565.063 583.188 3.2.212q3.872.264 7.737.6c-3.421 5.146-7.795 7.561-13.062 10.5l-2.597 1.47C535.295 610 535.295 610 523 610l-1 2c-1.898.379-1.898.379-4.375.563l-2.79.218L512 613l-2.336.281c-30.437 3.546-60.78-1.569-87.664-16.281a700 700 0 0 0-6-3v-2l-1.766-.344c-2.418-.71-3.96-1.669-5.984-3.156l-1.86-1.344L405 586v-1c25.63-3.041 25.63-3.041 36 4 25.273 13.816 57.357 13.511 84.5 6.125 10.636-3.259 10.636-3.259 20.433-8.406 6.492-4.164 11.576-4.194 19.13-3.532" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   // Fidget 1: Trading Simulator State
   const [shareCount, setShareCount] = useState(10);
@@ -250,7 +265,7 @@ export default function LandingPage() {
       <header className="relative z-50 max-w-[1700px] mx-auto px-6 py-5 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-            <TreePine className="h-5 w-5 text-slate-950" />
+            <TrilliumLogoMark />
           </div>
           <span className="text-xl font-black text-white tracking-wide">
             Trillium <span className="text-emerald-400">Finance</span>
@@ -828,41 +843,44 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-[1700px] mx-auto space-y-6">
           {faqs.map((faq, index) => {
             const isOpen = openFaq === index;
             return (
               <div 
                 key={index}
-                className={`relative rounded-2xl border-2 border-white/10 bg-[#0b0f19]/80 backdrop-blur-md overflow-visible transition-all duration-300 ${
-                  isOpen 
-                    ? 'shadow-[2px_2px_0px_rgba(16,185,129,0.3)] translate-x-[2px] translate-y-[2px] border-emerald-500/30' 
-                    : 'shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[8px_8px_0px_rgba(16,185,129,0.2)] hover:border-emerald-500/20'
-                }`}
-                style={{ transformStyle: "preserve-3d" }}
+                className={`grid grid-cols-1 ${isOpen ? 'lg:grid-cols-2 lg:max-w-[1700px]' : 'max-w-3xl'} gap-0 transition-all duration-300 w-full mx-auto lg:h-28`}
               >
-                <button
-                  onClick={() => setOpenFaq(isOpen ? null : index)}
-                  className="w-full flex justify-between items-center p-6 text-left font-bold text-white hover:bg-white/5 transition-colors relative z-10"
+                <div 
+                  className={`relative border-2 bg-[#0b0f19]/80 backdrop-blur-md overflow-hidden transition-all duration-300 h-full ${
+                    isOpen 
+                      ? 'shadow-[2px_2px_0px_rgba(16,185,129,0.3)] border-emerald-500/30 rounded-t-2xl lg:rounded-l-2xl lg:rounded-r-none border-b-0 lg:border-b-2 lg:border-r-0' 
+                      : 'border-white/10 rounded-2xl shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[8px_8px_0px_rgba(16,185,129,0.2)] hover:border-emerald-500/20'
+                  }`}
+                  style={{ transformStyle: "preserve-3d" }}
                 >
-                  <span className="text-base font-black tracking-tight">{faq.q}</span>
-                  <span className={`text-xs text-emerald-400 font-black px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 transform transition-all duration-300 ${isOpen ? 'rotate-180 bg-emerald-500 text-slate-950 border-emerald-500' : ''}`}>
-                    ▼
-                  </span>
-                </button>
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    className="w-full flex justify-between items-center p-6 text-left font-bold text-white hover:bg-white/5 transition-colors relative z-10 h-full"
+                  >
+                    <span className="text-base font-black tracking-tight">{faq.q}</span>
+                    <span className={`text-xs text-emerald-400 font-black px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 transform transition-all duration-300 ${isOpen ? 'rotate-180 bg-emerald-500 text-slate-950 border-emerald-500' : ''}`}>
+                      ▶
+                    </span>
+                  </button>
+                </div>
                 <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0, rotateX: -90 }}
-                      animate={{ height: "auto", opacity: 1, rotateX: 0 }}
-                      exit={{ height: 0, opacity: 0, rotateX: -90 }}
+                      initial={{ opacity: 0, scaleX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      exit={{ opacity: 0, scaleX: 0 }}
                       transition={{ 
-                        height: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
                         opacity: { duration: 0.2 },
-                        rotateX: { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
+                        scaleX: { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
                       }}
-                      style={{ transformOrigin: "top", transformStyle: "preserve-3d" }}
-                      className="absolute top-full left-0 right-0 mt-1.5 z-30 rounded-2xl border-2 border-emerald-500/30 bg-[#0b0f19]/95 shadow-2xl overflow-hidden"
+                      style={{ transformOrigin: "left", transformStyle: "preserve-3d" }}
+                      className="h-full rounded-b-2xl lg:rounded-r-2xl lg:rounded-l-none border-2 border-t-0 lg:border-t-2 lg:border-l-0 border-emerald-500/30 bg-[#0b0f19]/90 backdrop-blur-md shadow-[2px_2px_0px_rgba(16,185,129,0.3)] overflow-hidden flex items-center"
                     >
                       <div className="p-6 text-sm text-slate-300 leading-relaxed font-medium">
                         {faq.a}
