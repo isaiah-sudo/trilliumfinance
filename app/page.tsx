@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { signOut } from '@/lib/auth';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Button } from '@/components/ui';
 import {
@@ -35,6 +38,9 @@ function TrilliumLogoMark() {
 }
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
   // Fidget 1: Trading Simulator State
   const [shareCount, setShareCount] = useState(10);
   const sharePrice = 182.50;
@@ -272,15 +278,52 @@ export default function LandingPage() {
           </span>
         </Link>
         
-        <div className="flex items-center gap-6">
-          <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
-            Sign In
-          </Link>
-          <Link href="/signup">
-            <button className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.35)] active:scale-95">
-              Get Started
-            </button>
-          </Link>
+        <div className="flex items-center gap-4">
+          {!loading && user ? (
+            <>
+              <button
+                onClick={async () => {
+                  await signOut();
+                  router.refresh();
+                }}
+                className="text-sm font-bold text-slate-400 hover:text-red-400 transition-colors"
+              >
+                Logout
+              </button>
+              <Link href="/dashboard">
+                <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all">
+                  Dashboard
+                </button>
+              </Link>
+              <div className="flex items-center gap-2.5 pl-2 border-l border-white/10">
+                <span className="text-sm font-semibold text-slate-200">
+                  {user.displayName || user.email?.split('@')[0] || 'User'}
+                </span>
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-full border border-emerald-500/30 object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center text-xs font-black text-slate-950">
+                    {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
+                Sign In
+              </Link>
+              <Link href="/signup">
+                <button className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.35)] active:scale-95">
+                  Get Started
+                </button>
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -379,11 +422,19 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="flex flex-wrap gap-4 items-center pt-4"
           >
-            <Link href="/signup">
-              <button className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all shadow-[0_4px_25px_rgba(16,185,129,0.3)] active:scale-95">
-                Start Trading Simulator <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
+            {!loading && user ? (
+              <Link href="/dashboard">
+                <button className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all shadow-[0_4px_25px_rgba(16,185,129,0.3)] active:scale-95">
+                  Go to Dashboard <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
+            ) : (
+              <Link href="/signup">
+                <button className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all shadow-[0_4px_25px_rgba(16,185,129,0.3)] active:scale-95">
+                  Start Trading Simulator <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
+            )}
           </motion.div>
         </div>
 

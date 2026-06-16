@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const router = useRouter();
@@ -18,6 +19,12 @@ export default function LoginPage() {
   // Prefetch dashboard early to optimize post-login routing
   useEffect(() => {
     router.prefetch('/dashboard');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('signup') === 'success') {
+        setSuccess('Account created successfully! Please sign in.');
+      }
+    }
   }, [router]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -119,6 +126,11 @@ export default function LoginPage() {
           </p>
 
           {error && <p className="mb-4 text-sm text-red-600 text-center">{error}</p>}
+          {success && !error && (
+            <p className="mb-4 text-sm text-emerald-600 text-center bg-emerald-500/10 dark:bg-emerald-500/5 py-2 px-3 rounded-xl border border-emerald-500/20">
+              {success}
+            </p>
+          )}
           
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
