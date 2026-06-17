@@ -11,10 +11,10 @@ export async function POST(request: Request) {
 
     const cookieStore = await cookies();
     
-    // Set the cookie securely
+    // Set the cookie (disabled secure flag to avoid reverse proxy termination issues)
     cookieStore.set('auth_token', idToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 5, // 5 days
