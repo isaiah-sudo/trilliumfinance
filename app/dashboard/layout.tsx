@@ -58,6 +58,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { name: 'News', href: '/dashboard/news' },
     { name: 'Chat', href: '/dashboard/chat' },
     { name: 'Rankings', href: '/dashboard/leaderboard' },
+    { name: 'Lesson', href: '/dashboard/lesson' },
   ];
 
   return (
@@ -83,7 +84,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
             {/* Navigation Center Section */}
             <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-4">
-              <div className="flex items-center gap-[100px] px-2 transition-all duration-500 ease-out">
+              <div className="flex items-center gap-3 xl:gap-8 px-2 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
                     Portfolio: {
@@ -110,6 +111,11 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                       title: 'Global Leaderboard',
                       desc: 'See your place on the leaderboard, compete with friends, and see who is the top trader.',
                       icon: '🏆',
+                    },
+                    Lesson: {
+                      title: 'Loaning Lesson',
+                      desc: 'Learn the basics of loaning, principal, and interest rates by interactively borrowing funds.',
+                      icon: '📖',
                     },
                   };
 

@@ -182,6 +182,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
+  const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
   
   const { 
     portfolio, 
@@ -382,11 +383,75 @@ export default function DashboardPage() {
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
-            <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-            <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
-              <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} />
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
+                <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
+                  <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} />
+                </div>
+              </div>
+              
+              {/* Toggle details arrow in the middle of the container */}
+              <button
+                onClick={() => setIsNetWorthExpanded(!isNetWorthExpanded)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-700/50 transition-all hover:scale-105 active:scale-95 shadow-md shrink-0"
+                title="Toggle Borrowing Details"
+              >
+                {isNetWorthExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-blue-400" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-blue-400 animate-pulse" />
+                )}
+              </button>
             </div>
+
+            {/* Collapsible Borrowing Details */}
+            <AnimatePresence>
+              {isNetWorthExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden border-t border-slate-700/30 pt-4"
+                >
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* Left Column: Borrowed Money & Interest Rate */}
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Borrowed Money</div>
+                        <div className={`text-lg md:text-xl font-black text-white tracking-tight font-num-${numberFont}`}>
+                          ${(portfolio.borrowedAmount || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Interest Rate on Borrowed Money</div>
+                        <div className={`text-xs md:text-sm font-extrabold text-amber-500 font-num-${numberFont}`}>
+                          {((portfolio.interestRate || 0.08) * 100).toFixed(2)}%
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Amount Owed & Amount Added Per Month */}
+                    <div className="space-y-4 border-l border-slate-700/20 pl-6">
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Owed</div>
+                        <div className={`text-lg md:text-xl font-black text-white tracking-tight font-num-${numberFont}`}>
+                          ${(portfolio.amountOwed || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Added Per Month</div>
+                        <div className={`text-xs md:text-sm font-extrabold text-amber-500 font-num-${numberFont}`}>
+                          ${(portfolio.monthlyInterest || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Lower Layer: Supporting Stats */}

@@ -145,6 +145,11 @@ export interface PortfolioSummary {
   dayPLPercent: number; // for backward compatibility
   holdings: any[];
   balanceHistory?: any[]; // For backward compatibility and custom fallbacks
+  borrowedAmount?: number;
+  interestRate?: number;
+  amountOwed?: number;
+  monthlyInterest?: number;
+  hasBorrowed?: boolean;
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
@@ -161,7 +166,12 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     dayPL: 0,
     dayPLPercent: 0,
     holdings: [],
-    balanceHistory: []
+    balanceHistory: [],
+    borrowedAmount: 0,
+    interestRate: 0.08,
+    amountOwed: 0,
+    monthlyInterest: 0,
+    hasBorrowed: false
   };
 
   try {
@@ -196,6 +206,13 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     // Check if fields like cash, holdings, or balanceHistory are missing/undefined
     const cash = portData.cash !== undefined ? portData.cash : 10000;
     const balanceHistory = portData.balanceHistory !== undefined ? portData.balanceHistory : (portData.balance_history !== undefined ? portData.balance_history : []);
+    
+    // Read borrowing fields
+    const borrowedAmount = portData.borrowedAmount !== undefined ? portData.borrowedAmount : 0;
+    const interestRate = portData.interestRate !== undefined ? portData.interestRate : 0.08;
+    const amountOwed = portData.amountOwed !== undefined ? portData.amountOwed : (borrowedAmount * (1 + interestRate));
+    const hasBorrowed = portData.hasBorrowed !== undefined ? portData.hasBorrowed : false;
+    const monthlyInterest = (borrowedAmount * interestRate) / 12;
 
     // If essential fields are missing, fall back to defaults but continue processing
     if (portData.cash === undefined || portData.balanceHistory === undefined) {
@@ -247,7 +264,8 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     }
 
     // Global calculations
-    const netWorth = calculateNetWorth(cash, totalMarketValue);
+    const netWorthWithoutDebt = calculateNetWorth(cash, totalMarketValue);
+    const netWorth = safeSubtract(netWorthWithoutDebt, borrowedAmount);
     const totalPerformanceUSD = calculateGlobalTotalPerformanceUSD(totalMarketValue, totalCostBasis);
     const totalPerformancePercent = calculateGlobalTotalPerformancePercent(totalPerformanceUSD, totalCostBasis);
     const dayPerformancePercent = calculateGlobalDayPLPercent(dayPerformanceUSD, netWorth);
@@ -265,7 +283,12 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       dayPL: dayPerformanceUSD, // Backwards compatibility for UI
       dayPLPercent: dayPerformancePercent, // Backwards compatibility for UI
       holdings: holdingsList.sort((a, b) => b.marketValue - a.marketValue),
-      balanceHistory
+      balanceHistory,
+      borrowedAmount,
+      interestRate,
+      amountOwed,
+      monthlyInterest,
+      hasBorrowed
     };
 
     // Asynchronously ensure a snapshot is captured for this session/day
@@ -704,5 +727,40 @@ export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follow
   } catch (error: any) {
     console.error('Portfolio Init Failed:', error.message);
     throw new Error(error.message || 'Initialization failed');
+  }
+}
+
+export async function borrowMoney(amount: number, rate: number = 0.08) {
+  const userId = await getAuthenticatedUserId();
+  const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const portDoc = await transaction.get(portfolioRef);
+      if (!portDoc.exists()) {
+        throw new Error('Portfolio not found');
+      }
+
+      const portData = portDoc.data();
+      if (portData?.hasBorrowed) {
+        throw new Error('You have already completed the borrowing lesson and borrowed money.');
+      }
+
+      const currentCash = Number(portData.cash ?? 10000);
+      const newCash = safeAdd(currentCash, amount);
+
+      transaction.set(portfolioRef, {
+        cash: newCash,
+        borrowedAmount: amount,
+        interestRate: rate,
+        amountOwed: amount * (1 + rate),
+        hasBorrowed: true,
+      }, { merge: true });
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Borrowing Failed:', error.message);
+    throw new Error(error.message || 'Borrowing execution failed');
   }
 }
