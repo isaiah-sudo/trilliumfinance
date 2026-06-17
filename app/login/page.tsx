@@ -16,16 +16,14 @@ export default function LoginPage() {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const router = useRouter();
 
-  // Prefetch dashboard early to optimize post-login routing
   useEffect(() => {
-    router.prefetch('/dashboard');
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('signup') === 'success') {
         setSuccess('Account created successfully! Please sign in.');
       }
     }
-  }, [router]);
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +44,9 @@ export default function LoginPage() {
         throw new Error('Failed to synchronize auth cookie.');
       }
 
-      router.push('/dashboard');
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect') || '/dashboard';
+      window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Email login flow error:', err);
       setError(err.message || 'An error occurred during sign-in.');
@@ -73,7 +73,9 @@ export default function LoginPage() {
         throw new Error('Failed to synchronize auth cookie.');
       }
 
-      router.push('/dashboard');
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect') || '/dashboard';
+      window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Google login flow error:', err);
       // Explicitly reset loading immediately to unfreeze UI

@@ -25,6 +25,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       setLoading(false);
     }, 1200);
 
+    let isFirstCall = true;
+    let previousUser: User | null = null;
+
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       // Optimistically set user state and resolve loading immediately
       setUser(firebaseUser);
@@ -33,6 +36,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       
       try {
         if (firebaseUser) {
+          previousUser = firebaseUser;
+          isFirstCall = false;
           const idToken = await firebaseUser.getIdToken();
           // Fire off cookie synchronization in the background
           fetch('/api/auth/cookie', {
@@ -43,12 +48,17 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             console.error('Background auth cookie synchronization failed:', error);
           });
         } else {
-          // Clear cookie on logout in the background
-          fetch('/api/auth/cookie', {
-            method: 'DELETE',
-          }).catch((error) => {
-            console.error('Background auth cookie removal failed:', error);
-          });
+          // Only clear the cookie if this is NOT the initial initialization check,
+          // or if we had a logged-in user previously (which indicates a real logout).
+          if (!isFirstCall || previousUser !== null) {
+            fetch('/api/auth/cookie', {
+              method: 'DELETE',
+            }).catch((error) => {
+              console.error('Background auth cookie removal failed:', error);
+            });
+          }
+          previousUser = null;
+          isFirstCall = false;
         }
       } catch (error) {
         console.error('Error during onIdTokenChanged processing:', error);

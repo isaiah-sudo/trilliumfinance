@@ -70,7 +70,9 @@ export default function SignupPage() {
         throw new Error('Failed to synchronize auth cookie.');
       }
 
-      router.push('/dashboard');
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect') || '/dashboard';
+      window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Google signup flow error:', err);
       // Explicitly reset loading immediately to unfreeze UI
