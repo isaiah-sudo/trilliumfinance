@@ -11,10 +11,10 @@ export async function POST(request: Request) {
 
     const cookieStore = await cookies();
     
-    // Set the cookie (disabled secure flag to avoid reverse proxy termination issues)
-    cookieStore.set('auth_token', idToken, {
+    // Set the cookie (using __session for Firebase Hosting compatibility)
+    cookieStore.set('__session', idToken, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 5, // 5 days
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     const cookieStore = await cookies();
-    cookieStore.delete('auth_token');
+    cookieStore.delete('__session');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting auth cookie:', error);

@@ -1,0 +1,30 @@
+[debug] [2026-06-18T19:17:15.438Z] ----------------------------------------------------------------------
+[debug] [2026-06-18T19:17:15.440Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\super\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-06-18T19:17:15.441Z] CLI Version:   15.20.0
+[debug] [2026-06-18T19:17:15.441Z] Platform:      win32
+[debug] [2026-06-18T19:17:15.441Z] Node Version:  v24.15.0
+[debug] [2026-06-18T19:17:15.441Z] Time:          Thu Jun 18 2026 12:17:15 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-06-18T19:17:15.441Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-18T19:17:15.442Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-06-18T19:17:17.409Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-06-18T19:17:17.409Z] > authorizing via signed-in user (trilliumfinance15@gmail.com)
+[debug] [2026-06-18T19:17:17.409Z] [iam] checking project trilliumfinance-e1e81 for permissions ["firebase.projects.get","firebasehosting.sites.update","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2026-06-18T19:17:17.410Z] Checked if tokens are valid: false, expires at: 1781667684633
+[debug] [2026-06-18T19:17:17.410Z] Checked if tokens are valid: false, expires at: 1781667684633
+[debug] [2026-06-18T19:17:17.410Z] > refreshing access token with scopes: []
+[debug] [2026-06-18T19:17:17.411Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-06-18T19:17:17.411Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-18T19:17:17.577Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-06-18T19:17:17.578Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-06-18T19:17:17.589Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-06-18T19:17:17.590Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-18T19:17:17.594Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions [none]
+[debug] [2026-06-18T19:17:17.594Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions  x-goog-user-project=trilliumfinance-e1e81
+[debug] [2026-06-18T19:17:17.594Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2026-06-18T19:17:17.766Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions 200
+[debug] [2026-06-18T19:17:17.766Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/trilliumfinance-e1e81:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2026-06-18T19:17:17.767Z] Checked if tokens are valid: true, expires at: 1781813836590
+[debug] [2026-06-18T19:17:17.767Z] Checked if tokens are valid: true, expires at: 1781813836590
+[debug] [2026-06-18T19:17:17.767Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81 [none]
+[debug] [2026-06-18T19:17:18.055Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/trilliumfinance-e1e81 200
