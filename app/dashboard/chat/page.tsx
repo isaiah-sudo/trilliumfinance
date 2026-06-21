@@ -109,7 +109,7 @@ export default function ChatPage() {
   return (
     <div className="w-full flex justify-center">
       {/* Container spans edge-to-edge on mobile/tablet, full-width with rounded corners on desktop */}
-      <div className="w-full rounded-3xl border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] overflow-hidden flex flex-col h-[1100px] relative mx-auto">
+      <div className="w-full max-w-3xl rounded-3xl border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] overflow-hidden flex flex-col h-[650px] relative mx-auto">
         
         {/* Northern Lights Feature spanning the entire container background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">

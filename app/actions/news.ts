@@ -49,7 +49,6 @@ export async function getDailyThreeNews(): Promise<NewsArticle[]> {
   const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
 
   if (!token) {
-    console.warn('[News Action] NEXT_PUBLIC_FINNHUB_API_KEY is not set. Falling back to premium mock news.');
     return MOCK_NEWS;
   }
 

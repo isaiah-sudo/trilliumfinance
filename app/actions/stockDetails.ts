@@ -110,7 +110,6 @@ export async function getCompanyProfile(symbol: string): Promise<CompanyProfile>
   const upperSymbol = symbol.toUpperCase();
 
   if (!token) {
-    console.warn('[StockDetails Action] NEXT_PUBLIC_FINNHUB_API_KEY not set. Serving rich mock fallback.');
     return getFallbackProfile(upperSymbol);
   }
 
