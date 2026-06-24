@@ -18,11 +18,13 @@ export default function DashboardPet() {
     isDragging: false,
     direction: 1, // 1 for right, -1 for left
     targetContainer: null as HTMLElement | null,
-    state: 'WALKING' as 'WALKING' | 'IDLE_LOOKING' | 'WALKING_TO_GAZE' | 'GAZING' | 'JUMPING',
+    state: 'WALKING' as 'WALKING' | 'IDLE_LOOKING' | 'WALKING_TO_GAZE' | 'GAZING' | 'JUMPING' | 'ON_LINE' | 'HANGING_ON_LINE',
     stateTimer: 0,
     targetGazeCard: null as HTMLElement | null,
     targetGazeX: 0,
     targetGazeY: 0,
+    activePath: null as SVGPathElement | null,
+    pathProgress: 0,
   });
 
   const jumpRef = useRef({
@@ -33,6 +35,8 @@ export default function DashboardPet() {
     targetX: 0,
     targetY: 0,
     targetContainer: null as HTMLElement | null,
+    landOnLine: null as SVGPathElement | null,
+    landOnLineEnd: 0,
   });
 
   const [facingRight, setFacingRight] = useState(true);
@@ -44,6 +48,99 @@ export default function DashboardPet() {
   // Custom eye and mouth states for detailed animation reactions
   const [eyeState, setEyeState] = useState<'default' | 'worried' | 'squinting' | 'looking-up' | 'wide-eyed'>('default');
   const [mouthState, setMouthState] = useState<'default' | 'worried' | 'wide-eyed'>('default');
+
+  // --- HELPER FUNCTION: Get active lines on dashboard/page ---
+  const getActiveLinePaths = () => {
+    const allPaths = Array.from(document.querySelectorAll('svg path')) as SVGPathElement[];
+    return allPaths.filter(path => {
+      try {
+        const length = path.getTotalLength();
+        // Ignore tiny icon paths (length < 80) and filled shapes
+        const fill = path.getAttribute('fill');
+        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+        return length > 80 && !hasFill;
+      } catch (e) {
+        return false;
+      }
+    });
+  };
+
+  // --- HELPER FUNCTION: Find nearby line to climb up (hanging pull-up) ---
+  const findBestLineToClimb = (currentX: number, currentY: number) => {
+    const linePaths = getActiveLinePaths();
+    let bestPath: SVGPathElement | null = null;
+    let bestDist = Infinity;
+    let targetEnd = 0; // 0 for start, 1 for end
+
+    for (const path of linePaths) {
+      const svgEl = path.ownerSVGElement;
+      if (!svgEl) continue;
+      const svgRect = svgEl.getBoundingClientRect();
+      const length = path.getTotalLength();
+      const p0 = path.getPointAtLength(0);
+      const p1 = path.getPointAtLength(length);
+      
+      const startX = svgRect.left + window.scrollX + p0.x;
+      const startY = svgRect.top + window.scrollY + p0.y;
+      const endX = svgRect.left + window.scrollX + p1.x;
+      const endY = svgRect.top + window.scrollY + p1.y;
+
+      const isStartLower = startY > endY;
+      const lowerX = isStartLower ? startX : endX;
+      const lowerY = isStartLower ? startY : endY;
+      const higherY = isStartLower ? endY : startY;
+
+      // Look for a path leading upwards (higher end above current position)
+      if (higherY < currentY) {
+        const dx = currentX - lowerX;
+        const dy = currentY - lowerY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist < 400 && dist < bestDist) {
+          bestDist = dist;
+          bestPath = path;
+          targetEnd = isStartLower ? 0 : 1; // target the lower end to jump to
+        }
+      }
+    }
+
+    return bestPath ? { path: bestPath, targetEnd, dist: bestDist } : null;
+  };
+
+  // --- HELPER FUNCTION: Find nearby line to walk on top of ---
+  const findNearbyLineToWalk = (currentX: number, currentY: number) => {
+    const linePaths = getActiveLinePaths();
+    let bestPath: SVGPathElement | null = null;
+    let bestDist = Infinity;
+    let targetProgress = 0;
+
+    for (const path of linePaths) {
+      const svgEl = path.ownerSVGElement;
+      if (!svgEl) continue;
+      const svgRect = svgEl.getBoundingClientRect();
+      const length = path.getTotalLength();
+      
+      // Check points along the curve
+      const checkPoints = [0, 0.25, 0.5, 0.75, 1];
+      for (const p of checkPoints) {
+        const point = path.getPointAtLength(p * length);
+        const px = svgRect.left + window.scrollX + point.x;
+        const py = svgRect.top + window.scrollY + point.y;
+        
+        const dx = currentX - px;
+        const dy = currentY - py;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist < 60 && dist < bestDist) {
+          bestDist = dist;
+          bestPath = path;
+          targetProgress = p;
+        }
+      }
+    }
+
+    return bestPath ? { path: bestPath, targetProgress, dist: bestDist } : null;
+  };
 
   // Position updates and physics simulation
   useEffect(() => {
@@ -61,6 +158,39 @@ export default function DashboardPet() {
       y.set(100);
     }
 
+    // --- LANDING FROM CONNECTION LINE ---
+    const landFromLine = (pathEl: SVGPathElement, endSide: number, svgRect: DOMRect) => {
+      const length = pathEl.getTotalLength();
+      const point = pathEl.getPointAtLength(endSide * length);
+      const px = svgRect.left + window.scrollX + point.x;
+      const py = svgRect.top + window.scrollY + point.y;
+
+      // Find if we land near a walkable target container
+      const targets = Array.from(document.querySelectorAll('.pet-container-target')) as HTMLElement[];
+      let matched: HTMLElement | null = null;
+      for (const target of targets) {
+        const rect = target.getBoundingClientRect();
+        const left = rect.left + window.scrollX;
+        const right = rect.right + window.scrollX;
+        const top = rect.top + window.scrollY;
+        
+        if (px >= left - 30 && px <= right + 30 && Math.abs(py - top) < 40) {
+          matched = target;
+          break;
+        }
+      }
+
+      physicsRef.current.state = 'WALKING';
+      physicsRef.current.targetContainer = matched;
+      physicsRef.current.activePath = null;
+      physicsRef.current.vy = 0;
+      physicsRef.current.stateTimer = 0;
+      
+      x.set(px - 16);
+      y.set(matched ? (matched.getBoundingClientRect().top + window.scrollY - 42) : (py - 42));
+      setIsDangling(false);
+    };
+
     const updatePhysics = () => {
       if (!active) return;
       const petEl = petRef.current;
@@ -72,19 +202,65 @@ export default function DashboardPet() {
       const petWidth = 32;
       const petHeight = 42;
 
-      // --- STANDARD BOUNDS QUERY ---
-      let minX = 0;
-      let maxX = window.innerWidth - petWidth;
-      let maxY = window.innerHeight - petHeight - 20; // viewport floor
+      // Check if lines exist on page
+      const hasLines = getActiveLinePaths().length > 0;
 
+      let maxY = window.innerHeight - petHeight - 20; // viewport floor
       if (physics.targetContainer) {
-        const rect = physics.targetContainer.getBoundingClientRect();
-        minX = Math.max(0, rect.left + window.scrollX);
-        maxX = Math.min(window.innerWidth - petWidth, rect.right + window.scrollX - petWidth);
-        maxY = rect.top + window.scrollY - petHeight; // Floor is on top of container
+        const isHeader = physics.targetContainer.tagName.toLowerCase() === 'header';
+        if (!hasLines || isHeader) {
+          maxY = physics.targetContainer.getBoundingClientRect().top + window.scrollY - petHeight;
+        } else {
+          physics.targetContainer = null;
+        }
       }
 
       if (!physics.isDragging) {
+        // --- ON LINE / HANGING CLIMBER STATE HANDLING ---
+        if (physics.state === 'ON_LINE' || physics.state === 'HANGING_ON_LINE') {
+          const pathEl = physics.activePath;
+          if (pathEl && pathEl.isConnected) {
+            const svgEl = pathEl.ownerSVGElement;
+            if (svgEl) {
+              const svgRect = svgEl.getBoundingClientRect();
+              const totalLength = pathEl.getTotalLength();
+              
+              // Increment path progress (climb slower if hanging/pulling up)
+              const speedMultiplier = physics.state === 'HANGING_ON_LINE' ? 0.45 : 0.85;
+              physics.pathProgress += (physics.vx / totalLength) * physics.direction * speedMultiplier;
+              
+              const isDone = (physics.direction === 1 && physics.pathProgress >= 1) || 
+                             (physics.direction === -1 && physics.pathProgress <= 0);
+              
+              if (isDone) {
+                const finalProgress = physics.direction === 1 ? 1 : 0;
+                landFromLine(pathEl, finalProgress, svgRect);
+                requestAnimationFrame(updatePhysics);
+                return;
+              }
+
+              // Get coordinates along the path
+              const point = pathEl.getPointAtLength(physics.pathProgress * totalLength);
+              const absoluteX = svgRect.left + window.scrollX + point.x;
+              // Hang position is 12px below the line, walking stands on top of the line
+              const offsetHeight = physics.state === 'HANGING_ON_LINE' ? 12 : petHeight;
+              const absoluteY = svgRect.top + window.scrollY + point.y - offsetHeight;
+              
+              x.set(absoluteX - petWidth / 2);
+              y.set(absoluteY);
+              
+              // Set face direction
+              setFacingRight(physics.direction === 1);
+              
+              requestAnimationFrame(updatePhysics);
+              return;
+            }
+          }
+          // Fallback if path disappeared
+          physics.state = 'WALKING';
+          physics.activePath = null;
+        }
+
         // --- JUMP STATE HANDLING ---
         if (physics.state === 'JUMPING') {
           const jump = jumpRef.current;
@@ -102,14 +278,37 @@ export default function DashboardPet() {
 
           if (progress >= 1) {
             // Landed
-            physics.state = 'WALKING';
-            physics.targetContainer = jump.targetContainer;
-            physics.vy = 0;
-            physics.stateTimer = 0;
-            setIsDangling(false);
+            if (jump.landOnLine) {
+              physics.state = 'HANGING_ON_LINE';
+              physics.activePath = jump.landOnLine;
+              physics.pathProgress = jump.landOnLineEnd;
+              physics.direction = jump.landOnLineEnd === 0 ? 1 : -1;
+              physics.stateTimer = 0;
+              setIsDangling(true);
+            } else {
+              physics.state = 'WALKING';
+              physics.targetContainer = jump.targetContainer;
+              physics.vy = 0;
+              physics.stateTimer = 0;
+              setIsDangling(false);
+            }
           }
           requestAnimationFrame(updatePhysics);
           return;
+        }
+
+        // --- STANDARD BOUNDS QUERY ---
+        let minX = 0;
+        let maxX = window.innerWidth - petWidth;
+
+        if (physics.targetContainer) {
+          const isHeader = physics.targetContainer.tagName.toLowerCase() === 'header';
+          // If connection lines are active, restrict container walking to only the navbar/header
+          if (!hasLines || isHeader) {
+            const rect = physics.targetContainer.getBoundingClientRect();
+            minX = Math.max(0, rect.left + window.scrollX);
+            maxX = Math.min(window.innerWidth - petWidth, rect.right + window.scrollX - petWidth);
+          }
         }
 
         // Apply gravity if not grounded
@@ -125,8 +324,9 @@ export default function DashboardPet() {
             const px = x.get() + petWidth / 2;
             const py = currentY + petHeight;
             const targets = Array.from(document.querySelectorAll('.pet-container-target')) as HTMLElement[];
+            const walkableTargets = targets.filter(t => !hasLines || t.tagName.toLowerCase() === 'header');
             
-            for (const target of targets) {
+            for (const target of walkableTargets) {
               const rect = target.getBoundingClientRect();
               const targetLeft = rect.left + window.scrollX;
               const targetRight = rect.right + window.scrollX;
@@ -160,8 +360,48 @@ export default function DashboardPet() {
           // Periodically pick new action if in normal walking
           if (physics.state === 'WALKING' && physics.stateTimer > 250) {
             physics.stateTimer = 0;
-            const rand = Math.random();
 
+            // 1. Look for a line to climb (hang & pull up)
+            const climbData = findBestLineToClimb(x.get() + 16, y.get() + 42);
+            if (climbData && Math.random() < 0.7) {
+              const svgEl = climbData.path.ownerSVGElement;
+              if (svgEl) {
+                const rect = svgEl.getBoundingClientRect();
+                const length = climbData.path.getTotalLength();
+                const point = climbData.path.getPointAtLength(climbData.targetEnd * length);
+                const tx = rect.left + window.scrollX + point.x;
+                const ty = rect.top + window.scrollY + point.y;
+
+                physics.state = 'JUMPING';
+                jumpRef.current = {
+                  t: 0,
+                  duration: 60,
+                  startX: x.get(),
+                  startY: y.get(),
+                  targetX: tx - 16,
+                  targetY: ty - 12, // hang Y
+                  targetContainer: null,
+                  landOnLine: climbData.path,
+                  landOnLineEnd: climbData.targetEnd
+                };
+                requestAnimationFrame(updatePhysics);
+                return;
+              }
+            }
+
+            // 2. Look for a nearby line to step on and walk along
+            const walkLineData = findNearbyLineToWalk(x.get() + 16, y.get() + 42);
+            if (walkLineData && Math.random() < 0.5) {
+              physics.state = 'ON_LINE';
+              physics.activePath = walkLineData.path;
+              physics.pathProgress = walkLineData.targetProgress;
+              physics.direction = Math.random() > 0.5 ? 1 : -1;
+              physics.stateTimer = 0;
+              requestAnimationFrame(updatePhysics);
+              return;
+            }
+
+            const rand = Math.random();
             if (rand < 0.25) {
               // Action: Look around (Idle)
               physics.state = 'IDLE_LOOKING';
@@ -169,10 +409,11 @@ export default function DashboardPet() {
             } else if (rand < 0.55) {
               // Action: Jump to another container (restricting to adjacent tiers)
               const containers = Array.from(document.querySelectorAll('.pet-container-target')) as HTMLElement[];
+              const walkableContainers = containers.filter(c => !hasLines || c.tagName.toLowerCase() === 'header');
               
-              if (containers.length > 1) {
+              if (walkableContainers.length > 1) {
                 // Get absolute Y coordinate (vertical height) and bounding rect for all containers
-                const containerData = containers.map(c => {
+                const containerData = walkableContainers.map(c => {
                   const rect = c.getBoundingClientRect();
                   return {
                     element: c,
@@ -221,6 +462,8 @@ export default function DashboardPet() {
                       targetX: rect.left + window.scrollX + rect.width / 2 - 16,
                       targetY: rect.top + window.scrollY - petHeight,
                       targetContainer: targetItem.element,
+                      landOnLine: null,
+                      landOnLineEnd: 0
                     };
                   }
                 }
@@ -335,13 +578,29 @@ export default function DashboardPet() {
       }
 
       // Synchronize React state display hooks from physical loop without reading state variables
-      const isActuallyDangling = (y.get() < maxY) || physics.isDragging;
+      const isActuallyDangling = (y.get() < maxY) || physics.isDragging || physics.state === 'HANGING_ON_LINE';
+      setIsDangling(isActuallyDangling);
+
       if (physics.isDragging) {
         setEyeState('worried');
         setMouthState('worried');
+        setIsGazing(false);
+        setIsReaching(false);
+      } else if (physics.state === 'HANGING_ON_LINE') {
+        setEyeState('looking-up');
+        setMouthState('default');
+        setIsGazing(true);
+        setIsReaching(true);
       } else if (isActuallyDangling) {
         setEyeState('looking-up'); // looking down/up while falling
         setMouthState('worried');
+        setIsGazing(false);
+        setIsReaching(false);
+      } else if (physics.state !== 'GAZING') {
+        setEyeState('default');
+        setMouthState('default');
+        setIsGazing(false);
+        setIsReaching(false);
       }
 
       requestAnimationFrame(updatePhysics);
@@ -363,6 +622,7 @@ export default function DashboardPet() {
     physicsRef.current.state = 'WALKING';
     physicsRef.current.stateTimer = 0;
     physicsRef.current.targetContainer = null; // Clear landing target so we fall when dropped
+    physicsRef.current.activePath = null;
     setIsDangling(true);
     setIsGazing(false);
     setIsReaching(false);
