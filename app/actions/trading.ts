@@ -223,8 +223,8 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     
     // Read borrowing fields
     const borrowedAmount = portData.borrowedAmount !== undefined ? portData.borrowedAmount : 0;
-    const interestRate = portData.interestRate !== undefined ? portData.interestRate : 0.08;
-    const amountOwed = portData.amountOwed !== undefined ? portData.amountOwed : (borrowedAmount * (1 + interestRate));
+    const interestRate = portData.interestRate !== undefined ? portData.interestRate : (0.04 + (borrowedAmount / 10000) * 0.08);
+    const amountOwed = portData.amountOwed !== undefined ? portData.amountOwed : (borrowedAmount * Math.pow(1 + interestRate / 365, 365));
     const hasBorrowed = portData.hasBorrowed !== undefined ? portData.hasBorrowed : false;
     const monthlyInterest = (borrowedAmount * interestRate) / 12;
 
@@ -744,9 +744,12 @@ export async function initializePortfolio(strategy: 'tech_heavy' | 'index_follow
   }
 }
 
-export async function borrowMoney(amount: number, rate: number = 0.08) {
+export async function borrowMoney(amount: number, rateInput?: number) {
   const userId = await getAuthenticatedUserId();
   const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+
+  // Dynamic interest rate based on borrow amount (e.g. 4.8% at $1k, 8% at $5k, 12% at $10k)
+  const rate = rateInput !== undefined ? rateInput : (0.04 + (amount / 10000) * 0.08);
 
   try {
     await runTransaction(db, async (transaction) => {
@@ -763,11 +766,14 @@ export async function borrowMoney(amount: number, rate: number = 0.08) {
       const currentCash = Number(portData.cash ?? 10000);
       const newCash = safeAdd(currentCash, amount);
 
+      // Compound annually, divided daily: amount * (1 + rate / 365) ^ 365
+      const calculatedAmountOwed = amount * Math.pow(1 + rate / 365, 365);
+
       transaction.set(portfolioRef, {
         cash: newCash,
         borrowedAmount: amount,
         interestRate: rate,
-        amountOwed: amount * (1 + rate),
+        amountOwed: calculatedAmountOwed,
         hasBorrowed: true,
       }, { merge: true });
     });

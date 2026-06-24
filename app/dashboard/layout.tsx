@@ -9,6 +9,7 @@ import { Settings, LogOut, TreePine, X, ChevronLeft } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import DashboardPet from '@/components/DashboardPet';
 
 function TrilliumLogoMark() {
   return (
@@ -33,11 +34,13 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     numberFont,
     textFont,
     detailedTrophies,
+    showPets,
     isSettingsOpen,
     setTheme,
     setNumberFont,
     setTextFont,
     setDetailedTrophies,
+    setShowPets,
     setIsSettingsOpen,
   } = useSettings();
 
@@ -68,8 +71,8 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-[30%] right-[-10%] w-[40%] h-[50%] rounded-full bg-rose-900/10 blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 w-full md:max-w-[90%] lg:max-w-[80%] mx-auto px-4 pt-6">
-          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-700/50 shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] transition-all duration-300">
+        <div className="relative z-10 w-full mx-auto px-6 pt-6">
+          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-3xl bg-white/95 dark:bg-[#1a2133]/95 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-700/50 shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] transition-all duration-300 pet-container-target">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-3">
@@ -398,6 +401,24 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                         />
                       </button>
                     </div>
+
+                    {/* Button for Dashboard Pet Spawn/Despawn */}
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-white">Dashboard Pet</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Spawn or despawn a cute interactive pet on the dashboard</div>
+                      </div>
+                      <button
+                        onClick={() => setShowPets(!showPets)}
+                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-md ${
+                          showPets 
+                            ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-700/20' 
+                            : 'bg-emerald-600 hover:bg-emerald-505 text-white shadow-emerald-700/20'
+                        }`}
+                      >
+                        {showPets ? 'Despawn Pet' : 'Spawn Pet'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -414,6 +435,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
           </div>
         )}
 
+        {showPets && <DashboardPet />}
       </div>
     </ProtectedRoute>
   );

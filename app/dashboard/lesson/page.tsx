@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useSettings } from '@/context/SettingsContext';
 import { borrowMoney } from '@/app/actions/trading';
@@ -38,9 +39,20 @@ export default function LessonPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [recommendRefresh, setRecommendRefresh] = useState(false);
 
   useEffect(() => {
     fetchPortfolio();
+    if (typeof window !== 'undefined') {
+      const completedAt = localStorage.getItem('lesson_1_completed_at');
+      if (completedAt) {
+        const timeDiff = Date.now() - Number(completedAt);
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        if (timeDiff > sevenDays) {
+          setRecommendRefresh(true);
+        }
+      }
+    }
   }, [fetchPortfolio]);
 
   const hasAlreadyBorrowed = portfolio?.hasBorrowed || false;
@@ -100,13 +112,24 @@ export default function LessonPage() {
               Understand how loans work, what interest rates are, and how debt impacts a portfolio. You will get to test this by adding real borrowed cash into your active simulator portfolio!
             </p>
           </div>
-          <button
-            onClick={() => setIsStarted(!isStarted)}
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-2xl shadow-[0_4px_0_0_#1d4ed8] hover:bg-blue-500 active:translate-y-[2px] active:shadow-[0_2px_0_0_#1d4ed8] transition-all flex items-center justify-center gap-2 self-start md:self-center shrink-0"
-          >
-            {isStarted ? 'Hide Lesson' : 'Start Lesson'}
-            <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${isStarted ? 'rotate-90' : ''}`} />
-          </button>
+          <div className="flex flex-col items-center gap-1.5 shrink-0 self-start md:self-center">
+            {recommendRefresh && (
+              <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider animate-pulse">
+                Recommended Refresh
+              </span>
+            )}
+            <Link
+              href="/dashboard/lesson/debt-leverage"
+              className={`px-6 py-3 text-white font-semibold rounded-2xl transition-all flex items-center justify-center gap-2 ${
+                recommendRefresh
+                  ? 'bg-orange-500 hover:bg-orange-400 shadow-[0_4px_0_0_#c2410c] active:shadow-[0_2px_0_0_#c2410c] active:translate-y-[2px]'
+                  : 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_0_0_#1d4ed8] active:shadow-[0_2px_0_0_#1d4ed8] active:translate-y-[2px]'
+              }`}
+            >
+              Start Lesson
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
 
         {/* Start Popup/Collapsible Lesson Area */}

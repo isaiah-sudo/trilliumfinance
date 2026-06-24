@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame } from 'lucide-react';
@@ -10,6 +10,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
 import { AnimatedNumber } from '@/components/ui';
+import DashboardPet from '@/components/DashboardPet';
 
 
 interface TrophyCardProps {
@@ -27,6 +28,28 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const handlePetGaze = (e: Event) => {
+      const customE = e as CustomEvent;
+      if (customE.detail?.tilting) {
+        setIsHovered(true);
+        setCoords({ x: 14, y: -14 });
+      } else {
+        setIsHovered(false);
+        setCoords({ x: 0, y: 0 });
+      }
+    };
+
+    el.addEventListener('pet-gaze', handlePetGaze);
+    return () => {
+      el.removeEventListener('pet-gaze', handlePetGaze);
+    };
+  }, []);
 
   const getDifficulty = (tid: string): 'gem' | 'gold' | 'silver' | 'copper' => {
     if (difficulty) return difficulty;
@@ -129,11 +152,12 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
 
   return (
     <div
+      ref={cardRef}
       onClick={handleCardClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => { if (detailedTrophies) setIsHovered(true); }}
       onMouseLeave={handleMouseLeave}
-      className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden cursor-pointer select-none transition-[border-color,background-color,box-shadow,ring] duration-200 ${style.border} ${
+      className={`relative w-44 h-44 aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 overflow-hidden cursor-pointer select-none transition-[border-color,background-color,box-shadow,ring] duration-200 trophy-card-element ${style.border} ${
         isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-[0_0_25px_rgba(59,130,246,0.4)]' : ''
       }`}
       style={{
@@ -180,7 +204,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { numberFont } = useSettings();
+  const { numberFont, showPets } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
   
@@ -210,11 +234,17 @@ export default function DashboardPage() {
 
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+  const [borrowedAmountJustNow, setBorrowedAmountJustNow] = useState(0);
 
   useEffect(() => {
     const savedWidget = localStorage.getItem('dashboard_active_widget');
     if (savedWidget) {
       setActiveWidget(savedWidget);
+    }
+    const amt = localStorage.getItem('borrowed_just_now');
+    if (amt) {
+      setBorrowedAmountJustNow(Number(amt));
+      localStorage.removeItem('borrowed_just_now');
     }
   }, []);
 
@@ -377,7 +407,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl"
+        className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl pet-container-target relative"
       >
         <h2 className="text-teal-400 text-xl md:text-2xl font-extrabold tracking-tight mb-6">Financial Summary</h2>
         
@@ -388,7 +418,7 @@ export default function DashboardPage() {
               <div>
                 <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
                 <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
-                  <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} />
+                  <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
               
@@ -457,15 +487,15 @@ export default function DashboardPage() {
           {/* Lower Layer: Supporting Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Available Cash */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
               <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-                <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} />
+                <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} startOffset={borrowedAmountJustNow} />
               </div>
             </div>
 
             {/* Total Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
@@ -478,7 +508,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Day Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a]">
+            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
               <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
               <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                 {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
@@ -623,7 +653,7 @@ export default function DashboardPage() {
                   <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase text-right">Top Trophies</h3>
                 </div>
                 
-                <div className="flex flex-wrap gap-6 justify-center items-center mx-auto w-full">
+                <div className="flex flex-wrap gap-6 justify-center items-center mx-auto w-full pet-container-target">
                   {(() => {
                     if (selectedTrophyIds.length === 0) {
                       return (

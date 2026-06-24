@@ -10,11 +10,13 @@ interface SettingsContextProps {
   numberFont: FontType;
   textFont: FontType;
   detailedTrophies: boolean;
+  showPets: boolean;
   isSettingsOpen: boolean;
   setTheme: (theme: Theme) => void;
   setNumberFont: (font: FontType) => void;
   setTextFont: (font: FontType) => void;
   setDetailedTrophies: (val: boolean) => void;
+  setShowPets: (val: boolean) => void;
   setIsSettingsOpen: (val: boolean) => void;
 }
 
@@ -25,6 +27,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [numberFont, setNumberFontState] = useState<FontType>('sans');
   const [textFont, setTextFontState] = useState<FontType>('sans');
   const [detailedTrophies, setDetailedTrophiesState] = useState<boolean>(true);
+  const [showPets, setShowPetsState] = useState<boolean>(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
 
@@ -34,6 +37,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const savedNumFont = localStorage.getItem('settings_num_font') as FontType;
     const savedTxtFont = localStorage.getItem('settings_txt_font') as FontType;
     const savedDetailedTrophies = localStorage.getItem('settings_detailed_trophies');
+    const savedShowPets = localStorage.getItem('settings_show_pets');
 
     if (savedTheme) {
       setThemeState(savedTheme);
@@ -47,6 +51,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (savedTxtFont) setTextFontState(savedTxtFont);
     if (savedDetailedTrophies !== null) {
       setDetailedTrophiesState(savedDetailedTrophies === 'true');
+    }
+    if (savedShowPets !== null) {
+      setShowPetsState(savedShowPets === 'true');
     }
 
     setMounted(true);
@@ -83,6 +90,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('settings_detailed_trophies', String(v));
   };
 
+  const setShowPets = (v: boolean) => {
+    setShowPetsState(v);
+    localStorage.setItem('settings_show_pets', String(v));
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -90,11 +102,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         numberFont,
         textFont,
         detailedTrophies,
+        showPets,
         isSettingsOpen,
         setTheme,
         setNumberFont,
         setTextFont,
         setDetailedTrophies,
+        setShowPets,
         setIsSettingsOpen,
       }}
     >
