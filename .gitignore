@@ -261,3 +261,4 @@ firebase-service-account.backup.json
 .next/types/app/layout.ts
 .next/types/app/page.ts
 .next/types/cache-life.d.ts
+firebase-debug.log

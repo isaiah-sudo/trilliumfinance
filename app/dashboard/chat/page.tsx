@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, User, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/lib/firebase';
 
 interface Message {
   id: string;
@@ -62,7 +63,7 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim() || isThinking) return;
 
     const userMsgText = inputValue;
@@ -73,37 +74,52 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputValue('');
     setIsThinking(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      let aiText = '';
-      const textLower = userMsgText.toLowerCase();
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
 
-      if (textLower.includes('hello') || textLower.includes('hi') || textLower.includes('hey')) {
-        aiText = "Hello! How are you doing? I am ready to guide you through your trading practice today.";
-      } else if (textLower.includes('how are you')) {
-        aiText = "I'm doing fantastic! Ready to help you master the stock market. How are you doing today?";
-      } else if (textLower.includes('trade') || textLower.includes('stock') || textLower.includes('paper')) {
-        aiText = "Trillium Finance matches live market feeds with $100,000 in virtual cash so you can learn to invest in AAPL, MSFT, and indices with absolutely zero financial risk!";
-      } else if (textLower.includes('xp') || textLower.includes('streak') || textLower.includes('leaderboard')) {
-        aiText = "Completing daily check-ins and quests builds your streak! Climb the rankings leaderboard, unlock badges, and showcase your trading mastery to the community.";
-      } else {
-        aiText = "That sounds like a great question! Let's explore that topic by reviewing our Key Financial Literacy Pillars or testing your skills in the simulator.";
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken || ''}`,
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch AI response');
       }
 
+      const data = await response.json();
+      
       const aiMsg: Message = {
         id: Math.random().toString(),
         sender: 'ai',
-        text: aiText,
+        text: data.text || "I'm sorry, I couldn't process that response.",
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      console.error('Error fetching AI chat:', err);
+      const errorMsg: Message = {
+        id: Math.random().toString(),
+        sender: 'ai',
+        text: `Error: ${err.message || 'Could not connect to the AI assistant. Please try again.'}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsThinking(false);
-    }, 1500);
+    }
   };
 
   return (
