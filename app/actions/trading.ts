@@ -684,11 +684,62 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     return result;
   }
 
-  const resampled = resampleData(rawPoints, 78);
+  const targetCount = timeRange === '1D' ? 14 : 78;
+  const resampled = resampleData(rawPoints, targetCount);
+
+  // Fetch user achievements and unlocks
+  let achievementUnlocks: Record<string, number> = {};
+  try {
+    const { getUserAchievementUnlocks } = await import('./achievements');
+    achievementUnlocks = await getUserAchievementUnlocks(userId);
+  } catch (err) {
+    console.error('Failed to load achievement unlocks for graph:', err);
+  }
+
+  // Filter unlocks to only those that fall within the range of the resampled points
+  // Map them to the closest resampled point
+  const resampledWithMilestones = resampled.map(r => ({
+    ...r,
+    achievements: [] as any[]
+  }));
+
+  if (resampled.length > 0) {
+    const minTime = resampled[0].time;
+    const maxTime = resampled[resampled.length - 1].time;
+
+    const { ACHIEVEMENTS } = await import('./achievements');
+
+    Object.entries(achievementUnlocks).forEach(([id, unlockTime]) => {
+      if (unlockTime >= minTime && unlockTime <= maxTime) {
+        // Find closest point
+        let closestIdx = 0;
+        let minDiff = Math.abs(resampled[0].time - unlockTime);
+        for (let i = 1; i < resampled.length; i++) {
+          const diff = Math.abs(resampled[i].time - unlockTime);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestIdx = i;
+          }
+        }
+        
+        const achDetails = ACHIEVEMENTS.find(a => a.id === id);
+        if (achDetails) {
+          resampledWithMilestones[closestIdx].achievements.push(achDetails);
+        }
+      }
+    });
+  }
 
   return {
-    portfolio: resampled.map(r => ({ time: r.time, value: r.value })),
-    benchmark: resampled.map(r => ({ time: r.time, value: r.spyValue }))
+    portfolio: resampledWithMilestones.map(r => ({ 
+      time: r.time, 
+      value: r.value,
+      achievements: r.achievements 
+    })),
+    benchmark: resampledWithMilestones.map(r => ({ 
+      time: r.time, 
+      value: r.spyValue 
+    }))
   };
 }
 

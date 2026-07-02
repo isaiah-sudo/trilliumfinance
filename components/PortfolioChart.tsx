@@ -3,31 +3,36 @@
 import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
+  AreaChart,
+  Area,
   Line,
   XAxis,
   YAxis,
   Tooltip,
-  ReferenceLine
+  ReferenceLine,
+  CartesianGrid
 } from 'recharts';
 
 interface ChartPoint {
   time: number;
   value: number;
+  achievements?: any[];
 }
 
 interface PortfolioChartProps {
   data: { portfolio: ChartPoint[]; benchmark: ChartPoint[] };
   timeRange: '1D' | '1W' | '1M' | '1Y';
   onTimeRangeChange: (range: '1D' | '1W' | '1M' | '1Y') => void;
-  onHover?: (data: { portfolio: number; spy: number; time: number } | null) => void;
+  onHover?: (data: { portfolio: number; spy: number; time: number; achievements?: any[] } | null) => void;
+  onLookAchievement?: (achievementId: string) => void;
 }
 
 export default function PortfolioChart({
   data,
   timeRange,
   onTimeRangeChange,
-  onHover
+  onHover,
+  onLookAchievement
 }: PortfolioChartProps) {
   const [isHovering, setIsHovering] = useState(false);
 
@@ -39,17 +44,26 @@ export default function PortfolioChart({
     const pointsCount = Math.max(portfolio.length, benchmark.length);
     if (pointsCount === 0) return [];
 
+    const startPortfolioVal = portfolio[0]?.value ?? 0;
+    const startBenchmarkVal = benchmark[0]?.value ?? 0;
+
     const combined = [];
     for (let i = 0; i < pointsCount; i++) {
       const portPt = portfolio[i];
       const benchPt = benchmark[i];
       const time = portPt?.time || benchPt?.time || 0;
+      const rawSpy = benchPt?.value ?? 0;
+
+      // Scale SPY performance to start at the exact same dollar value as the portfolio
+      const spyValue = startBenchmarkVal > 0 
+        ? startPortfolioVal * (rawSpy / startBenchmarkVal)
+        : rawSpy;
 
       combined.push({
         index: i,
         time,
         portfolioValue: portPt?.value ?? 0,
-        spyValue: benchPt?.value ?? 0,
+        spyValue,
         // formatted date for tooltip/XAxis
         dateStr: new Date(time * 1000).toLocaleDateString('en-US', {
           timeZone: 'America/New_York',
@@ -57,7 +71,8 @@ export default function PortfolioChart({
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        })
+        }),
+        achievements: portPt?.achievements || []
       });
     }
 
@@ -101,7 +116,8 @@ export default function PortfolioChart({
         onHover({
           portfolio: activePoint.portfolioValue,
           spy: activePoint.spyValue,
-          time: activePoint.time
+          time: activePoint.time,
+          achievements: activePoint.achievements
         });
       }
     }
@@ -112,6 +128,51 @@ export default function PortfolioChart({
     if (onHover) {
       onHover(null);
     }
+  };
+
+  const formatXAxisTick = (time: number) => {
+    if (!time) return '';
+    const date = new Date(time * 1000);
+    if (timeRange === '1D') {
+      return date.toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const renderCustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (payload.achievements && payload.achievements.length > 0) {
+      return (
+        <g key={`milestone-dot-${payload.time}`} className="cursor-pointer">
+          <circle
+            cx={cx}
+            cy={cy}
+            r={7}
+            fill="#f59e0b" // Amber/gold
+            stroke="#0f172a"
+            strokeWidth={2}
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={3}
+            fill="#fff"
+            className="animate-ping"
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+          />
+        </g>
+      );
+    }
+    return null;
   };
 
   return (
@@ -141,24 +202,119 @@ export default function PortfolioChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <AreaChart
               data={chartData}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               margin={{ top: 10, right: 5, left: 5, bottom: 5 }}
             >
-              <XAxis dataKey="index" hide />
-              <YAxis domain={['auto', 'auto']} hide />
+              <defs>
+                <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={primaryColor} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={primaryColor} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#334155"
+                opacity={0.15}
+              />
+
+              <XAxis
+                dataKey="time"
+                stroke="#475569"
+                fontSize={10}
+                fontWeight="bold"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatXAxisTick}
+                dy={10}
+                minTickGap={25}
+              />
+
+              <YAxis
+                orientation="right"
+                domain={['auto', 'auto']}
+                stroke="#475569"
+                fontSize={10}
+                fontWeight="bold"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(val) => `$${val.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                dx={5}
+              />
               
               <Tooltip
                 trigger="hover"
-                content={() => null} // Hide default tooltip card
+                wrapperStyle={{ pointerEvents: 'auto' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-[#0f111a]/95 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.5)] flex flex-col gap-2 text-xs pointer-events-auto">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest border-b border-slate-800/80 pb-1.5 mb-0.5">
+                          {data.dateStr} EST
+                        </p>
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(45,212,191,0.6)]" style={{ backgroundColor: primaryColor }} />
+                            <span className="font-extrabold text-slate-300">Portfolio</span>
+                          </div>
+                          <span className="font-black" style={{ color: primaryColor }}>
+                            ${data.portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                            <span className="font-extrabold text-slate-400">SPY (S&P 500)</span>
+                          </div>
+                          <span className="font-bold text-slate-300">
+                            ${data.spyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {data.achievements && data.achievements.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-col gap-1.5 pointer-events-auto">
+                            <p className="text-amber-400 font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                              🏆 Earned {data.achievements[0].title}
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                if (onLookAchievement) {
+                                  onLookAchievement(data.achievements[0].id);
+                                }
+                              }}
+                              className="w-full py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#0f111a] font-extrabold transition-all duration-150 uppercase tracking-wider text-[9px] pointer-events-auto cursor-pointer flex items-center justify-center"
+                            >
+                              Look
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
                 cursor={{
                   stroke: '#475569',
                   strokeWidth: 1.5,
                   strokeDasharray: '4 4'
                 }}
               />
+
+              {chartData.length > 0 && (
+                <ReferenceLine
+                  y={chartData[0].portfolioValue}
+                  stroke="#475569"
+                  strokeDasharray="3 3"
+                  strokeWidth={1}
+                  opacity={0.35}
+                />
+              )}
 
               {/* SPY Benchmark Line */}
               <Line
@@ -172,13 +328,15 @@ export default function PortfolioChart({
                 opacity={0.4}
               />
 
-              {/* Portfolio Value Line */}
-              <Line
+              {/* Portfolio Value Area */}
+              <Area
                 type="monotone"
                 dataKey="portfolioValue"
                 stroke={primaryColor}
                 strokeWidth={2.5}
-                dot={false}
+                fillOpacity={1}
+                fill="url(#colorPortfolio)"
+                dot={renderCustomDot}
                 activeDot={
                   isHovering
                     ? {
@@ -190,7 +348,7 @@ export default function PortfolioChart({
                     : false
                 }
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         )}
       </div>

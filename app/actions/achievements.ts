@@ -111,9 +111,74 @@ export async function checkAndUnlockAchievements(userId: string) {
 
     // Save if any new achievements
     if (newAchievements.length > 0) {
-      await setDoc(userRef, { achievements: [...currentAchievements, ...newAchievements] }, { merge: true });
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const newUnlocks: Record<string, number> = {};
+      newAchievements.forEach(id => {
+        newUnlocks[id] = nowSeconds;
+      });
+      const existingUnlocks = data?.achievementUnlocks || {};
+      await setDoc(userRef, { 
+        achievements: [...currentAchievements, ...newAchievements],
+        achievementUnlocks: { ...existingUnlocks, ...newUnlocks }
+      }, { merge: true });
     }
   } catch (error) {
     console.error('Error checking achievements:', error);
+  }
+}
+
+export async function getUserAchievementUnlocks(userId?: string): Promise<Record<string, number>> {
+  try {
+    let uid = userId;
+    if (!uid) {
+      if (auth.currentUser) {
+        uid = auth.currentUser.uid;
+      } else {
+        return {};
+      }
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (!userDoc.exists()) {
+      return {};
+    }
+
+    const data = userDoc.data();
+    const achievements: string[] = data?.achievements || [];
+    const dbUnlocks: Record<string, number> = data?.achievementUnlocks || {};
+    
+    const unlocks: Record<string, number> = { ...dbUnlocks };
+    
+    // Let's get the user's first transaction or use a default date (e.g. 5 days ago)
+    let baseTime = Math.floor(Date.now() / 1000) - 5 * 24 * 3600; // 5 days ago
+    try {
+      const portfolioHistorySnap = await getDocs(collection(db, 'users', uid, 'portfolio_history'));
+      if (!portfolioHistorySnap.empty) {
+        let oldestTime = Date.now();
+        portfolioHistorySnap.docs.forEach(doc => {
+          const t = doc.data().timestamp;
+          if (t) {
+            const ms = t.toDate().getTime();
+            if (ms < oldestTime) oldestTime = ms;
+          }
+        });
+        baseTime = Math.floor(oldestTime / 1000);
+      }
+    } catch (e) {
+      console.error('Error finding oldest transaction for achievements:', e);
+    }
+
+    // Assign fallback dates for achievements that don't have one in DB
+    achievements.forEach((id, index) => {
+      if (!unlocks[id]) {
+        // Space them out by 6 hours starting from baseTime
+        unlocks[id] = baseTime + index * 6 * 3600;
+      }
+    });
+
+    return unlocks;
+  } catch (error) {
+    console.error('Error fetching achievement unlocks:', error);
+    return {};
   }
 }

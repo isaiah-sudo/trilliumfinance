@@ -38,7 +38,7 @@ async function fetchFinnhubQuote(symbol: string): Promise<number> {
  * Timezone: America/New_York
  */
 export const capturePortfolioSnapshots = functions.pubsub
-  .schedule('*/5 * * * 1-5')
+  .schedule('*/30 * * * 1-5')
   .timeZone('America/New_York')
   .onRun(async (context) => {
     // 1. Guard clause: Ensure execution is within trading hours (9:30 AM to 4:00 PM EST)

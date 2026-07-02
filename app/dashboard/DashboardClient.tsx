@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame } from 'lucide-react';
@@ -153,6 +153,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   return (
     <div
       ref={cardRef}
+      id={`trophy-card-${id}`}
       onClick={handleCardClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => { if (detailedTrophies) setIsHovered(true); }}
@@ -224,7 +225,52 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
-  const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number } | null>(null);
+  const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
+
+  const activePerformance = useMemo(() => {
+    if (timeRange === '1D') {
+      return {
+        usd: portfolio?.dayPerformanceUSD ?? 0,
+        percent: portfolio?.dayPerformancePercent ?? 0,
+        label: 'Today'
+      };
+    }
+    
+    const chartPortfolio = chartData?.portfolio || [];
+    if (chartPortfolio.length < 2) {
+      return { usd: 0, percent: 0, label: timeRange };
+    }
+    
+    const startVal = chartPortfolio[0].value;
+    const endVal = chartPortfolio[chartPortfolio.length - 1].value;
+    const usd = endVal - startVal;
+    const percent = startVal > 0 ? (usd / startVal) * 100 : 0;
+    
+    const labelMap = {
+      '1W': 'Past Week',
+      '1M': 'Past Month',
+      '1Y': 'Past Year'
+    };
+    
+    return {
+      usd,
+      percent,
+      label: labelMap[timeRange] || timeRange
+    };
+  }, [timeRange, chartData, portfolio]);
+
+  const handleLookAchievement = (achievementId: string) => {
+    setShowDetails(true);
+    setTimeout(() => {
+      const targetId = `trophy-card-${achievementId}`;
+      const element = document.getElementById(targetId) || document.getElementById('trophy-showcase-section');
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element?.classList.add('ring-4', 'ring-amber-400', 'duration-500');
+      setTimeout(() => {
+        element?.classList.remove('ring-4', 'ring-amber-400');
+      }, 2000);
+    }, 100);
+  };
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
@@ -301,6 +347,15 @@ export default function DashboardPage() {
       }
     };
     loadGraph();
+
+    let intervalId: NodeJS.Timeout | undefined;
+    if (timeRange === '1D') {
+      intervalId = setInterval(loadGraph, 30 * 60 * 1000); // 30 minutes
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [user, timeRange]);
 
   useEffect(() => {
@@ -706,24 +761,42 @@ export default function DashboardPage() {
 
         <div className="mb-8">
           {hoveredData ? (
-            <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-              <div className="flex items-baseline gap-4">
-                <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-                  ${hoveredData.portfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-4">
+                  <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+                    ${hoveredData.portfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-sm font-semibold text-slate-400">
+                    SPY: ${hoveredData.spy.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
                 </div>
-                <div className="text-sm font-semibold text-slate-400">
-                  SPY: ${hoveredData.spy.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <div className="text-xs text-teal-400 font-extrabold tracking-widest uppercase">
+                  {new Date(hoveredData.time * 1000).toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })} EST
                 </div>
               </div>
-              <div className="text-xs text-teal-400 font-extrabold tracking-widest uppercase">
-                {new Date(hoveredData.time * 1000).toLocaleString('en-US', {
-                  timeZone: 'America/New_York',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })} EST
-              </div>
+              
+              {/* Achievement Milestone banner */}
+              {hoveredData.achievements && hoveredData.achievements.length > 0 && (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-400 font-bold animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <span>🏆</span>
+                    <span>Earned {hoveredData.achievements[0].title} Achievement!</span>
+                  </div>
+                  <button
+                    onClick={() => handleLookAchievement(hoveredData.achievements![0].id)}
+                    className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#0f111a] font-extrabold transition-colors shadow-lg uppercase tracking-wider text-[10px] cursor-pointer pointer-events-auto"
+                  >
+                    Look
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -731,13 +804,16 @@ export default function DashboardPage() {
                 <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={marketValue} formatter={formatNumberNoCurrency} />
                 </div>
-                <div className={`text-[13px] font-bold font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                  {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-                  <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
+                <div className={`text-[13px] font-bold font-num-${numberFont} ${activePerformance.usd >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  {activePerformance.usd >= 0 ? '+' : ''}
+                  <AnimatedNumber value={activePerformance.usd} formatter={formatNumberNoCurrency} />
                   <span> (</span>
-                  {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
-                  <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+                  {activePerformance.percent >= 0 ? '+' : ''}
+                  <AnimatedNumber value={activePerformance.percent} formatter={formatPercent} />
                   <span>)</span>
+                  <span className="text-slate-500 ml-1.5 font-semibold text-[11px] uppercase tracking-wider">
+                    {activePerformance.label}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">
@@ -758,6 +834,7 @@ export default function DashboardPage() {
             timeRange={timeRange} 
             onTimeRangeChange={setTimeRange}
             onHover={setHoveredData}
+            onLookAchievement={handleLookAchievement}
           />
         </div>
       </motion.div>
