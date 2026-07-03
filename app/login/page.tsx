@@ -113,7 +113,7 @@ export default function LoginPage() {
       <div className="hidden lg:block absolute left-3/4 top-[7.5vh] h-[85vh] w-[1px] bg-slate-200 dark:bg-slate-800 -translate-x-1/2 z-20 pointer-events-none" />
 
       {/* Right Side: Sign In Form (taking up 25% on desktop, full height) */}
-      <div className="flex w-full flex-col justify-center p-8 pt-20 lg:p-12 lg:w-1/4 bg-white dark:bg-slate-900/60 z-10 min-h-screen">
+      <div className="flex w-full flex-col justify-center p-8 pt-20 lg:p-12 lg:w-1/4 bg-white/95 dark:bg-[#121622]/90 border-l border-slate-200 dark:border-slate-800/80 backdrop-blur-md z-10 min-h-screen shadow-2xl">
         <div className="w-full">
           {/* Mobile-only compact flower visualization */}
           <div className="mb-6 block h-44 w-full overflow-hidden rounded-3xl lg:hidden shadow-lg border border-slate-200 dark:border-slate-800">
@@ -123,7 +123,7 @@ export default function LoginPage() {
           <h2 className="mb-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Sign In
           </h2>
-          <p className="mb-8 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mb-8 text-sm text-slate-500 dark:text-slate-400 font-medium">
             Enter your details to access your trillium dashboard.
           </p>
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 required
                 block
-                className="bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700/60"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
               />
             </div>
             
@@ -163,21 +163,21 @@ export default function LoginPage() {
                 block
                 onFocus={() => setIsPasswordFocused(true)}
                 onBlur={() => setIsPasswordFocused(false)}
-                className="bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700/60"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
               />
             </div>
 
-            <Button type="submit" loading={loading} block className="py-2.5 bg-blue-600 hover:bg-blue-500 transition-colors shadow-lg">
+            <Button type="submit" loading={loading} block className="py-3 bg-blue-600 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/15">
               Sign In
             </Button>
           </form>
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+              <span className="w-full border-t border-slate-200 dark:border-slate-800/60" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-3 text-slate-400 dark:bg-slate-900">
+              <span className="bg-white dark:bg-[#121622] px-3 text-slate-400 font-extrabold tracking-wider">
                 Or continue with
               </span>
             </div>
@@ -188,7 +188,7 @@ export default function LoginPage() {
             onClick={handleGoogleLogin}
             loading={loading}
             block
-            className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 dark:border-slate-700/60"
+            className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path

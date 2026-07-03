@@ -31,3 +31,107 @@ html.dark {
   font-variant-numeric: tabular-nums;
 }
 
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.6);
+}
+
+/* Scrollbar support for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(51, 65, 85, 0.4) transparent;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-panel {
+  background: rgba(26, 33, 51, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.5); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Premium Focus Rings */
+.premium-focus:focus-within {
+  border-color: rgba(59, 130, 246, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  outline: none;
+}
+
+/* Background Dim Glow Animation */
+@keyframes bg-glow-pulse {
+  0%, 100% { opacity: 0.02; transform: scale(1) translate(0px, 0px); }
+  50% { opacity: 0.05; transform: scale(1.08) translate(10px, -10px); }
+}
+
+.animate-bg-glow {
+  animation: bg-glow-pulse 16s ease-in-out infinite;
+}
+
+/* Click Ring Pulse Animation */
+@keyframes ring-pulse-anim {
+  0% {
+    box-shadow: 0 0 0 0px var(--pulse-ring-color, rgba(59, 130, 246, 0.6));
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.ring-pulse-active {
+  animation: ring-pulse-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+
+

@@ -19,9 +19,11 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  * Reusable button component that mirrors the legacy Trillium UI styles.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', block = false, size = 'md', loading = false, disabled, children, ...props }, ref) => {
+  ({ className, variant = 'primary', block = false, size = 'md', loading = false, disabled, children, onMouseDown, ...props }, ref) => {
+    const [isPulsing, setIsPulsing] = React.useState(false);
+
     const baseClasses =
-      'inline-flex items-center justify-center rounded-xl font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
+      'inline-flex items-center justify-center rounded-xl font-bold transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] focus:outline-none disabled:opacity-50 disabled:pointer-events-none disabled:transform-none';
 
     const variantClasses = {
       primary: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 shadow-sm shadow-blue-500/20',
@@ -37,11 +39,29 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const widthClass = block ? 'w-full' : '';
 
+    const pulseColor = variant === 'primary' 
+      ? 'rgba(59, 130, 246, 0.6)' 
+      : variant === 'danger' 
+      ? 'rgba(239, 68, 68, 0.6)' 
+      : 'rgba(148, 163, 184, 0.6)';
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+      setIsPulsing(false);
+      // Wait for React to render and trigger pulse
+      requestAnimationFrame(() => {
+        setIsPulsing(true);
+      });
+      if (onMouseDown) onMouseDown(e);
+    };
+
     return (
       <button
         ref={ref}
-        className={clsx(baseClasses, variantClasses, sizeClasses, widthClass, className)}
+        className={clsx(baseClasses, variantClasses, sizeClasses, widthClass, isPulsing && 'ring-pulse-active', className)}
         disabled={disabled || loading}
+        onMouseDown={handleMouseDown}
+        onAnimationEnd={() => setIsPulsing(false)}
+        style={{ '--pulse-ring-color': pulseColor } as React.CSSProperties}
         {...props}
       >
         {loading ? (

@@ -208,6 +208,13 @@ export default function DashboardPage() {
   const { numberFont, showPets } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
+
+  const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const target = e.currentTarget;
+    target.classList.remove('ring-pulse-active');
+    void target.offsetWidth;
+    target.classList.add('ring-pulse-active');
+  };
   
   const { 
     portfolio, 
@@ -457,22 +464,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 relative">
-      {/* Financial Summary Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl pet-container-target relative"
+        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl pet-container-target relative"
       >
-        <h2 className="text-teal-400 text-xl md:text-2xl font-extrabold tracking-tight mb-6">Financial Summary</h2>
+        <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight mb-6">Portfolio</h2>
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1e293b]/40 to-[#0f172a]/20 border border-slate-700/30 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] transition-all duration-300">
+          <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-                <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight font-num-${numberFont}`}>
+                <div className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
+                <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
@@ -480,7 +486,9 @@ export default function DashboardPage() {
               {/* Toggle details arrow in the middle of the container */}
               <button
                 onClick={() => setIsNetWorthExpanded(!isNetWorthExpanded)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-700/50 transition-all hover:scale-105 active:scale-95 shadow-md shrink-0"
+                onMouseDown={handlePulse}
+                style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.4)' } as React.CSSProperties}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-700/50 transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-md shrink-0"
                 title="Toggle Borrowing Details"
               >
                 {isNetWorthExpanded ? (
@@ -499,36 +507,36 @@ export default function DashboardPage() {
                   animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
                   exit={{ height: 0, opacity: 0, marginTop: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="overflow-hidden border-t border-slate-700/30 pt-4"
+                  className="overflow-hidden border-t border-slate-200 dark:border-slate-800/50 pt-4"
                 >
                   <div className="grid grid-cols-2 gap-6">
                     {/* Left Column: Borrowed Money & Interest Rate */}
                     <div className="space-y-4">
                       <div>
-                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Borrowed Money</div>
-                        <div className={`text-lg md:text-xl font-black text-white tracking-tight font-num-${numberFont}`}>
+                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Borrowed Money</div>
+                        <div className={`text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                           ${(portfolio.borrowedAmount || 0).toLocaleString()}
                         </div>
                       </div>
                       <div>
-                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Interest Rate on Borrowed Money</div>
-                        <div className={`text-xs md:text-sm font-extrabold text-amber-500 font-num-${numberFont}`}>
+                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Interest Rate on Borrowed Money</div>
+                        <div className={`text-xs md:text-sm font-extrabold text-amber-650 dark:text-amber-500 font-num-${numberFont}`}>
                           {((portfolio.interestRate || 0.08) * 100).toFixed(2)}%
                         </div>
                       </div>
                     </div>
 
                     {/* Right Column: Amount Owed & Amount Added Per Month */}
-                    <div className="space-y-4 border-l border-slate-700/20 pl-6">
+                    <div className="space-y-4 border-l border-slate-200 dark:border-slate-800/30 pl-6">
                       <div>
-                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Owed</div>
-                        <div className={`text-lg md:text-xl font-black text-white tracking-tight font-num-${numberFont}`}>
+                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Owed</div>
+                        <div className={`text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                           ${(portfolio.amountOwed || 0).toLocaleString()}
                         </div>
                       </div>
                       <div>
-                        <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Added Per Month</div>
-                        <div className={`text-xs md:text-sm font-extrabold text-amber-500 font-num-${numberFont}`}>
+                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Added Per Month</div>
+                        <div className={`text-xs md:text-sm font-extrabold text-amber-650 dark:text-amber-500 font-num-${numberFont}`}>
                           ${(portfolio.monthlyInterest || 0).toFixed(2)}
                         </div>
                       </div>
@@ -539,48 +547,54 @@ export default function DashboardPage() {
             </AnimatePresence>
           </div>
 
-          {/* Lower Layer: Supporting Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Available Cash */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
-              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
-              <div className={`text-xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-                <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} startOffset={borrowedAmountJustNow} />
+          {/* Combined Supporting Stats Container */}
+          <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800/30">
+              {/* Available Cash */}
+              <div className="pb-4 md:pb-0 md:pr-6">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
+                <div className={`text-2xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
+                  <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} startOffset={borrowedAmountJustNow} />
+                </div>
               </div>
-            </div>
 
-            {/* Total Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
-              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
-              <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatNumberNoCurrency} />
+              {/* Total Performance */}
+              <div className="py-4 md:py-0 md:px-6">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
+                <div className="flex flex-col">
+                  <div className={`text-2xl font-black tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                    {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
+                    <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatNumberNoCurrency} />
+                  </div>
+                  <div className={`text-[11px] font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                    {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
+                    <AnimatedNumber value={portfolio.totalPerformancePercent} formatter={formatPercent} />
+                  </div>
+                </div>
               </div>
-              <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.totalPerformancePercent} formatter={formatPercent} />
-              </div>
-            </div>
 
-            {/* Day Performance */}
-            <div className="p-4 rounded-xl bg-[#1e293b]/30 border border-slate-700/20 shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#0f111a] pet-container-target relative">
-              <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
-              <div className={`text-xl font-extrabold tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
-              </div>
-              <div className={`text-[11px] font-bold text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
-                <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+              {/* Day Performance */}
+              <div className="pt-4 md:pt-0 md:pl-6">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
+                <div className="flex flex-col">
+                  <div className={`text-2xl font-black tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                    {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
+                    <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
+                  </div>
+                  <div className={`text-[11px] font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                    {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
+                    <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 pt-4 border-t border-slate-700/50 flex justify-center">
+        <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800/50 flex justify-center">
           <button 
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 tracking-widest uppercase transition-colors"
+            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-300 tracking-widest uppercase transition-colors"
           >
             {showDetails ? 'Hide Details' : 'Show XP & Trophies'} 
             {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -593,19 +607,19 @@ export default function DashboardPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 p-6 rounded-2xl bg-[#1e293b]/50 border border-slate-700/50 flex flex-col md:flex-row gap-8 overflow-hidden"
+              className="mt-6 p-6 rounded-xl bg-slate-50/30 dark:bg-[#1e293b]/10 border border-slate-200 dark:border-slate-800/60 flex flex-col md:flex-row gap-8 overflow-hidden"
             >
               {/* Left Side: Experience */}
               <div className="flex-1">
-                <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-4">Your Experience</h3>
+                <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase mb-4">Your Experience</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className={`text-4xl font-extrabold text-blue-500 font-num-${numberFont}`}>
                     <AnimatedNumber value={xp} formatter={(val) => Math.round(val).toString()} />
                   </span>
-                  <span className="text-sm font-bold text-slate-400">XP</span>
+                  <span className="text-sm font-bold text-slate-400 font-txt-sans">XP</span>
                 </div>
                 
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-300 mb-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2">
                   <div className="flex items-center gap-1.5">
                     <TreePine className="h-4 w-4 text-green-500" />
                     <span>{levelInfo?.name || 'Novice'}</span>
@@ -614,7 +628,7 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Progress Bar */}
-                <div className="group/xpbar relative w-full h-1.5 hover:h-5 rounded-full bg-slate-800 cursor-pointer overflow-hidden transition-all duration-350 flex items-center justify-center">
+                <div className="group/xpbar relative w-full h-1.5 hover:h-5 rounded-full bg-slate-200 dark:bg-slate-800 cursor-pointer overflow-hidden transition-all duration-350 flex items-center justify-center">
                    <div className="absolute left-0 top-0 h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-350" style={{ width: `${levelInfo?.progress || 0}%` }} />
                    <span className="relative z-10 text-[9px] font-black text-white opacity-0 group-hover/xpbar:opacity-100 transition-opacity duration-300 tracking-wider">
                      {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
@@ -625,11 +639,11 @@ export default function DashboardPage() {
                 <div className="mt-6">
                   <h4 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-2">Custom Widget</h4>
                   {activeWidget === 'streak' ? (
-                    <div className="relative w-full p-4 rounded-xl bg-[#0f111a]/60 border border-slate-700/40 shadow-inner flex flex-col justify-center min-h-[90px]">
+                    <div className="relative w-full p-4 rounded-xl bg-slate-100/50 dark:bg-[#0f111a]/60 border border-slate-200 dark:border-slate-800/50 shadow-inner flex flex-col justify-center min-h-[90px]">
                       {/* Mini X Button in Top Right */}
                       <button 
                         onClick={() => setWidgetModalOpen(true)}
-                        className="absolute top-2.5 right-2.5 text-slate-500 hover:text-white transition-colors"
+                        className="absolute top-2.5 right-2.5 text-slate-550 hover:text-slate-800 dark:text-slate-500 dark:hover:text-white transition-colors"
                         title="Change widget"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -638,13 +652,13 @@ export default function DashboardPage() {
                       {/* Streak Map Content */}
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">
                             Login Streak Map: {streakCount} Days
                           </span>
                         </div>
                         <div className="relative w-full flex items-center justify-between h-8 px-2 mt-1">
                           {/* Dotted line */}
-                          <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-700 h-0" />
+                          <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-800 h-0" />
                           
                           {/* Filled green line */}
                           {streakCount > 1 && (
@@ -668,7 +682,7 @@ export default function DashboardPage() {
                                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all duration-350 border-2 ${
                                     isDone 
                                       ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
-                                      : 'bg-slate-800 border-slate-700 text-slate-500'
+                                      : 'bg-slate-150 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
                                   }`}
                                 >
                                   {isMilestone ? '👑' : day}
@@ -685,11 +699,13 @@ export default function DashboardPage() {
                   ) : (
                     <button 
                       onClick={() => setWidgetModalOpen(true)}
-                      className="w-full h-[90px] rounded-xl border border-dashed border-slate-700 hover:border-slate-500 bg-[#0f111a]/20 hover:bg-[#0f111a]/40 transition-all duration-300 flex items-center justify-center group"
+                      onMouseDown={handlePulse}
+                      style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.3)' } as React.CSSProperties}
+                      className="w-full h-[90px] rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-450 dark:hover:border-slate-600 bg-slate-50/20 dark:bg-[#0f111a]/20 hover:bg-slate-100/40 dark:hover:bg-[#0f111a]/40 hover:-translate-y-[0.5px] hover:scale-[1.01] active:scale-[0.99] active:translate-y-[0.5px] transition-all duration-300 flex items-center justify-center group"
                     >
                       <div className="flex flex-col items-center justify-center gap-1">
                         <span className="text-2xl text-slate-500 group-hover:text-blue-500 transition-colors group-hover:scale-110 duration-300">+</span>
-                        <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-300 transition-colors uppercase tracking-wider">Add Widget</span>
+                        <span className="text-[10px] font-bold text-slate-550 group-hover:text-slate-350 transition-colors uppercase tracking-wider">Add Widget</span>
                       </div>
                     </button>
                   )}
@@ -697,15 +713,17 @@ export default function DashboardPage() {
               </div>
 
               {/* Right Side: Top Trophies */}
-              <div className="flex-[2] md:pl-8 md:border-l border-slate-700/50 mt-8 md:mt-0 flex flex-col">
+              <div className="flex-[2] md:pl-8 md:border-l border-slate-200 dark:border-slate-800/50 mt-8 md:mt-0 flex flex-col">
                 <div className="flex justify-between items-center mb-6 w-full">
                   <button 
                     onClick={() => setCustomizerOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-[10px] font-extrabold text-slate-300 hover:text-white hover:border-slate-500 transition-all shadow-inner uppercase tracking-wider"
+                    onMouseDown={handlePulse}
+                    style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.4)' } as React.CSSProperties}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-[10px] font-extrabold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-450 dark:hover:border-slate-500 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] transition-all duration-200 shadow-inner uppercase tracking-wider"
                   >
                     ⚙️ Customize Trophies
                   </button>
-                  <h3 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase text-right">Top Trophies</h3>
+                  <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase text-right">Top Trophies</h3>
                 </div>
                 
                 <div className="flex flex-wrap gap-6 justify-center items-center mx-auto w-full pet-container-target">
@@ -743,16 +761,16 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl"
+        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl"
       >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div className="flex items-center gap-4">
-            <h2 className="text-slate-400 text-[11px] font-bold tracking-widest uppercase">Market Value</h2>
+            <h2 className="text-slate-550 dark:text-slate-400 text-[11px] font-bold tracking-widest uppercase">Market Value</h2>
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#0f111a] border border-slate-700/50 text-[10px] font-bold text-slate-300 shadow-inner">
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0f111a] border border-slate-200 dark:border-slate-800/50 text-[10px] font-bold text-slate-600 dark:text-slate-300 shadow-inner">
                 <Lock className="h-3 w-3" /> Live Market
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-[#0f111a] border border-slate-700/50 text-[10px] font-bold text-slate-300 shadow-inner">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0f111a] border border-slate-200 dark:border-slate-800/50 text-[10px] font-bold text-slate-600 dark:text-slate-300 shadow-inner">
                 vs SPY
               </span>
             </div>
@@ -764,7 +782,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-4">
-                  <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
+                  <div className={`text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                     ${hoveredData.portfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <div className="text-sm font-semibold text-slate-400">
@@ -844,13 +862,15 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-2xl"
+        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-white text-lg font-bold tracking-tight">Holdings Breakdown</h2>
+          <h2 className="text-slate-900 dark:text-white text-lg font-bold tracking-tight">Holdings Breakdown</h2>
           <button 
             onClick={() => setTradeModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+            onMouseDown={handlePulse}
+            style={{ '--pulse-ring-color': 'rgba(59, 130, 246, 0.4)' } as React.CSSProperties}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-lg shadow-blue-500/20"
           >
             + Buy Stocks
           </button>
@@ -858,7 +878,7 @@ export default function DashboardPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-semibold whitespace-nowrap">
-            <thead className="text-slate-500 border-b border-slate-700/50">
+            <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Symbol</th>
                 <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px]">Name</th>
@@ -869,22 +889,22 @@ export default function DashboardPage() {
                 <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>P/L %</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/30 text-slate-300">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-350">
               {!Array.isArray(portfolio.holdings) || portfolio.holdings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500">No holdings yet. Start trading!</td>
+                  <td colSpan={7} className="py-8 text-center text-slate-400 dark:text-slate-500">No holdings yet. Start trading!</td>
                 </tr>
               ) : portfolio.holdings.map((h: any) => (
-                <tr key={h.symbol} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-4 pr-4 text-blue-400 font-bold">{h.symbol}</td>
+                <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="py-4 pr-4 text-blue-600 dark:text-blue-400 font-bold">{h.symbol}</td>
                   <td className="py-4 px-4">{h.name}</td>
                   <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{h.qty}</td>
                   <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{formatNumberNoCurrency(h.avgPrice)}</td>
-                  <td className={`py-4 px-4 text-right text-white font-bold font-num-${numberFont}`}>{formatNumberNoCurrency(h.marketValue)}</td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  <td className={`py-4 px-4 text-right text-slate-900 dark:text-white font-bold font-num-${numberFont}`}>{formatNumberNoCurrency(h.marketValue)}</td>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     {h.dayPl >= 0 ? '+' : ''}{formatNumberNoCurrency(h.dayPl)}
                   </td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.plPercent >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.plPercent >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     {h.plPercent >= 0 ? '+' : ''}{formatPercent(h.plPercent)}
                   </td>
                 </tr>
@@ -902,16 +922,16 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-6"
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-6 backdrop-blur-xl"
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-white font-extrabold text-xl tracking-tight">Curate Your Trophy Showcase</h3>
-                  <p className="text-slate-400 text-xs mt-1">Select up to 3 unlocked trophies to showcase prominently on your dashboard profile.</p>
+                  <h3 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Curate Your Trophy Showcase</h3>
+                  <p className="text-slate-505 dark:text-slate-400 text-xs mt-1">Select up to 3 unlocked trophies to showcase prominently on your dashboard profile.</p>
                 </div>
                 <button 
                   onClick={() => setCustomizerOpen(false)} 
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -919,8 +939,8 @@ export default function DashboardPage() {
 
               {/* Selected Top Trophies Showcase */}
               <div>
-                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
-                <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-2xl bg-[#0f111a]/50 border border-slate-800 shadow-inner">
+                <h4 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
+                <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/50 border border-slate-200 dark:border-slate-800/80 shadow-inner">
                   {selectedTrophyIds.length === 0 ? (
                     <div className="flex items-center justify-center text-slate-500 text-xs italic py-12 w-full">No trophies selected. Select from below to populate.</div>
                   ) : (
@@ -949,14 +969,16 @@ export default function DashboardPage() {
               {/* Styled Separating Line */}
               <div className="relative py-2 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-700/50"></div>
+                  <div className="w-full border-t border-slate-200 dark:border-slate-800/50"></div>
                 </div>
-                <span className="relative bg-[#1a2133] px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <span className="relative bg-white dark:bg-[#121622] px-4 text-[10px] font-bold text-slate-550 dark:text-slate-500 uppercase tracking-widest">
                   Available Unlocked Trophies
                 </span>
-              </div>              {/* Unlocked Trophies Selection */}
+              </div>
+
+              {/* Unlocked Trophies Selection */}
               <div>
-                <div className="flex flex-wrap gap-6 justify-center p-4 rounded-2xl bg-[#0f111a]/30 border border-slate-800/30">
+                <div className="flex flex-wrap gap-6 justify-center p-4 rounded-xl bg-slate-50/30 dark:bg-[#0f111a]/30 border border-slate-200/50 dark:border-slate-800/30">
                   {(() => {
                     const unlockedOnly = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
                     if (unlockedOnly.length === 0) {
@@ -1001,14 +1023,14 @@ export default function DashboardPage() {
                           case 'DIAMOND_HANDS':
                           case 'COMMUNITY_LEADER':
                           case 'BEAR_SURVIVOR':
-                            return 'text-slate-300 font-semibold';
+                            return 'text-slate-350 font-semibold';
                           default:
                             return 'text-orange-500 font-medium';
                         }
                       };
 
                       return (
-                        <div key={`unlocked-${trophy.id}`} className="flex flex-col items-center gap-2 p-2 bg-[#1e293b]/20 border border-slate-800/30 rounded-2xl hover:bg-[#1e293b]/40 transition-colors duration-200">
+                        <div key={`unlocked-${trophy.id}`} className="flex flex-col items-center gap-2 p-2 bg-slate-50/20 dark:bg-[#1e293b]/20 border border-slate-200 dark:border-slate-800/30 rounded-xl hover:bg-slate-100/30 dark:hover:bg-[#1e293b]/40 transition-colors duration-200">
                           <TrophyCard
                             id={trophy.id}
                             title={trophy.title}
@@ -1053,34 +1075,34 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl backdrop-blur-md"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-white font-bold text-lg">Trade Stock</h3>
-                <button onClick={() => setTradeModalOpen(false)} className="text-slate-400 hover:text-white">
+                <h3 className="text-slate-900 dark:text-white font-bold text-lg">Trade Stock</h3>
+                <button onClick={() => setTradeModalOpen(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white">
                   <X className="h-5 w-5" />
                 </button>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Ticker Symbol</label>
+                  <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-widest mb-2 block">Ticker Symbol</label>
                   <input 
                     type="text" 
                     value={tradeTicker}
                     onChange={(e) => setTradeTicker(e.target.value)}
                     placeholder="AAPL, TSLA, SPY..."
-                    className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors uppercase"
+                    className="w-full bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-white font-bold placeholder-slate-400 dark:placeholder-slate-655 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-blue-500/15 transition-all uppercase"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Quantity</label>
+                  <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-widest mb-2 block">Quantity</label>
                   <input 
                     type="number" 
                     min="1"
                     value={tradeQty}
                     onChange={(e) => setTradeQty(Number(e.target.value))}
-                    className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-blue-500/15 transition-all"
                   />
                 </div>
                 
@@ -1090,14 +1112,18 @@ export default function DashboardPage() {
                   <button 
                     onClick={() => executeTradeSubmit('BUY')}
                     disabled={tradeLoading || !tradeTicker}
-                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(20,184,166,0.3)] disabled:opacity-50"
+                    onMouseDown={handlePulse}
+                    style={{ '--pulse-ring-color': 'rgba(20, 184, 166, 0.4)' } as React.CSSProperties}
+                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-[0_4px_15px_rgba(20,184,166,0.25)] disabled:opacity-50"
                   >
                     {tradeLoading ? 'Processing...' : 'Buy'}
                   </button>
                   <button 
                     onClick={() => executeTradeSubmit('SELL')}
                     disabled={tradeLoading || !tradeTicker}
-                    className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] disabled:opacity-50"
+                    onMouseDown={handlePulse}
+                    style={{ '--pulse-ring-color': 'rgba(244, 63, 94, 0.4)' } as React.CSSProperties}
+                    className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-[0_4px_15px_rgba(244,63,94,0.25)] disabled:opacity-50"
                   >
                     {tradeLoading ? 'Processing...' : 'Sell'}
                   </button>
@@ -1115,16 +1141,16 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6"
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6 backdrop-blur-xl"
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-white font-extrabold text-xl tracking-tight">Select a Widget</h3>
-                  <p className="text-slate-400 text-xs mt-1 font-semibold">Choose a widget to display under your level details.</p>
+                  <h3 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Select a Widget</h3>
+                  <p className="text-slate-505 dark:text-slate-400 text-xs mt-1 font-semibold">Choose a widget to display under your level details.</p>
                 </div>
                 <button 
                   onClick={() => setWidgetModalOpen(false)} 
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors shadow-inner"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1135,67 +1161,67 @@ export default function DashboardPage() {
                 {/* Streak Map Widget */}
                 <div 
                   onClick={() => handleSelectWidget('streak')}
-                  className="relative cursor-pointer group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 hover:border-emerald-500/60 transition-all duration-300 min-h-[120px] text-center"
+                  className="relative cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-200 dark:border-slate-700/85 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/85 hover:border-emerald-500/60 transition-all duration-300 min-h-[120px] text-center"
                 >
-                  <Flame className="h-8 w-8 text-emerald-400 mb-2 group-hover:animate-bounce" />
-                  <span className="text-xs font-bold text-slate-100">Streak Map</span>
-                  <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Track Daily Streak</span>
+                  <Flame className="h-8 w-8 text-emerald-500 dark:text-emerald-400 mb-2 group-hover:animate-bounce" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Streak Map</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 mt-1 uppercase tracking-wider">Track Daily Streak</span>
                 </div>
 
                 {/* Locked Widget 2 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <PieChart className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <PieChart className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Value Sparkline</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 3 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Zap className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Zap className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Quick Trade</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 4 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Rocket className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Rocket className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Market Watch</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 5 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Crown className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Crown className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Leaderboard</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 6 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Trophy className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Trophy className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Trophy Case</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 7 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Heart className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Heart className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">Daily Quest</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
 
                 {/* Locked Widget 8 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-800 bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-600" />
-                  <Gem className="h-8 w-8 text-slate-600 mb-2" />
+                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
+                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+                  <Gem className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
                   <span className="text-xs font-bold text-slate-500">AI Advisor</span>
-                  <span className="text-[9px] font-bold text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
                 </div>
               </div>
             </motion.div>

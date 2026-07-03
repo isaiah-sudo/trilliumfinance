@@ -835,3 +835,33 @@ export async function borrowMoney(amount: number, rateInput?: number) {
     throw new Error(error.message || 'Borrowing execution failed');
   }
 }
+
+export async function spendPortfolioCash(amount: number) {
+  const userId = await getAuthenticatedUserId();
+  const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const portDoc = await transaction.get(portfolioRef);
+      if (!portDoc.exists()) {
+        throw new Error('Portfolio not found');
+      }
+
+      const portData = portDoc.data();
+      const currentCash = Number(portData.cash ?? 10000);
+      if (currentCash < amount) {
+        throw new Error('Insufficient funds in portfolio cash balance');
+      }
+
+      const newCash = safeSubtract(currentCash, amount);
+      transaction.set(portfolioRef, {
+        cash: newCash
+      }, { merge: true });
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Spend cash failed:', error.message);
+    throw new Error(error.message || 'Deducting portfolio cash failed');
+  }
+}

@@ -2,8 +2,38 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
+import { useSettings } from '@/context/SettingsContext';
+
+const SKIN_CONFIGS = {
+  orange: {
+    arm: 'text-amber-500',
+    body: 'from-amber-600 to-amber-400 border-amber-700',
+    leg: 'text-amber-600',
+    mouthWorried: 'text-amber-900',
+    mouthSurprised: 'border-amber-950 bg-amber-900/10',
+    mouthNormal: 'border-amber-900',
+  },
+  blue: {
+    arm: 'text-blue-500',
+    body: 'from-blue-600 to-blue-400 border-blue-700',
+    leg: 'text-blue-600',
+    mouthWorried: 'text-blue-900',
+    mouthSurprised: 'border-blue-950 bg-blue-900/10',
+    mouthNormal: 'border-blue-900',
+  },
+  purple: {
+    arm: 'text-purple-500',
+    body: 'from-purple-600 to-purple-400 border-purple-700',
+    leg: 'text-purple-600',
+    mouthWorried: 'text-purple-900',
+    mouthSurprised: 'border-purple-950 bg-purple-900/10',
+    mouthNormal: 'border-purple-900',
+  },
+};
 
 export default function DashboardPet() {
+  const { petSkin } = useSettings();
+  const skin = SKIN_CONFIGS[petSkin || 'orange'];
   const petRef = useRef<HTMLDivElement>(null);
   
   // Motion values for hardware-accelerated movement
@@ -665,7 +695,7 @@ export default function DashboardPet() {
           <div className="absolute top-4 inset-x-[-8px] flex justify-between pointer-events-none">
             {/* Left Arm */}
             <svg
-              className={`h-4 w-3 origin-right text-amber-500 fill-current transition-all duration-200 ${
+              className={`h-4 w-3 origin-right ${skin.arm} fill-current transition-all duration-200 ${
                 physicsRef.current.isDragging ? 'pet-arm-drag' : isDangling ? 'animate-[flail_0.15s_infinite]' : isLookAround ? 'animate-none' : 'pet-arm'
               }`}
               viewBox="0 0 10 20"
@@ -685,7 +715,7 @@ export default function DashboardPet() {
             </svg>
             {/* Right Arm */}
             <svg
-              className={`h-4 w-3 origin-left text-amber-500 fill-current transition-all duration-200 ${
+              className={`h-4 w-3 origin-left ${skin.arm} fill-current transition-all duration-200 ${
                 physicsRef.current.isDragging ? 'pet-arm-drag' : isDangling ? 'animate-[flail_0.15s_infinite]' : isLookAround ? 'animate-none' : 'pet-arm'
               }`}
               viewBox="0 0 10 20"
@@ -707,7 +737,7 @@ export default function DashboardPet() {
 
           {/* Main Body Circle */}
           <div 
-            className={`w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 border border-amber-700 shadow-md relative flex items-center justify-center transition-transform duration-300 ${
+            className={`w-8 h-8 rounded-full bg-gradient-to-tr ${skin.body} shadow-md relative flex items-center justify-center transition-transform duration-300 ${
               isWalking ? 'pet-body-walk' : ''
             }`}
             style={{
@@ -748,15 +778,15 @@ export default function DashboardPet() {
             {/* Mouth */}
             {mouthState === 'worried' ? (
               // Concerned squiggly mouth path
-              <svg className="absolute bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-1.5 text-amber-900 stroke-current fill-none stroke-[1.5]" viewBox="0 0 10 5">
+              <svg className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-1.5 ${skin.mouthWorried} stroke-current fill-none stroke-[1.5]`} viewBox="0 0 10 5">
                 <path d="M 0 2 Q 2.5 0, 5 2 T 10 2" />
               </svg>
             ) : mouthState === 'wide-eyed' ? (
               // Open surprised mouth circle
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full border border-amber-950 bg-amber-900/10" />
+              <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full border ${skin.mouthSurprised}`} />
             ) : (
               // Normal happy curve
-              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-2 h-1 border-b-2 border-amber-900 rounded-b-full transition-all duration-300" />
+              <div className={`absolute bottom-2.5 left-1/2 -translate-x-1/2 w-2 h-1 border-b-2 ${skin.mouthNormal} rounded-b-full transition-all duration-300`} />
             )}
           </div>
 
@@ -764,7 +794,7 @@ export default function DashboardPet() {
           <div className="absolute bottom-0 inset-x-1.5 flex justify-between pointer-events-none">
             {/* Left Leg */}
             <svg
-              className={`h-4.5 w-2.5 text-amber-600 fill-current transition-all duration-200 ${
+              className={`h-4.5 w-2.5 ${skin.leg} fill-current transition-all duration-200 ${
                 physicsRef.current.isDragging ? 'pet-leg-drag' : isDangling ? 'animate-[leg-dangle_0.2s_infinite]' : isLookAround || isGazing ? 'animate-none' : 'pet-left-leg'
               }`}
               viewBox="0 0 8 16"
@@ -777,7 +807,7 @@ export default function DashboardPet() {
             </svg>
             {/* Right Leg */}
             <svg
-              className={`h-4.5 w-2.5 text-amber-600 fill-current transition-all duration-200 ${
+              className={`h-4.5 w-2.5 ${skin.leg} fill-current transition-all duration-200 ${
                 physicsRef.current.isDragging ? 'pet-leg-drag' : isDangling ? 'animate-[leg-dangle_0.2s_infinite_0.1s]' : isLookAround || isGazing ? 'animate-none' : 'pet-right-leg'
               }`}
               viewBox="0 0 8 16"

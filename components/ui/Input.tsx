@@ -15,7 +15,7 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, block = false, ...props }, ref) => {
     const baseClasses =
-      'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:placeholder-slate-500';
+      'rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all duration-250 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/15 shadow-sm';
     const widthClass = block ? 'w-full' : '';
     return (
       <input

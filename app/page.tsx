@@ -41,6 +41,13 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const target = e.currentTarget;
+    target.classList.remove('ring-pulse-active');
+    void target.offsetWidth;
+    target.classList.add('ring-pulse-active');
+  };
+
   // Fidget 1: Trading Simulator State
   const [shareCount, setShareCount] = useState(10);
   const sharePrice = 182.50;
@@ -318,7 +325,11 @@ export default function LandingPage() {
                 Sign In
               </Link>
               <Link href="/signup">
-                <button className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.35)] active:scale-95">
+                <button 
+                  onMouseDown={handlePulse}
+                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all duration-200 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
+                >
                   Get Started
                 </button>
               </Link>
@@ -424,13 +435,21 @@ export default function LandingPage() {
           >
             {!loading && user ? (
               <Link href="/dashboard">
-                <button className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all shadow-[0_4px_25px_rgba(16,185,129,0.3)] active:scale-95">
+                <button 
+                  onMouseDown={handlePulse}
+                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all duration-200 shadow-[0_4px_25px_rgba(16,185,129,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
+                >
                   Go to Dashboard <ArrowRight className="h-4 w-4" />
                 </button>
               </Link>
             ) : (
               <Link href="/signup">
-                <button className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all shadow-[0_4px_25px_rgba(16,185,129,0.3)] active:scale-95">
+                <button 
+                  onMouseDown={handlePulse}
+                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all duration-200 shadow-[0_4px_25px_rgba(16,185,129,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
+                >
                   Start Trading Simulator <ArrowRight className="h-4 w-4" />
                 </button>
               </Link>
@@ -553,10 +572,12 @@ export default function LandingPage() {
                 <button
                   onClick={handleCheckIn}
                   disabled={hasCheckedIn}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  onMouseDown={handlePulse}
+                  style={{ '--pulse-ring-color': 'rgba(249, 115, 22, 0.4)' } as React.CSSProperties}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all duration-200 ${
                     hasCheckedIn
                       ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
-                      : 'bg-orange-500 hover:bg-orange-400 text-slate-950 shadow-[0_4px_15px_rgba(249,115,22,0.3)] hover:scale-105 active:scale-95'
+                      : 'bg-orange-500 hover:bg-orange-400 text-slate-950 shadow-[0_4px_15px_rgba(249,115,22,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]'
                   }`}
                 >
                   {hasCheckedIn ? 'Checked In ✓' : 'Daily Check-In'}
@@ -799,7 +820,7 @@ export default function LandingPage() {
                       initial={{ opacity: 0, y: 15, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                      className="p-5 rounded-2xl bg-[#0b0f19] border-2 border-emerald-500/30 shadow-2xl text-left space-y-2 relative"
+                      className="p-5 rounded-2xl bg-[#0b0f19]/90 border border-emerald-500/30 shadow-2xl shadow-emerald-500/5 text-left space-y-2 relative backdrop-blur-md"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -843,7 +864,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Card 1: Virtual Trading Feed */}
-          <div className="p-8 rounded-3xl bg-[#0b0f19]/80 border-2 border-white/10 shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_rgba(16,185,129,0.2)] hover:border-emerald-500/20 transition-all duration-300">
+          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-md">
             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-6">
               <TrendingUp className="h-6 w-6" />
             </div>
@@ -856,7 +877,7 @@ export default function LandingPage() {
           </div>
 
           {/* Card 2: Gamified Quizzes */}
-          <div className="p-8 rounded-3xl bg-[#0b0f19]/80 border-2 border-white/10 shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_rgba(59,130,246,0.2)] hover:border-blue-500/20 transition-all duration-300">
+          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.1)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-md">
             <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-6">
               <GraduationCap className="h-6 w-6" />
             </div>
@@ -869,7 +890,7 @@ export default function LandingPage() {
           </div>
 
           {/* Card 3: Badges & Achievements */}
-          <div className="p-8 rounded-3xl bg-[#0b0f19]/80 border-2 border-white/10 shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_rgba(168,85,247,0.2)] hover:border-purple-500/20 transition-all duration-300">
+          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-md">
             <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-6">
               <Trophy className="h-6 w-6" />
             </div>
@@ -903,10 +924,10 @@ export default function LandingPage() {
                 className={`grid grid-cols-1 ${isOpen ? 'lg:grid-cols-2 lg:max-w-[1700px]' : 'max-w-3xl'} gap-0 transition-all duration-300 w-full mx-auto lg:h-28`}
               >
                 <div 
-                  className={`relative border-2 bg-[#0b0f19]/80 backdrop-blur-md overflow-hidden transition-all duration-300 h-full ${
+                  className={`relative border bg-white/[0.02] backdrop-blur-md overflow-hidden transition-all duration-300 h-full ${
                     isOpen 
-                      ? 'shadow-[2px_2px_0px_rgba(16,185,129,0.3)] border-emerald-500/30 rounded-t-2xl lg:rounded-l-2xl lg:rounded-r-none border-b-0 lg:border-b-2 lg:border-r-0' 
-                      : 'border-white/10 rounded-2xl shadow-[6px_6px_0px_rgba(255,255,255,0.06)] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[8px_8px_0px_rgba(16,185,129,0.2)] hover:border-emerald-500/20'
+                      ? 'shadow-[0_8px_30px_rgba(16,185,129,0.08)] border-emerald-500/30 rounded-t-2xl lg:rounded-l-2xl lg:rounded-r-none border-b-0 lg:border-b lg:border-r-0' 
+                      : 'border-white/10 rounded-2xl shadow-lg hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/5 hover:border-emerald-500/30'
                   }`}
                   style={{ transformStyle: "preserve-3d" }}
                 >
@@ -931,7 +952,7 @@ export default function LandingPage() {
                         scaleX: { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
                       }}
                       style={{ transformOrigin: "left", transformStyle: "preserve-3d" }}
-                      className="h-full rounded-b-2xl lg:rounded-r-2xl lg:rounded-l-none border-2 border-t-0 lg:border-t-2 lg:border-l-0 border-emerald-500/30 bg-[#0b0f19]/90 backdrop-blur-md shadow-[2px_2px_0px_rgba(16,185,129,0.3)] overflow-hidden flex items-center"
+                      className="h-full rounded-b-2xl lg:rounded-r-2xl lg:rounded-l-none border border-t-0 lg:border-t lg:border-l-0 border-emerald-500/30 bg-[#0b0f19]/90 backdrop-blur-md shadow-[0_8px_30px_rgba(16,185,129,0.08)] overflow-hidden flex items-center"
                     >
                       <div className="p-6 text-sm text-slate-300 leading-relaxed font-medium">
                         {faq.a}
