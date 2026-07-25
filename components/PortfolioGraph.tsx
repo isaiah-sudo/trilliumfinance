@@ -1,0 +1,287 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ReferenceLine,
+} from 'recharts';
+import {
+  RawSnapshot,
+  ChartPoint26,
+  TimeRange,
+  transformPortfolioData,
+} from '@/lib/portfolioTransformation';
+
+export interface PortfolioGraphProps {
+  data: { portfolio: RawSnapshot[]; benchmark: RawSnapshot[] };
+  timeRange: TimeRange;
+  onTimeRangeChange: (range: TimeRange) => void;
+  onHover?: (data: { portfolio: number; spy: number; time: number; achievements?: any[] } | null) => void;
+  onLookAchievement?: (achievementId: string) => void;
+  showBenchmark?: boolean;
+}
+
+export default function PortfolioGraph({
+  data,
+  timeRange,
+  onTimeRangeChange,
+  onHover,
+  onLookAchievement,
+  showBenchmark = true,
+}: PortfolioGraphProps) {
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Transform raw data into the exact 26-point dataset
+  const chartData = useMemo(() => {
+    return transformPortfolioData(data, timeRange);
+  }, [data, timeRange]);
+
+  // Valid non-null data points for calculation
+  const activePoints = useMemo(() => {
+    return chartData.filter((p) => p.portfolioValue !== null) as (ChartPoint26 & { portfolioValue: number })[];
+  }, [chartData]);
+
+  // Positive vs Negative performance determination
+  const isPositive = useMemo(() => {
+    if (activePoints.length < 2) return true;
+    const startVal = activePoints[0].portfolioValue;
+    const endVal = activePoints[activePoints.length - 1].portfolioValue;
+    return endVal >= startVal;
+  }, [activePoints]);
+
+  // Modern Robinhood / TradingView aesthetic palette
+  const strokeColor = isPositive ? '#10B981' : '#F43F5E'; // Emerald Green / Crimson Rose
+  const gradientId = isPositive ? 'portfolioGainGradient' : 'portfolioLossGradient';
+  const spyColor = '#64748B'; // Slate Gray for Benchmark
+
+  // Custom Mouse Move Handler for smooth tooltips and parent callbacks
+  const handleMouseMove = (state: any) => {
+    if (state && state.activePayload && state.activePayload.length > 0) {
+      const activePoint = state.activePayload[0].payload as ChartPoint26;
+      if (activePoint.portfolioValue !== null) {
+        setIsHovering(true);
+        if (onHover) {
+          onHover({
+            portfolio: activePoint.portfolioValue,
+            spy: activePoint.spyValue ?? activePoint.portfolioValue,
+            time: activePoint.time ?? 0,
+            achievements: activePoint.achievements,
+          });
+        }
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (onHover) {
+      onHover(null);
+    }
+  };
+
+  // Milestone dot custom renderer for unlocked achievements
+  const renderCustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (payload && payload.achievements && payload.achievements.length > 0) {
+      return (
+        <g key={`achievement-dot-${payload.slotIndex}`} className="cursor-pointer">
+          <circle
+            cx={cx}
+            cy={cy}
+            r={7}
+            fill="#F59E0B"
+            stroke="#0F172A"
+            strokeWidth={2}
+            className="hover:scale-125 transition-transform"
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={3}
+            fill="#FFFFFF"
+            className="animate-ping"
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+          />
+        </g>
+      );
+    }
+    return null;
+  };
+
+  // Y-Axis domain padding computation
+  const yDomain = useMemo(() => {
+    if (activePoints.length === 0) return ['auto', 'auto'];
+    const values = activePoints.flatMap((p) => [
+      p.portfolioValue,
+      showBenchmark && p.spyValue !== null ? p.spyValue : p.portfolioValue,
+    ]);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.08 || min * 0.02 || 10;
+    return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
+  }, [activePoints, showBenchmark]);
+
+  return (
+    <div className="w-full flex flex-col font-sans select-none">
+      {/* Timeframe Control Tabs */}
+      <div className="flex justify-end items-center gap-1.5 mb-3">
+        {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
+          const isActive = timeRange === range;
+          return (
+            <button
+              key={range}
+              onClick={() => onTimeRangeChange(range)}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                isActive
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)] dark:bg-emerald-500/15'
+                  : 'bg-slate-100 dark:bg-[#161B26]/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/80 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              {range}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Chart Canvas Area */}
+      <div className="w-full h-[320px] relative">
+        {activePoints.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">
+            Awaiting live portfolio snapshots...
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+            >
+              <defs>
+                {/* Emerald Gain Gradient */}
+                <linearGradient id="portfolioGainGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.35} />
+                  <stop offset="60%" stopColor="#10B981" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity={0.0} />
+                </linearGradient>
+
+                {/* Crimson Loss Gradient */}
+                <linearGradient id="portfolioLossGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F43F5E" stopOpacity={0.35} />
+                  <stop offset="60%" stopColor="#F43F5E" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#F43F5E" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+
+              {/* Minimalist Background Grid */}
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="currentColor"
+                className="text-slate-200/40 dark:text-slate-800/40"
+              />
+
+              {/* X & Y Axes */}
+              <XAxis
+                dataKey="timeLabel"
+                axisLine={false}
+                tickLine={false}
+                interval={4} // Evenly space ~6 ticks across 26 slots
+                tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
+                dy={6}
+              />
+              <YAxis
+                domain={yDomain}
+                hide={true}
+              />
+
+              {/* TradingView Tooltip Overlay */}
+              <Tooltip
+                content={<CustomTooltip timeRange={timeRange} />}
+                cursor={{
+                  stroke: strokeColor,
+                  strokeWidth: 1,
+                  strokeDasharray: '4 4',
+                  strokeOpacity: 0.6,
+                }}
+              />
+
+              {/* Benchmark Line (SPY) */}
+              {showBenchmark && (
+                <Line
+                  type="monotone"
+                  dataKey="spyValue"
+                  stroke={spyColor}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  activeDot={false}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              )}
+
+              {/* Primary Portfolio Performance Line & Fill */}
+              <Area
+                type="monotone"
+                dataKey="portfolioValue"
+                stroke={strokeColor}
+                strokeWidth={2.5}
+                fill={`url(#${gradientId})`}
+                dot={renderCustomDot}
+                activeDot={{
+                  r: 6,
+                  fill: strokeColor,
+                  stroke: '#0F172A',
+                  strokeWidth: 2.5,
+                }}
+                connectNulls={false}
+                isAnimationActive={true}
+                animationDuration={600}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Custom Floating Tooltip (TradingView / Robinhood Style)
+ */
+function CustomTooltip({ active, payload, timeRange }: any) {
+  if (!active || !payload || !payload.length) return null;
+
+  const data: ChartPoint26 = payload[0].payload;
+  if (data.portfolioValue === null) return null;
+
+  return (
+    <div className="rounded-xl bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 shadow-xl text-xs font-sans">
+      <div className="text-slate-400 font-medium mb-1">{data.timeLabel}</div>
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+        <span className="text-slate-600 dark:text-slate-300 font-semibold">Portfolio:</span>
+        <span className="text-slate-900 dark:text-white font-bold ml-auto">
+          ${data.portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      </div>
+      {data.spyValue !== null && (
+        <div className="flex items-center gap-2 mt-1">
+          <span className="w-2 h-2 rounded-full bg-slate-400" />
+          <span className="text-slate-600 dark:text-slate-400 font-medium">SPY Benchmark:</span>
+          <span className="text-slate-700 dark:text-slate-300 font-semibold ml-auto">
+            ${data.spyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
