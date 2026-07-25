@@ -635,55 +635,8 @@ export default function DashboardPage() {
   );
 
   return (
-<<<<<<< Updated upstream
-    <div className="space-y-6 relative" ref={containerRef}>
+    <div className="space-y-6 relative w-full" ref={containerRef}>
       {/* Edit Mode Notification & Toolbar Banner */}
-=======
-    <div className="space-y-6 sm:space-y-8 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
-      {/* Top Header Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-lg w-full">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard Grid Layout</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mt-0.5">
-            {isEditMode ? 'Drag and resize widgets below to customize your layout.' : 'Locked view. Click Customize Layout to move or resize widgets.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          {isEditMode ? (
-            <>
-              <button
-                onClick={() => setWidgetModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-500/30 text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <Plus className="h-4 w-4" /> Add Widgets
-              </button>
-              <button
-                onClick={handleResetLayout}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <RotateCcw className="h-4 w-4" /> Reset Default
-              </button>
-              <button
-                onClick={handleSaveLayout}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <Check className="h-4 w-4" /> Save Layout
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditMode(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-extrabold transition-all cursor-pointer"
-            >
-              <Edit3 className="h-4 w-4" /> Customize Layout
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Edit Mode Notification Banner */}
->>>>>>> Stashed changes
       {isEditMode && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -762,9 +715,8 @@ export default function DashboardPage() {
         transition={{ delay: 0.1 }}
         className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl pet-container-target relative w-full"
       >
-<<<<<<< Updated upstream
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
           {!isEditMode && (
             <button
               onClick={() => setIsEditMode(true)}
@@ -776,9 +728,7 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
-=======
-        <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight mb-4 md:mb-6">Portfolio Overview</h2>
->>>>>>> Stashed changes
+
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
