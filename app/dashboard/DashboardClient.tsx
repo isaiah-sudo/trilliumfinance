@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame, GraduationCap, ShieldAlert } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame, GraduationCap, ShieldAlert, Edit3, Check, RotateCcw, Plus } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -13,7 +13,16 @@ import { AnimatedNumber } from '@/components/ui';
 import DashboardPet from '@/components/DashboardPet';
 import { useDashboardSettings } from '@/context/DashboardSettingsContext';
 import { joinClassroom } from '@/app/actions/edu';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
+import { Responsive, useContainerWidth, Layout } from 'react-grid-layout';
+import { DEFAULT_WIDGET_LAYOUTS, WidgetLayoutItem, ResponsiveDashboardLayouts } from '@/lib/defaultDashboardLayout';
+import DashboardWidgetCard from '@/components/dashboard/DashboardWidgetCard';
+import { WIDGET_REGISTRY } from '@/components/dashboard/WidgetRegistry';
+
+
+const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v1';
 
 interface TrophyCardProps {
   id: string;
@@ -210,6 +219,7 @@ export default function DashboardPage() {
   const { numberFont, showPets } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
+  const { width, containerRef } = useContainerWidth();
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
     const target = e.currentTarget;
@@ -247,6 +257,11 @@ export default function DashboardPage() {
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
+
+  // Layout customization states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [layouts, setLayouts] = useState<ResponsiveDashboardLayouts>(DEFAULT_WIDGET_LAYOUTS);
+  const [currentBreakpoint, setCurrentBreakpoint] = useState<keyof ResponsiveDashboardLayouts>('lg');
 
   const activePerformance = useMemo(() => {
     if (timeRange === '1D') {
@@ -303,6 +318,124 @@ export default function DashboardPage() {
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
   const [borrowedAmountJustNow, setBorrowedAmountJustNow] = useState(0);
 
+  // Load layout from localStorage / Firestore
+  useEffect(() => {
+    const loadLayout = async () => {
+      // 1. Try local storage first for snappy load
+      const localData = localStorage.getItem(LOCAL_STORAGE_LAYOUT_KEY);
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          setLayouts(parsed);
+        } catch (e) {
+          console.error('Failed to parse local dashboard layout', e);
+        }
+      }
+
+      // 2. Fetch user Firestore layout if logged in
+      if (user?.uid) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid, 'settings', 'dashboardLayout');
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists() && docSnap.data().layouts) {
+            const firestoreLayouts = docSnap.data().layouts;
+            setLayouts(firestoreLayouts);
+            localStorage.setItem(LOCAL_STORAGE_LAYOUT_KEY, JSON.stringify(firestoreLayouts));
+          }
+        } catch (err) {
+          console.error('Failed to load layout from Firestore', err);
+        }
+      }
+    };
+
+    loadLayout();
+  }, [user]);
+
+  // Save layout helper
+  const handleSaveLayout = async () => {
+    setIsEditMode(false);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_LAYOUT_KEY, JSON.stringify(layouts));
+
+      if (user?.uid) {
+        const userDocRef = doc(db, 'users', user.uid, 'settings', 'dashboardLayout');
+        await setDoc(userDocRef, {
+          layouts,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+    } catch (err) {
+      console.error('Failed to save layout', err);
+    }
+  };
+
+  // Reset layout helper
+  const handleResetLayout = async () => {
+    setLayouts(DEFAULT_WIDGET_LAYOUTS);
+    localStorage.removeItem(LOCAL_STORAGE_LAYOUT_KEY);
+
+    if (user?.uid) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid, 'settings', 'dashboardLayout');
+        await setDoc(userDocRef, {
+          layouts: DEFAULT_WIDGET_LAYOUTS,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to reset layout in Firestore', err);
+      }
+    }
+  };
+
+  // Remove widget helper
+  const handleRemoveWidget = (widgetId: string) => {
+    setLayouts((prevLayouts) => {
+      const next: ResponsiveDashboardLayouts = { ...prevLayouts };
+      (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+        next[bp] = next[bp].map((item) =>
+          item.i === widgetId ? { ...item, visible: false } : item
+        );
+      });
+      return next;
+    });
+  };
+
+  // Add back removed widget helper
+  const handleAddWidget = (widgetId: string) => {
+    setLayouts((prevLayouts) => {
+      const next: ResponsiveDashboardLayouts = { ...prevLayouts };
+      (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+        next[bp] = next[bp].map((item) =>
+          item.i === widgetId ? { ...item, visible: true } : item
+        );
+      });
+      return next;
+    });
+    setWidgetModalOpen(false);
+  };
+
+  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+    // Merge visibility flags
+    const updatedLayouts = { ...(allLayouts as ResponsiveDashboardLayouts) };
+    (Object.keys(updatedLayouts) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+      const existingBpLayout = layouts[bp] || [];
+      if (Array.isArray(updatedLayouts[bp])) {
+        updatedLayouts[bp] = updatedLayouts[bp].map((item) => {
+          const existing = existingBpLayout.find((e) => e.i === item.i);
+          return {
+            ...item,
+            visible: existing ? existing.visible !== false : true,
+            minW: existing?.minW,
+            minH: existing?.minH,
+            maxW: existing?.maxW,
+            maxH: existing?.maxH,
+          };
+        });
+      }
+    });
+
+    setLayouts(updatedLayouts);
+  };
 
   useEffect(() => {
     const savedWidget = localStorage.getItem('dashboard_active_widget');
@@ -475,10 +608,71 @@ export default function DashboardPage() {
     );
   }
 
-  const marketValue = portfolio.totalMarketValue;
+  const activeBreakpointLayout = layouts[currentBreakpoint] || layouts.lg;
+  const visibleItems = activeBreakpointLayout.filter((item) => item.visible !== false);
+  const hiddenWidgetIds = Object.keys(WIDGET_REGISTRY).filter(
+    (id) => !visibleItems.some((item) => item.i === id)
+  );
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative" ref={containerRef}>
+      {/* Top Header Controls Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-lg">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard Grid Layout</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mt-0.5">
+            {isEditMode ? 'Drag and resize widgets below to customize your layout.' : 'Locked view. Click Customize Layout to move or resize widgets.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {isEditMode ? (
+            <>
+              <button
+                onClick={() => setWidgetModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-500/30 text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> Add Widgets
+              </button>
+              <button
+                onClick={handleResetLayout}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4" /> Reset Default
+              </button>
+              <button
+                onClick={handleSaveLayout}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <Check className="h-4 w-4" /> Save Layout
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditMode(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-extrabold transition-all cursor-pointer"
+            >
+              <Edit3 className="h-4 w-4" /> Customize Layout
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Edit Mode Notification Banner */}
+      {isEditMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold flex items-center justify-between shadow-md"
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Layout Edit Mode Active. Drag widgets by their grip header or resize from corners.</span>
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-emerald-500/80">Editing</span>
+        </motion.div>
+      )}
+
       {role === 'regular' && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -517,14 +711,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Financial Summary Card */}
+      {/* Financial Summary Card Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl pet-container-target relative"
       >
-        <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight mb-6">Portfolio</h2>
+        <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight mb-6">Portfolio Overview</h2>
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
@@ -537,7 +731,6 @@ export default function DashboardPage() {
                 </div>
               </div>
               
-              {/* Toggle details arrow in the middle of the container */}
               <button
                 onClick={() => setIsNetWorthExpanded(!isNetWorthExpanded)}
                 onMouseDown={handlePulse}
@@ -564,7 +757,6 @@ export default function DashboardPage() {
                   className="overflow-hidden border-t border-slate-200 dark:border-slate-800/50 pt-4"
                 >
                   <div className="grid grid-cols-2 gap-6">
-                    {/* Left Column: Borrowed Money & Interest Rate */}
                     <div className="space-y-4">
                       <div>
                         <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Borrowed Money</div>
@@ -580,7 +772,6 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Right Column: Amount Owed & Amount Added Per Month */}
                     <div className="space-y-4 border-l border-slate-200 dark:border-slate-800/30 pl-6">
                       <div>
                         <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Owed</div>
@@ -601,10 +792,9 @@ export default function DashboardPage() {
             </AnimatePresence>
           </div>
 
-          {/* Combined Supporting Stats Container */}
+          {/* Supporting Stats */}
           <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800/30">
-              {/* Available Cash */}
               <div className="pb-4 md:pb-0 md:pr-6">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
                 <div className={`text-2xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
@@ -612,7 +802,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Total Performance */}
               <div className="py-4 md:py-0 md:px-6">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
                 <div className="flex flex-col">
@@ -627,7 +816,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Day Performance */}
               <div className="pt-4 md:pt-0 md:pl-6">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
                 <div className="flex flex-col">
@@ -644,331 +832,53 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800/50 flex justify-center">
-          <button 
-            onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-450 hover:text-slate-700 dark:hover:text-slate-300 tracking-widest uppercase transition-colors"
-          >
-            {showDetails ? 'Hide Details' : 'Show XP & Trophies'} 
-            {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-        </div>
-
-        <AnimatePresence>
-          {showDetails && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-6 p-6 rounded-xl bg-slate-50/30 dark:bg-[#1e293b]/10 border border-slate-200 dark:border-slate-800/60 flex flex-col md:flex-row gap-8 overflow-hidden"
-            >
-              {/* Left Side: Experience */}
-              <div className="flex-1">
-                <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase mb-4">Your Experience</h3>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className={`text-4xl font-extrabold text-blue-500 font-num-${numberFont}`}>
-                    <AnimatedNumber value={xp} formatter={(val) => Math.round(val).toString()} />
-                  </span>
-                  <span className="text-sm font-bold text-slate-400 font-txt-sans">XP</span>
-                </div>
-                
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <TreePine className="h-4 w-4 text-green-500" />
-                    <span>{levelInfo?.name || 'Novice'}</span>
-                  </div>
-                  <div className="text-slate-500">Next: {levelInfo?.nextName || 'Rookie'}</div>
-                </div>
-                
-                {/* Progress Bar */}
-                <div className="group/xpbar relative w-full h-1.5 hover:h-5 rounded-full bg-slate-200 dark:bg-slate-800 cursor-pointer overflow-hidden transition-all duration-350 flex items-center justify-center">
-                   <div className="absolute left-0 top-0 h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-350" style={{ width: `${levelInfo?.progress || 0}%` }} />
-                   <span className="relative z-10 text-[9px] font-black text-white opacity-0 group-hover/xpbar:opacity-100 transition-opacity duration-300 tracking-wider">
-                     {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
-                   </span>
-                </div>
-
-                {/* Widget Slot Container */}
-                <div className="mt-6">
-                  <h4 className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-2">Custom Widget</h4>
-                  {activeWidget === 'streak' ? (
-                    <div className="relative w-full p-4 rounded-xl bg-slate-100/50 dark:bg-[#0f111a]/60 border border-slate-200 dark:border-slate-800/50 shadow-inner flex flex-col justify-center min-h-[90px]">
-                      {/* Mini X Button in Top Right */}
-                      <button 
-                        onClick={() => setWidgetModalOpen(true)}
-                        className="absolute top-2.5 right-2.5 text-slate-550 hover:text-slate-800 dark:text-slate-500 dark:hover:text-white transition-colors"
-                        title="Change widget"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-
-                      {/* Streak Map Content */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-455">
-                            Login Streak Map: {streakCount} Days
-                          </span>
-                        </div>
-                        <div className="relative w-full flex items-center justify-between h-8 px-2 mt-1">
-                          {/* Dotted line */}
-                          <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-800 h-0" />
-                          
-                          {/* Filled green line */}
-                          {streakCount > 1 && (
-                            <div 
-                              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
-                              style={{ 
-                                width: `${((streakCount - 1) / 6) * 100}%`,
-                                maxWidth: 'calc(100% - 20px)' 
-                              }} 
-                            />
-                          )}
-
-                          {/* 7 circles */}
-                          {Array.from({ length: 7 }).map((_, index) => {
-                            const day = index + 1;
-                            const isDone = day <= streakCount;
-                            const isMilestone = day === 7;
-                            return (
-                              <div key={day} className="relative z-10 flex flex-col items-center group/day">
-                                <div 
-                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all duration-350 border-2 ${
-                                    isDone 
-                                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
-                                      : 'bg-slate-150 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
-                                  }`}
-                                >
-                                  {isMilestone ? '👑' : day}
-                                </div>
-                                <div className="absolute bottom-full mb-1.5 opacity-0 pointer-events-none group-hover/day:opacity-100 transition-opacity duration-200 bg-slate-900 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap z-[60]">
-                                  Day {day}: {isMilestone ? '+40 XP' : '+10 XP'} {isDone ? '(Done)' : ''}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => setWidgetModalOpen(true)}
-                      onMouseDown={handlePulse}
-                      style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.3)' } as React.CSSProperties}
-                      className="w-full h-[90px] rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-450 dark:hover:border-slate-600 bg-slate-50/20 dark:bg-[#0f111a]/20 hover:bg-slate-100/40 dark:hover:bg-[#0f111a]/40 hover:-translate-y-[0.5px] hover:scale-[1.01] active:scale-[0.99] active:translate-y-[0.5px] transition-all duration-300 flex items-center justify-center group"
-                    >
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <span className="text-2xl text-slate-500 group-hover:text-blue-500 transition-colors group-hover:scale-110 duration-300">+</span>
-                        <span className="text-[10px] font-bold text-slate-550 group-hover:text-slate-350 transition-colors uppercase tracking-wider">Add Widget</span>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Side: Top Trophies */}
-              <div className="flex-[2] md:pl-8 md:border-l border-slate-200 dark:border-slate-800/50 mt-8 md:mt-0 flex flex-col">
-                <div className="flex justify-between items-center mb-6 w-full">
-                  <button 
-                    onClick={() => setCustomizerOpen(true)}
-                    onMouseDown={handlePulse}
-                    style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.4)' } as React.CSSProperties}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-[10px] font-extrabold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-450 dark:hover:border-slate-500 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] transition-all duration-200 shadow-inner uppercase tracking-wider"
-                  >
-                    ⚙️ Customize Trophies
-                  </button>
-                  <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase text-right">Top Trophies</h3>
-                </div>
-                
-                <div className="flex flex-wrap gap-6 justify-center items-center mx-auto w-full pet-container-target">
-                  {(() => {
-                    if (selectedTrophyIds.length === 0) {
-                      return (
-                        <div className="text-slate-500 text-xs font-semibold py-8 italic text-center w-full">No trophies selected. Click Customize to curate your showcase!</div>
-                      );
-                    }
-
-                    return selectedTrophyIds.map((tid) => {
-                      const trophy = ACHIEVEMENTS.find(a => a.id === tid);
-                      if (!trophy) return null;
-                      return (
-                        <TrophyCard
-                          key={tid}
-                          id={trophy.id}
-                          title={trophy.title}
-                          description={trophy.description}
-                          iconType={trophy.iconType}
-                        />
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
       </motion.div>
 
-      {/* Market Value Card with Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl"
+      {/* Dynamic Grid Layout Engine */}
+      <Responsive
+        className="layout"
+        width={width || 1200}
+        layouts={layouts}
+        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+        cols={{ lg: 12, md: 10, sm: 6 }}
+        rowHeight={90}
+        dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
+        resizeConfig={{ enabled: isEditMode }}
+        onLayoutChange={handleLayoutChange}
+        onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
       >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div className="flex items-center gap-4">
-            <h2 className="text-slate-550 dark:text-slate-400 text-[11px] font-bold tracking-widest uppercase">Market Value</h2>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0f111a] border border-slate-200 dark:border-slate-800/50 text-[10px] font-bold text-slate-600 dark:text-slate-300 shadow-inner">
-                <Lock className="h-3 w-3" /> Live Market
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0f111a] border border-slate-200 dark:border-slate-800/50 text-[10px] font-bold text-slate-600 dark:text-slate-300 shadow-inner">
-                vs SPY
-              </span>
+        {visibleItems.map((item) => {
+          const regItem = WIDGET_REGISTRY[item.i];
+          if (!regItem) return null;
+          const WidgetComp = regItem.component;
+
+          return (
+            <div key={item.i}>
+              <DashboardWidgetCard
+                id={item.i}
+                title={regItem.title}
+                isEditing={isEditMode}
+                onRemove={handleRemoveWidget}
+              >
+                <WidgetComp
+                  portfolio={portfolio}
+                  chartData={chartData}
+                  timeRange={timeRange}
+                  setTimeRange={setTimeRange}
+                  hoveredData={hoveredData}
+                  setHoveredData={setHoveredData}
+                  handleLookAchievement={handleLookAchievement}
+                  numberFont={numberFont}
+                  onOpenTradeModal={() => setTradeModalOpen(true)}
+                  borrowedAmountJustNow={borrowedAmountJustNow}
+                />
+              </DashboardWidgetCard>
             </div>
-          </div>
-        </div>
+          );
+        })}
+      </Responsive>
 
-        <div className="mb-8">
-          {hoveredData ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-                <div className="flex items-baseline gap-4">
-                  <div className={`text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
-                    ${hoveredData.portfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-sm font-semibold text-slate-400">
-                    SPY: ${hoveredData.spy.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                </div>
-                <div className="text-xs text-teal-400 font-extrabold tracking-widest uppercase">
-                  {new Date(hoveredData.time * 1000).toLocaleString('en-US', {
-                    timeZone: 'America/New_York',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })} EST
-                </div>
-              </div>
-              
-              {/* Achievement Milestone banner */}
-              {hoveredData.achievements && hoveredData.achievements.length > 0 && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-400 font-bold animate-fadeIn">
-                  <div className="flex items-center gap-2">
-                    <span>🏆</span>
-                    <span>Earned {hoveredData.achievements[0].title} Achievement!</span>
-                  </div>
-                  <button
-                    onClick={() => handleLookAchievement(hoveredData.achievements![0].id)}
-                    className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#0f111a] font-extrabold transition-colors shadow-lg uppercase tracking-wider text-[10px] cursor-pointer pointer-events-auto"
-                  >
-                    Look
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="flex items-baseline gap-3">
-                <div className={`text-3xl font-extrabold text-white tracking-tight font-num-${numberFont}`}>
-                  <AnimatedNumber value={marketValue} formatter={formatNumberNoCurrency} />
-                </div>
-                <div className={`text-[13px] font-bold font-num-${numberFont} ${activePerformance.usd >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                  {activePerformance.usd >= 0 ? '+' : ''}
-                  <AnimatedNumber value={activePerformance.usd} formatter={formatNumberNoCurrency} />
-                  <span> (</span>
-                  {activePerformance.percent >= 0 ? '+' : ''}
-                  <AnimatedNumber value={activePerformance.percent} formatter={formatPercent} />
-                  <span>)</span>
-                  <span className="text-slate-500 ml-1.5 font-semibold text-[11px] uppercase tracking-wider">
-                    {activePerformance.label}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-[11px] font-semibold">
-                <div className="flex items-center gap-2 text-teal-400">
-                  <div className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)]" /> Portfolio
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-2 h-2 rounded-full bg-slate-400" /> SPY
-                </div>
-              </div>
-            </>
-          )}
-        </div>
- 
-        <div className="w-full mt-4">
-          <PortfolioChart 
-            data={chartData || { portfolio: [], benchmark: [] }} 
-            timeRange={timeRange} 
-            onTimeRangeChange={setTimeRange}
-            onHover={setHoveredData}
-            onLookAchievement={handleLookAchievement}
-          />
-        </div>
-      </motion.div>
-
-      {/* Holdings Breakdown */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-slate-900 dark:text-white text-lg font-bold tracking-tight">Holdings Breakdown</h2>
-          <button 
-            onClick={() => setTradeModalOpen(true)}
-            onMouseDown={handlePulse}
-            style={{ '--pulse-ring-color': 'rgba(59, 130, 246, 0.4)' } as React.CSSProperties}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-lg shadow-blue-500/20"
-          >
-            + Buy Stocks
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-semibold whitespace-nowrap">
-            <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Symbol</th>
-                <th className="pb-3 px-4 font-semibold uppercase tracking-wider text-[10px]">Name</th>
-                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Qty</th>
-                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Avg Price</th>
-                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Market Value</th>
-                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Day P/L</th>
-                <th className={`pb-3 px-4 font-semibold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>P/L %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-350">
-              {!Array.isArray(portfolio.holdings) || portfolio.holdings.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400 dark:text-slate-500">No holdings yet. Start trading!</td>
-                </tr>
-              ) : portfolio.holdings.map((h: any) => (
-                <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="py-4 pr-4 text-blue-600 dark:text-blue-400 font-bold">{h.symbol}</td>
-                  <td className="py-4 px-4">{h.name}</td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{h.qty}</td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont}`}>{formatNumberNoCurrency(h.avgPrice)}</td>
-                  <td className={`py-4 px-4 text-right text-slate-900 dark:text-white font-bold font-num-${numberFont}`}>{formatNumberNoCurrency(h.marketValue)}</td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                    {h.dayPl >= 0 ? '+' : ''}{formatNumberNoCurrency(h.dayPl)}
-                  </td>
-                  <td className={`py-4 px-4 text-right font-num-${numberFont} ${h.plPercent >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                    {h.plPercent >= 0 ? '+' : ''}{formatPercent(h.plPercent)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-
-      {/* Customizer Modal */}
+      {/* Customizer Trophy Showcase Modal */}
       <AnimatePresence>
         {customizerOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl">
@@ -991,7 +901,6 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {/* Selected Top Trophies Showcase */}
               <div>
                 <h4 className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-4">Selected Top Trophies (Max 3)</h4>
                 <div className="flex flex-wrap gap-6 justify-center min-h-[200px] p-4 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/50 border border-slate-200 dark:border-slate-800/80 shadow-inner">
@@ -1020,7 +929,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Styled Separating Line */}
               <div className="relative py-2 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200 dark:border-slate-800/50"></div>
@@ -1030,7 +938,6 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              {/* Unlocked Trophies Selection */}
               <div>
                 <div className="flex flex-wrap gap-6 justify-center p-4 rounded-xl bg-slate-50/30 dark:bg-[#0f111a]/30 border border-slate-200/50 dark:border-slate-800/30">
                   {(() => {
@@ -1121,6 +1028,64 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
+      {/* Add / Restore Widget Selection Modal */}
+      <AnimatePresence>
+        {widgetModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6 backdrop-blur-xl"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Widget Selection & Management</h3>
+                  <p className="text-slate-505 dark:text-slate-400 text-xs mt-1 font-semibold">Enable or restore widgets on your grid canvas.</p>
+                </div>
+                <button 
+                  onClick={() => setWidgetModalOpen(false)} 
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                {Object.values(WIDGET_REGISTRY).map((widget) => {
+                  const isVisible = !hiddenWidgetIds.includes(widget.id);
+                  return (
+                    <div 
+                      key={widget.id}
+                      onClick={() => {
+                        if (!isVisible) {
+                          handleAddWidget(widget.id);
+                        }
+                      }}
+                      className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
+                        isVisible
+                          ? 'bg-slate-100/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 opacity-60 cursor-default'
+                          : 'bg-blue-600/10 dark:bg-blue-950/40 border-blue-500/40 hover:bg-blue-600/20 cursor-pointer shadow-md'
+                      }`}
+                    >
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">{widget.title}</h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{widget.description}</p>
+                      </div>
+                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${
+                        isVisible ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' : 'bg-blue-500 text-white shadow-sm'
+                      }`}>
+                        {isVisible ? 'Active' : '+ Add'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Join Classroom Modal */}
       <AnimatePresence>
         {joinModalOpen && (
@@ -1182,7 +1147,7 @@ export default function DashboardPage() {
       {/* Trade Modal */}
       <AnimatePresence>
         {tradeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1190,13 +1155,12 @@ export default function DashboardPage() {
               className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl backdrop-blur-md"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white font-bold text-lg">New Order</h3>
+                <h3 className="text-slate-900 dark:text-white font-bold text-lg">New Order</h3>
                 <button onClick={() => setTradeModalOpen(false)} className="text-slate-400 hover:text-white">
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Trade Tabs Selection */}
               <div className="flex border-b border-slate-700 mb-6">
                 <button
                   onClick={() => setTradeTab('stock')}
@@ -1243,7 +1207,6 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  {/* Settings Validation Indicators */}
                   {(() => {
                     const upperTicker = tradeTicker.toUpperCase().trim();
                     const isRestricted = settings.restrictedAssets.some(
@@ -1301,7 +1264,6 @@ export default function DashboardPage() {
                   })()}
                 </div>
               ) : (
-                /* Options Tab View */
                 <div>
                   {!settings.allowOptions ? (
                     <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
@@ -1428,101 +1390,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      {/* Widget Modal */}
-      <AnimatePresence>
-        {widgetModalOpen && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6 backdrop-blur-xl"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Select a Widget</h3>
-                  <p className="text-slate-505 dark:text-slate-400 text-xs mt-1 font-semibold">Choose a widget to display under your level details.</p>
-                </div>
-                <button 
-                  onClick={() => setWidgetModalOpen(false)} 
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Grid Layout: 2 rows and 4 columns */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                {/* Streak Map Widget */}
-                <div 
-                  onClick={() => handleSelectWidget('streak')}
-                  className="relative cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-200 dark:border-slate-700/85 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/85 hover:border-emerald-500/60 transition-all duration-300 min-h-[120px] text-center"
-                >
-                  <Flame className="h-8 w-8 text-emerald-500 dark:text-emerald-400 mb-2 group-hover:animate-bounce" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Streak Map</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 mt-1 uppercase tracking-wider">Track Daily Streak</span>
-                </div>
-
-                {/* Locked Widget 2 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <PieChart className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Value Sparkline</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 3 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Zap className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Quick Trade</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 4 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Rocket className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Market Watch</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 5 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Crown className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Leaderboard</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 6 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Trophy className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Trophy Case</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 7 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Heart className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">Daily Quest</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-
-                {/* Locked Widget 8 */}
-                <div className="relative group flex flex-col items-center justify-center p-4 rounded-xl border border-slate-150 dark:border-slate-800/80 bg-slate-50/10 dark:bg-slate-900/40 opacity-50 min-h-[120px] text-center select-none">
-                  <Lock className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
-                  <Gem className="h-8 w-8 text-slate-400 dark:text-slate-600 mb-2" />
-                  <span className="text-xs font-bold text-slate-500">AI Advisor</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-wider">Coming Soon</span>
-                </div>
-              </div>
             </motion.div>
           </div>
         )}

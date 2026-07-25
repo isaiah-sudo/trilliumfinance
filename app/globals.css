@@ -134,4 +134,22 @@ html.dark {
 }
 
 
+/* react-grid-layout styles */
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
 
+.react-grid-item.react-grid-placeholder {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 2px dashed #10b981 !important;
+  border-radius: 1rem !important;
+  opacity: 0.8 !important;
+}
+
+.react-resizable-handle {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.react-resizable-handle:hover {
+  opacity: 1;
+}
