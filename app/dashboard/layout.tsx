@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { Settings, LogOut, TreePine, X, ChevronLeft, ShoppingBag } from 'lucide-react';
+import { Settings, LogOut, TreePine, X, ChevronLeft, ShoppingBag, Menu } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -27,9 +27,22 @@ function TrilliumLogoMark() {
   );
 }
 
+import { DashboardSettingsProvider, useDashboardSettings } from '@/context/DashboardSettingsContext';
+
 export default function DashboardLayout({ children }: PropsWithChildren) {
+  return (
+    <ProtectedRoute>
+      <DashboardSettingsProvider>
+        <DashboardInnerLayout>{children}</DashboardInnerLayout>
+      </DashboardSettingsProvider>
+    </ProtectedRoute>
+  );
+}
+
+function DashboardInnerLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { role, settings, teacherPreviewMode, setTeacherPreviewMode } = useDashboardSettings();
   const {
     theme,
     numberFont,
@@ -63,6 +76,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const [activeTab, setActiveTab] = useState<'Graphics' | 'Market' | 'Filters' | 'Linked'>('Graphics');
   const [isBadgeHovered, setIsBadgeHovered] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [shopMessage, setShopMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
@@ -119,31 +133,55 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { name: 'Lesson', href: '/dashboard/lesson' },
   ];
 
-  return (
-    <ProtectedRoute>
-      <div className={`flex min-h-screen flex-col bg-slate-50 dark:bg-[#0f111a] text-slate-800 dark:text-slate-200 font-txt-${textFont} relative overflow-hidden z-0`}>
-        {/* Ambient Glow Effects */}
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-500/[0.04] dark:bg-blue-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow" />
-        <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
-        <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
+  if (role === 'teacher') {
+    navLinks.push({ name: 'Classroom Controls', href: '/dashboard/teacher' });
+  }
 
-        <div className="relative z-10 w-full mx-auto px-6 pt-6">
-          <header className="relative z-50 flex h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-5 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target">
+  return (
+    <div className={`flex min-h-screen flex-col bg-slate-50 dark:bg-[#0f111a] text-slate-800 dark:text-slate-200 font-txt-${textFont} relative overflow-hidden`}>
+      {teacherPreviewMode && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border-b border-amber-500/30 text-amber-200 text-[11px] py-2 px-6 flex justify-between items-center backdrop-blur-md relative z-[100] shadow-md shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="animate-pulse text-amber-400">🔍</span>
+            <span className="font-extrabold uppercase tracking-wider">Simulating Student View:</span>
+            <span className="font-medium text-slate-300">
+              Short-Selling: <strong className={settings.allowShortSelling ? "text-emerald-400" : "text-rose-400"}>{settings.allowShortSelling ? "Allowed" : "Blocked"}</strong> | 
+              Options: <strong className={settings.allowOptions ? "text-emerald-400" : "text-rose-400"}>{settings.allowOptions ? "Unlocked" : "Locked"}</strong> | 
+              Max Positions: <strong className="text-white">{settings.maxPositions}</strong> | 
+              Restricted Assets: <strong className="text-white">{settings.restrictedAssets.length > 0 ? settings.restrictedAssets.join(', ') : 'None'}</strong>
+            </span>
+          </div>
+          <button 
+            onClick={() => setTeacherPreviewMode(false)}
+            className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-3 py-1 rounded-lg transition-all text-[10px] uppercase tracking-wider cursor-pointer"
+          >
+            Exit Simulation
+          </button>
+        </div>
+      )}
+
+      {/* Ambient Glow Effects */}
+      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-500/[0.04] dark:bg-blue-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow" />
+      <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
+      <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
+
+      <div className="relative z-10 w-full max-w-[1700px] mx-auto px-3 sm:px-6 pt-3 sm:pt-6">
+        <header className="relative z-50 flex h-auto min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-3.5 sm:px-5 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+              <Link href="/dashboard" className="flex items-center gap-2.5 sm:gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
                   <TrilliumLogoMark />
                 </div>
-                <span className="text-[17px] font-bold text-slate-900 dark:text-white tracking-wide">
+                <span className="text-base sm:text-[17px] font-bold text-slate-900 dark:text-white tracking-wide whitespace-nowrap">
                   Trillium <span className="text-blue-500">Finance</span>
                 </span>
               </Link>
             </div>
 
             {/* Navigation Center Section */}
-            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-4">
-              <div className="flex items-center gap-[100px] xl:gap-[112px] px-2 transition-all duration-500 ease-out">
+            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-2 xl:mx-4">
+              <div className="flex items-center justify-center gap-1 xl:gap-2.5 px-1 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
                     Portfolio: {
@@ -181,12 +219,12 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                   const linkDetail = details[link.name] || { title: link.name, desc: '', icon: '✨' };
 
                   return (
-                    <div key={link.name} className="relative group py-2">
+                    <div key={link.name} className="relative group py-1">
                       <Link
                         href={link.href}
                         onMouseDown={handleNavClick}
                         style={{ '--pulse-ring-color': 'rgba(59, 130, 246, 0.4)' } as React.CSSProperties}
-                        className={`text-sm font-semibold transition-all duration-300 px-3.5 py-1.5 rounded-xl border flex items-center justify-center hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] active:shadow-[inset_0_4px_6px_rgba(0,0,0,0.06)] dark:active:shadow-[inset_0_4px_6px_rgba(0,0,0,0.3)] active:bg-slate-200/50 dark:active:bg-[#121622]/50 active:border-slate-300 dark:active:border-slate-800 ${
+                        className={`text-xs xl:text-sm font-semibold transition-all duration-300 px-2.5 xl:px-3.5 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] ${
                           pathname === link.href
                             ? 'text-blue-600 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-gradient-to-b hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/50 dark:hover:to-slate-800/20 border-t-transparent border-x-transparent border-b-2 border-b-transparent hover:border-t-white/30 dark:hover:border-t-slate-700/50 hover:border-x-slate-200/40 dark:hover:border-x-slate-800/50 hover:border-b-slate-300 dark:hover:border-b-slate-900 shadow-sm'
@@ -216,128 +254,197 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line separating nav links and profile/shop controls */}
-            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700/60 transition-all duration-500 ease-out hidden lg:block mx-4" />
+            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700/60 transition-all duration-500 ease-out hidden lg:block mx-2 xl:mx-4 shrink-0" />
 
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-3.5 shrink-0 ml-3">
+            <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0 ml-auto lg:ml-0">
               {/* Shop Button */}
               <button
                 onClick={() => setIsShopOpen(true)}
                 onMouseDown={handleNavClick}
                 style={{ '--pulse-ring-color': 'rgba(6, 182, 212, 0.4)' } as React.CSSProperties}
-                className="flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-4 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] hover:shadow-[0_4px_0_0_#cbd5e1] dark:hover:shadow-[0_4px_0_0_#0f111a] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="flex h-[38px] items-center gap-1.5 sm:gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-2.5 sm:px-4 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
               >
-                <ShoppingBag className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                <span>Shop</span>
+                <ShoppingBag className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+                <span className="hidden sm:inline">Shop</span>
               </button>
 
-              {/* Level Badge with interactive XP hover info */}
+              {/* Level Badge with Popover Overlay */}
               <div 
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
-                className={`relative group cursor-pointer h-[38px] transition-all duration-500 ease-out hidden sm:block ${
-                  isBadgeHovered ? 'w-[680px]' : 'w-[280px]'
-                }`}
+                className="relative hidden md:block"
               >
-                <div className="absolute right-0 top-0 h-[38px] rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] hover:shadow-[0_4px_0_0_#cbd5e1] dark:hover:shadow-[0_4px_0_0_#0f111a] active:translate-y-[2px] active:shadow-none transition-all duration-500 ease-out w-full z-50 overflow-hidden px-3 flex items-center justify-between group/inner">
-                  {/* Arrow indicating expand/collapse inside the experience container */}
-                  <ChevronLeft 
-                    className={`h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 mr-1 transition-all duration-500 ease-out ${
-                      isBadgeHovered ? 'rotate-180 text-blue-500' : 'animate-pulse'
-                    }`} 
-                  />
-                  
-                  {/* Streak Map: left aligned, visible only when hovered */}
-                  <div className="opacity-0 w-0 group-hover:w-[360px] group-hover:opacity-100 transition-all duration-500 ease-out flex items-center gap-3 overflow-hidden whitespace-nowrap">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">Streak Map:</span>
-                    <div className="relative flex-1 flex items-center justify-between h-8 min-w-[260px] px-2">
-                      {/* Dotted line */}
-                      <div className="absolute left-2.5 right-2.5 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-600 h-0" />
-                      
-                      {/* Filled green line */}
-                      {streakCount > 1 && (
-                        <div 
-                          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
-                          style={{ 
-                            width: `${((streakCount - 1) / 6) * 100}%`,
-                            maxWidth: 'calc(100% - 20px)' 
-                          }} 
-                        />
-                      )}
-
-                      {/* 7 circles */}
-                      {Array.from({ length: 7 }).map((_, index) => {
-                        const day = index + 1;
-                        const isDone = day <= streakCount;
-                        const isMilestone = day === 7;
-                        return (
-                          <div key={day} className="relative z-10 flex flex-col items-center group/day">
-                            <div 
-                              className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all duration-300 border-2 ${
-                                isDone 
-                                  ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
-                                  : 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500'
-                              }`}
-                            >
-                              {isMilestone ? '👑' : day}
-                            </div>
-                            
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-1.5 opacity-0 pointer-events-none group-hover/day:opacity-100 transition-opacity duration-200 bg-slate-900 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap z-[60]">
-                              Day {day}: {isMilestone ? '+40 XP' : '+10 XP'} {isDone ? '(Done)' : ''}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div 
+                  onClick={() => setIsBadgeHovered(!isBadgeHovered)}
+                  className="flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 px-3 shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] cursor-pointer transition-all"
+                >
+                  <TreePine className="h-4 w-4 text-green-500 shrink-0" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                    {levelInfo?.name || 'Novice'}
+                  </span>
+                  <div className="w-16 lg:w-24 h-2.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden shrink-0">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-600 to-cyan-400"
+                      style={{ width: `${levelInfo?.progress || 0}%` }}
+                    />
                   </div>
+                </div>
 
-                  {/* Badge Details: centered and spaced */}
-                  <div className="flex-1 flex items-center justify-between pl-4 overflow-hidden">
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <TreePine className="h-4 w-4 text-green-500" />
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        {levelInfo?.name || 'Novice'}
+                {/* Popover Card for Streak & XP Info */}
+                {isBadgeHovered && (
+                  <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] p-4 bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md z-[100] transition-all duration-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <TreePine className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">{levelInfo?.name || 'Novice'}</span>
+                      </div>
+                      <span className="text-[11px] font-extrabold text-blue-500">
+                        {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
                       </span>
                     </div>
-                    <div className="flex-1 flex justify-center">
-                      <div className={`relative rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden transition-all duration-500 ease-out flex items-center justify-center shadow-inner ${
-                        isBadgeHovered ? 'w-56 h-5 px-2' : 'w-28 h-2.5'
-                      }`}>
+
+                    <div className="mb-2">
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        <span>Level Progress</span>
+                        <span>{Math.round(levelInfo?.progress || 0)}%</span>
+                      </div>
+                      <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                         <div 
-                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-500 ease-out" 
-                          style={{ width: `${levelInfo?.progress || 0}%` }} 
+                          className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 transition-all duration-500"
+                          style={{ width: `${levelInfo?.progress || 0}%` }}
                         />
-                        <span className={`relative z-10 text-[9px] font-extrabold tracking-wide text-white transition-opacity duration-300 whitespace-nowrap flex items-center gap-1 select-none ${
-                          isBadgeHovered ? 'opacity-100 delay-150' : 'opacity-0 pointer-events-none'
-                        }`}>
-                          <span>{levelInfo?.accumulated || 0}</span>
-                          <span className="opacity-60">/</span>
-                          <span>{levelInfo?.maxXp || 100} XP</span>
-                        </span>
+                      </div>
+                    </div>
+
+                    {/* Streak Map */}
+                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">7-Day Streak Map</span>
+                        <span className="text-[11px] font-extrabold text-emerald-500">{streakCount} Day Streak 🔥</span>
+                      </div>
+                      <div className="relative flex items-center justify-between h-10 px-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+                        <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-700 h-0" />
+                        {streakCount > 1 && (
+                          <div 
+                            className="absolute left-3 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
+                            style={{ 
+                              width: `${((Math.min(streakCount, 7) - 1) / 6) * 100}%`,
+                              maxWidth: 'calc(100% - 24px)' 
+                            }} 
+                          />
+                        )}
+                        {Array.from({ length: 7 }).map((_, index) => {
+                          const day = index + 1;
+                          const isDone = day <= streakCount;
+                          const isMilestone = day === 7;
+                          return (
+                            <div key={day} className="relative z-10 flex flex-col items-center">
+                              <div 
+                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2 ${
+                                  isDone 
+                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
+                                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500'
+                                }`}
+                              >
+                                {isMilestone ? '👑' : day}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Settings */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex h-[38px] w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] hover:shadow-[0_4px_0_0_#cbd5e1] dark:hover:shadow-[0_4px_0_0_#0f111a] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="flex h-[38px] w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                aria-label="Settings"
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-4 w-4 shrink-0" />
               </button>
 
               {/* Logout */}
               <button
                 onClick={() => signOut()}
-                className="flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-4 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] hover:shadow-[0_4px_0_0_#cbd5e1] dark:hover:shadow-[0_4px_0_0_#0f111a] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="hidden sm:flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
               >
                 Logout
               </button>
+
+              {/* Mobile Navigation Toggle Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="flex lg:hidden h-[38px] w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a]"
+                aria-label="Toggle Navigation Menu"
+              >
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </div>
           </header>
+
+          {/* Mobile Navigation Drawer */}
+          {isMobileMenuOpen && (
+            <div className="lg:hidden mt-3 rounded-2xl bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/80 p-4 shadow-2xl backdrop-blur-md space-y-3 z-50 relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {navLinks.map((link) => {
+                  const navIcons: Record<string, string> = {
+                    Portfolio: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Classroom Controls': '🛠️'
+                  };
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all ${
+                        pathname === link.href
+                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800'
+                          : 'text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span className="text-base">{navIcons[link.name] || '✨'}</span>
+                      <span>{link.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Mobile quick info and controls */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <TreePine className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{levelInfo?.name || 'Novice'}</span>
+                  <span className="text-[10px] text-blue-500 font-extrabold">({streakCount} Day Streak 🔥)</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => { setIsShopOpen(true); setIsMobileMenuOpen(false); }}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    <span>Shop</span>
+                  </button>
+                  <button
+                    onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
+                    className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                    aria-label="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => signOut()}
+                    className="flex items-center justify-center gap-1 h-9 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <main className="w-full mt-6 pb-12">
             {children}
@@ -624,14 +731,6 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
         {showPets && <DashboardPet />}
       </div>
-
-      <style jsx global>{`
-        @keyframes preview-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-      `}</style>
-    </ProtectedRoute>
   );
 }
 

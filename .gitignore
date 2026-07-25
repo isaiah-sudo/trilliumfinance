@@ -1,6 +1,10 @@
 # Ignore node_modules anywhere in the project
 **/node_modules/
 
+# Ignore scratch directory
+scratch/
+**/scratch/
+
 # Ignore .next folders anywhere (root or inside .firebase)
 **/.next/
 

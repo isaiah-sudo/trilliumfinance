@@ -121,7 +121,7 @@ export default function ChatPage() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const placeholders = [
     "Ask how to start trading with virtual cash...",
@@ -139,9 +139,14 @@ export default function ChatPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto scroll to bottom
+  // Auto scroll internal messages container to bottom without moving the page window/navbar
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [messages, isThinking]);
 
   const handleSendMessage = async () => {
@@ -206,7 +211,7 @@ export default function ChatPage() {
   return (
     <div className="w-full flex justify-center">
       {/* Container spans edge-to-edge on mobile/tablet, full-width with rounded corners on desktop */}
-      <div className="w-full max-w-3xl rounded-3xl border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] overflow-hidden flex flex-col h-[650px] relative mx-auto">
+      <div className="w-full max-w-3xl rounded-3xl border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-[0_5px_0_0_#cbd5e1] dark:shadow-[0_5px_0_0_#121622] overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[450px] max-h-[750px] relative mx-auto">
         
         {/* Northern Lights Feature spanning the entire container background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -265,7 +270,7 @@ export default function ChatPage() {
         </div>
 
         {/* Messages area - Translucent to let Northern Lights shine through */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 z-10 relative bg-transparent">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 z-10 relative bg-transparent">
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
               <motion.div
@@ -273,7 +278,7 @@ export default function ChatPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className={`flex gap-3 max-w-[80%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                className={`flex gap-3 max-w-[85%] sm:max-w-[80%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
               >
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border ${
                   msg.sender === 'user' 
@@ -286,7 +291,7 @@ export default function ChatPage() {
                     <TrilliumLogoMark className="h-4 w-4 text-slate-950" />
                   )}
                 </div>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-md ${
+                <div className={`p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md ${
                   msg.sender === 'user'
                     ? 'bg-blue-600/95 text-white rounded-tr-none font-semibold'
                     : 'bg-slate-100/90 dark:bg-[#0f111a]/85 text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/40 rounded-tl-none font-medium'
@@ -317,7 +322,6 @@ export default function ChatPage() {
               </motion.div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Gray separator line and Translucent Input area */}

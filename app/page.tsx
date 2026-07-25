@@ -275,17 +275,17 @@ export default function LandingPage() {
       <div className="absolute top-[35%] left-[30%] w-[35%] h-[35%] rounded-full bg-purple-500/5 blur-[120px] pointer-events-none" />
 
       {/* Floating Glass Header */}
-      <header className="relative z-50 max-w-[1700px] mx-auto px-6 py-5 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+      <header className="relative z-50 max-w-[1700px] mx-auto px-4 sm:px-6 py-3.5 sm:py-5 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity">
+          <div className="flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
             <TrilliumLogoMark />
           </div>
-          <span className="text-xl font-black text-white tracking-wide">
+          <span className="text-lg sm:text-xl font-black text-white tracking-wide whitespace-nowrap">
             Trillium <span className="text-emerald-400">Finance</span>
           </span>
         </Link>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-4">
           {!loading && user ? (
             <>
               <button
@@ -293,17 +293,17 @@ export default function LandingPage() {
                   await signOut();
                   router.refresh();
                 }}
-                className="text-sm font-bold text-slate-400 hover:text-red-400 transition-colors"
+                className="text-xs sm:text-sm font-bold text-slate-400 hover:text-red-400 transition-colors"
               >
                 Logout
               </button>
               <Link href="/dashboard">
-                <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all">
+                <button className="px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all">
                   Dashboard
                 </button>
               </Link>
               <div className="flex items-center gap-2.5 pl-2 border-l border-white/10">
-                <span className="text-sm font-semibold text-slate-200">
+                <span className="text-sm font-semibold text-slate-200 hidden sm:inline-block">
                   {user.displayName || user.email?.split('@')[0] || 'User'}
                 </span>
                 {user.photoURL ? (

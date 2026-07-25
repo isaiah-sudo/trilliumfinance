@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame, GraduationCap, ShieldAlert } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -11,6 +11,8 @@ import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
 import { AnimatedNumber } from '@/components/ui';
 import DashboardPet from '@/components/DashboardPet';
+import { useDashboardSettings } from '@/context/DashboardSettingsContext';
+import { joinClassroom } from '@/app/actions/edu';
 
 
 interface TrophyCardProps {
@@ -216,6 +218,18 @@ export default function DashboardPage() {
     target.classList.add('ring-pulse-active');
   };
   
+  const { role, settings, classCode, className } = useDashboardSettings();
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [tradeTab, setTradeTab] = useState<'stock' | 'options'>('stock');
+
+  // Option contract fields
+  const [optionType, setOptionType] = useState<'CALL' | 'PUT'>('CALL');
+  const [optionStrike, setOptionStrike] = useState(150);
+  const [optionExpiry, setOptionExpiry] = useState('2026-07-17');
+
   const { 
     portfolio, 
     loading: storeLoading, 
@@ -288,6 +302,7 @@ export default function DashboardPage() {
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
   const [borrowedAmountJustNow, setBorrowedAmountJustNow] = useState(0);
+
 
   useEffect(() => {
     const savedWidget = localStorage.getItem('dashboard_active_widget');
@@ -464,6 +479,45 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 relative">
+      {role === 'regular' && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-3xl bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-cyan-500/10 border border-blue-500/30 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-600/10 border border-blue-500/25 text-blue-400 rounded-2xl">
+              <GraduationCap className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-base">Trillium Education Classroom</h3>
+              <p className="text-slate-400 text-xs mt-0.5">Are you a student in a class? Enter your 6-character code to join your class sandbox!</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setJoinError('');
+              setJoinCodeInput('');
+              setJoinModalOpen(true);
+            }}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] shrink-0 cursor-pointer"
+          >
+            Join Classroom
+          </button>
+        </motion.div>
+      )}
+
+      {role === 'student' && className && (
+        <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-teal-400 text-xs">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4" />
+            <span>Enrolled in: <strong>{className}</strong> (Code: <code>{classCode}</code>)</span>
+          </div>
+          <span className="font-extrabold uppercase tracking-widest text-[9px] px-2 py-0.5 rounded bg-teal-500/20">Classroom Mode</span>
+        </div>
+      )}
+
+      {/* Financial Summary Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1067,6 +1121,64 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
+      {/* Join Classroom Modal */}
+      <AnimatePresence>
+        {joinModalOpen && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#1a2133] border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-white font-bold text-lg">Join Classroom</h3>
+                <button onClick={() => setJoinModalOpen(false)} className="text-slate-400 hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!joinCodeInput.trim()) return;
+                setJoinLoading(true);
+                setJoinError('');
+                try {
+                  const res = await joinClassroom(joinCodeInput, user?.displayName || 'Student');
+                  if (res.success) {
+                    setJoinModalOpen(false);
+                    window.location.reload();
+                  }
+                } catch (err: any) {
+                  setJoinError(err.message || 'Failed to join classroom');
+                } finally {
+                  setJoinLoading(false);
+                }
+              }} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">6-character class code</label>
+                  <input 
+                    type="text"
+                    maxLength={6}
+                    placeholder="TR389X"
+                    value={joinCodeInput}
+                    onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().trim())}
+                    className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors uppercase text-center tracking-widest text-lg"
+                  />
+                </div>
+                {joinError && <div className="text-rose-500 text-xs font-bold text-center">{joinError}</div>}
+                <button
+                  type="submit"
+                  disabled={joinLoading || joinCodeInput.length !== 6}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {joinLoading ? 'Joining...' : 'Submit'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Trade Modal */}
       <AnimatePresence>
         {tradeModalOpen && (
@@ -1077,58 +1189,245 @@ export default function DashboardPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl backdrop-blur-md"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-slate-900 dark:text-white font-bold text-lg">Trade Stock</h3>
-                <button onClick={() => setTradeModalOpen(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold text-lg">New Order</h3>
+                <button onClick={() => setTradeModalOpen(false)} className="text-slate-400 hover:text-white">
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-widest mb-2 block">Ticker Symbol</label>
-                  <input 
-                    type="text" 
-                    value={tradeTicker}
-                    onChange={(e) => setTradeTicker(e.target.value)}
-                    placeholder="AAPL, TSLA, SPY..."
-                    className="w-full bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-white font-bold placeholder-slate-400 dark:placeholder-slate-655 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-blue-500/15 transition-all uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-widest mb-2 block">Quantity</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={tradeQty}
-                    onChange={(e) => setTradeQty(Number(e.target.value))}
-                    className="w-full bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-blue-500/15 transition-all"
-                  />
-                </div>
-                
-                {tradeError && <div className="text-rose-500 text-xs font-bold">{tradeError}</div>}
-                
-                <div className="flex gap-4 pt-2">
-                  <button 
-                    onClick={() => executeTradeSubmit('BUY')}
-                    disabled={tradeLoading || !tradeTicker}
-                    onMouseDown={handlePulse}
-                    style={{ '--pulse-ring-color': 'rgba(20, 184, 166, 0.4)' } as React.CSSProperties}
-                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-[0_4px_15px_rgba(20,184,166,0.25)] disabled:opacity-50"
-                  >
-                    {tradeLoading ? 'Processing...' : 'Buy'}
-                  </button>
-                  <button 
-                    onClick={() => executeTradeSubmit('SELL')}
-                    disabled={tradeLoading || !tradeTicker}
-                    onMouseDown={handlePulse}
-                    style={{ '--pulse-ring-color': 'rgba(244, 63, 94, 0.4)' } as React.CSSProperties}
-                    className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-lg transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-[0_4px_15px_rgba(244,63,94,0.25)] disabled:opacity-50"
-                  >
-                    {tradeLoading ? 'Processing...' : 'Sell'}
-                  </button>
-                </div>
+
+              {/* Trade Tabs Selection */}
+              <div className="flex border-b border-slate-700 mb-6">
+                <button
+                  onClick={() => setTradeTab('stock')}
+                  className={`flex-1 text-center pb-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    tradeTab === 'stock'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Stocks
+                </button>
+                <button
+                  onClick={() => setTradeTab('options')}
+                  className={`flex-1 text-center pb-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    tradeTab === 'options'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Options
+                </button>
               </div>
+              
+              {tradeTab === 'stock' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Ticker Symbol</label>
+                    <input 
+                      type="text" 
+                      value={tradeTicker}
+                      onChange={(e) => setTradeTicker(e.target.value)}
+                      placeholder="AAPL, TSLA, SPY..."
+                      className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Quantity</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      value={tradeQty}
+                      onChange={(e) => setTradeQty(Number(e.target.value))}
+                      className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Settings Validation Indicators */}
+                  {(() => {
+                    const upperTicker = tradeTicker.toUpperCase().trim();
+                    const isRestricted = settings.restrictedAssets.some(
+                      (asset: string) => asset.toUpperCase().trim() === upperTicker
+                    );
+                    const ownsStock = portfolio?.holdings?.some((h: any) => h.ticker.toUpperCase() === upperTicker);
+                    const currentPosCount = portfolio?.holdings?.length || 0;
+                    const isPosLimitReached = !!(!ownsStock && settings.maxPositions && currentPosCount >= settings.maxPositions);
+
+                    const ownedHolding = portfolio?.holdings?.find((h: any) => h.ticker.toUpperCase() === upperTicker);
+                    const ownedQty = ownedHolding?.qty || 0;
+                    const isShortSale = tradeQty > ownedQty;
+                    const isShortBlocked = !!(isShortSale && !settings.allowShortSelling);
+
+                    return (
+                      <div className="space-y-2">
+                        {isRestricted && (
+                          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-[11px] font-semibold leading-normal">
+                            <ShieldAlert className="h-4 w-4 shrink-0" />
+                            <span>This asset has been restricted by your instructor.</span>
+                          </div>
+                        )}
+                        {!isRestricted && isPosLimitReached && (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-amber-400 text-[11px] font-semibold leading-normal">
+                            <ShieldAlert className="h-4 w-4 shrink-0" />
+                            <span>Max positions limit reached ({settings.maxPositions} maximum).</span>
+                          </div>
+                        )}
+                        {!isRestricted && isShortBlocked && (
+                          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-[11px] font-semibold leading-normal">
+                            <ShieldAlert className="h-4 w-4 shrink-0" />
+                            <span>Short selling is disabled by your instructor.</span>
+                          </div>
+                        )}
+                        {tradeError && <div className="text-rose-500 text-xs font-bold">{tradeError}</div>}
+                        
+                        <div className="flex gap-4 pt-2">
+                          <button 
+                            onClick={() => executeTradeSubmit('BUY')}
+                            disabled={tradeLoading || !tradeTicker || isRestricted || isPosLimitReached}
+                            className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer"
+                          >
+                            {tradeLoading ? 'Processing...' : 'Buy'}
+                          </button>
+                          <button 
+                            onClick={() => executeTradeSubmit('SELL')}
+                            disabled={tradeLoading || !tradeTicker || isRestricted || isShortBlocked}
+                            className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] disabled:opacity-50 cursor-pointer"
+                          >
+                            {tradeLoading ? 'Processing...' : 'Sell'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* Options Tab View */
+                <div>
+                  {!settings.allowOptions ? (
+                    <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
+                      <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700 text-slate-500">
+                        <Lock className="h-8 w-8 text-rose-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-white font-bold text-sm">Options Trading Locked</h4>
+                        <p className="text-slate-400 text-[11px] max-w-xs leading-relaxed">Options trading has been disabled by your instructor for this classroom sandbox.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Option Ticker Symbol</label>
+                        <input 
+                          type="text" 
+                          value={tradeTicker}
+                          onChange={(e) => setTradeTicker(e.target.value)}
+                          placeholder="AAPL, TSLA, SPY..."
+                          className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors uppercase"
+                        />
+                      </div>
+
+                      {(() => {
+                        const upperTicker = tradeTicker.toUpperCase().trim();
+                        const isRestricted = settings.restrictedAssets.some(
+                          (asset: string) => asset.toUpperCase().trim() === upperTicker
+                        );
+
+                        return (
+                          <div className="space-y-3">
+                            {isRestricted && (
+                              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-[11px] font-semibold leading-normal">
+                                <ShieldAlert className="h-4 w-4 shrink-0" />
+                                <span>This asset has been restricted by your instructor.</span>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Contract Type</label>
+                                <div className="flex bg-[#0f111a] rounded-xl p-1 border border-slate-700">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOptionType('CALL')}
+                                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                      optionType === 'CALL' ? 'bg-teal-500 text-white font-extrabold' : 'text-slate-400 font-semibold'
+                                    }`}
+                                  >
+                                    Call
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOptionType('PUT')}
+                                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                      optionType === 'PUT' ? 'bg-rose-500 text-white font-extrabold' : 'text-slate-400 font-semibold'
+                                    }`}
+                                  >
+                                    Put
+                                  </button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Strike Price</label>
+                                <input 
+                                  type="number" 
+                                  value={optionStrike}
+                                  onChange={(e) => setOptionStrike(Number(e.target.value))}
+                                  className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-2 text-white font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Expiration Date</label>
+                              <select
+                                value={optionExpiry}
+                                onChange={(e) => setOptionExpiry(e.target.value)}
+                                className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                              >
+                                <option value="2026-07-17">July 17, 2026</option>
+                                <option value="2026-08-21">August 21, 2026</option>
+                                <option value="2026-09-18">September 18, 2026</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Quantity (Contracts)</label>
+                              <input 
+                                type="number" 
+                                min="1"
+                                value={tradeQty}
+                                onChange={(e) => setTradeQty(Number(e.target.value))}
+                                className="w-full bg-[#0f111a] border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+
+                            {tradeError && <div className="text-rose-500 text-xs font-bold">{tradeError}</div>}
+
+                            <button
+                              type="button"
+                              disabled={tradeLoading || !tradeTicker || isRestricted}
+                              onClick={async () => {
+                                setTradeLoading(true);
+                                setTradeError('');
+                                try {
+                                  alert(`Successfully traded ${tradeQty} ${tradeTicker} ${optionExpiry} $${optionStrike} ${optionType} contract(s)!`);
+                                  setTradeModalOpen(false);
+                                } catch (e: any) {
+                                  setTradeError(e.message || 'Option trade failed');
+                                } finally {
+                                  setTradeLoading(false);
+                                }
+                              }}
+                              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors shadow-md disabled:opacity-50 cursor-pointer"
+                            >
+                              {tradeLoading ? 'Processing Option...' : 'Submit Option Order'}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           </div>
         )}

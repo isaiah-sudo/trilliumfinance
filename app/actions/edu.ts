@@ -1,5 +1,6 @@
 import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, collection, setDoc, serverTimestamp, getDocs, writeBatch, query, where, limit } from 'firebase/firestore';
+import { ClassroomSettings } from '@/types/education';
 
 // Helper to get authenticated UID on the client
 async function getAuthenticatedUserId() {
@@ -23,14 +24,13 @@ async function getAuthenticatedUserId() {
 }
 
 /**
- * Assigns a user their educational role ('teacher' or 'student')
+ * Assigns a user their educational role ('teacher' or 'student' or 'regular')
  * Updates the Firestore user metadata.
  */
-export async function setUserRole(role: 'teacher' | 'student', name: string) {
+export async function setUserRole(role: 'teacher' | 'student' | 'regular', name: string) {
   const userId = await getAuthenticatedUserId();
 
   try {
-    // Persist in Firestore for client queries and relational consistency
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, {
       role,
@@ -46,44 +46,48 @@ export async function setUserRole(role: 'teacher' | 'student', name: string) {
 }
 
 /**
- * Creates a classroom under a teacher's account.
- * Generates a unique, readable Class Code like TRIL-8921.
+ * Generates a unique 6-character alphanumeric classroom code.
  */
-export async function createClassroom(className: string, initialRules?: {
-  maxDailyTrades?: number;
-  startingCash?: number;
-  allowedAssets?: string[];
-  blacklistedAssets?: string[];
-}) {
-  const userId = await getAuthenticatedUserId();
+function generateClassCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
-  // Generate a random readable code (TRIL-XXXX)
-  const randNum = Math.floor(1000 + Math.random() * 9000);
-  const classCode = `TRIL-${randNum}`;
+/**
+ * Creates a classroom under a teacher's account.
+ */
+export async function createClassroom(className: string, initialSettings?: Partial<ClassroomSettings>) {
+  const userId = await getAuthenticatedUserId();
+  const classCode = generateClassCode();
 
   try {
-    // Create classroom document
     const classroomRef = doc(collection(db, 'classrooms'));
-    const rules = {
-      maxDailyTrades: initialRules?.maxDailyTrades ?? 3,
-      startingCash: initialRules?.startingCash ?? 50000,
-      allowedAssets: initialRules?.allowedAssets ?? [],
-      blacklistedAssets: initialRules?.blacklistedAssets ?? []
+    const settings: ClassroomSettings = {
+      startingBalance: initialSettings?.startingBalance ?? 100000,
+      allowShortSelling: initialSettings?.allowShortSelling ?? true,
+      allowOptions: initialSettings?.allowOptions ?? true,
+      maxPositions: initialSettings?.maxPositions ?? 10,
+      restrictedAssets: initialSettings?.restrictedAssets ?? []
     };
 
     await setDoc(classroomRef, {
       classCode,
-      name: className,
+      className,
       teacherId: userId,
       createdAt: serverTimestamp(),
-      rules
+      settings
     });
 
-    // Save class relationship on the teacher's profile
+    // Save relationship and role on the teacher's profile
     const teacherRef = doc(db, 'users', userId);
     await setDoc(teacherRef, {
       classId: classroomRef.id,
-      classCode
+      classCode,
+      role: 'teacher'
     }, { merge: true });
 
     return { success: true, classCode, classId: classroomRef.id };
@@ -94,8 +98,7 @@ export async function createClassroom(className: string, initialRules?: {
 }
 
 /**
- * Enrolls a student in a classroom based on a 9-character code (e.g. TRIL-8921).
- * Validates classroom existence, registers membership, and sets up a sandbox portfolio.
+ * Enrolls a student in a classroom based on a 6-character code.
  */
 export async function joinClassroom(classCode: string, studentName: string) {
   const userId = await getAuthenticatedUserId();
@@ -114,22 +117,21 @@ export async function joinClassroom(classCode: string, studentName: string) {
     const classDoc = classroomsSnap.docs[0];
     const classData = classDoc.data();
     const classId = classDoc.id;
+    const settings = classData.settings as ClassroomSettings;
 
-    // 2. Register membership in `/classrooms/{classId}/members/{studentId}`
-    const memberRef = doc(db, 'classrooms', classId, 'members', userId);
+    // 2. Register membership in `/classrooms/{classId}/roster/{studentId}`
+    const rosterRef = doc(db, 'classrooms', classId, 'roster', userId);
     
-    // Check custom rules to initialize portfolio with starting cash
-    const startingCash = classData.rules?.startingCash ?? 50000;
+    // Check starting balance rule
+    const startingBalance = settings?.startingBalance ?? 100000;
 
-    // 3. Create or update user metadata
+    // 3. Create or update user metadata and initialize portfolio
     const userRef = doc(db, 'users', userId);
     const batch = writeBatch(db);
 
-    batch.set(memberRef, {
-      studentId: userId,
-      studentName,
+    batch.set(rosterRef, {
       joinedAt: serverTimestamp(),
-      portfolioId: `edu_${classId}`
+      displayName: studentName
     });
 
     batch.set(userRef, {
@@ -139,17 +141,17 @@ export async function joinClassroom(classCode: string, studentName: string) {
       name: studentName
     }, { merge: true });
 
-    // Initialize custom student sandbox portfolio with the assigned cash balance
+    // Initialize custom student sandbox portfolio with the assigned balance
     const portfolioRef = doc(db, 'users', userId, 'portfolio', 'main');
     batch.set(portfolioRef, {
-      cash: startingCash,
+      cash: startingBalance,
       isEdu: true,
       classId
     }, { merge: true });
 
     await batch.commit();
 
-    return { success: true, classId, className: classData.name };
+    return { success: true, classId, className: classData.className };
   } catch (error: any) {
     console.error('Failed to join classroom:', error);
     throw new Error(error.message || 'Failed to join classroom.');
@@ -157,7 +159,7 @@ export async function joinClassroom(classCode: string, studentName: string) {
 }
 
 /**
- * Gets student roster for a teacher's classroom, showing portfolios and trade counts.
+ * Gets student roster for a teacher's classroom.
  */
 export async function getClassroomRoster() {
   const userId = await getAuthenticatedUserId();
@@ -168,19 +170,19 @@ export async function getClassroomRoster() {
   if (!classId) throw new Error('No active classroom found for this teacher.');
 
   const classRef = doc(db, 'classrooms', classId);
-  const membersSnap = await getDocs(collection(db, 'classrooms', classId, 'members'));
+  const rosterSnap = await getDocs(collection(db, 'classrooms', classId, 'roster'));
   const classroomDoc = await getDoc(classRef);
   const classroomData = classroomDoc.data();
 
   const roster = [];
 
-  for (const memberDoc of membersSnap.docs) {
+  for (const memberDoc of rosterSnap.docs) {
     const data = memberDoc.data();
-    const studentId = data.studentId;
+    const studentId = memberDoc.id;
 
     // Fetch the student's portfolio and transaction counts
     const portfolioRef = doc(db, 'users', studentId, 'portfolio', 'main');
-    const transactionsRef = collection(db, 'users', studentId, 'transactions');
+    const transactionsRef = collection(db, 'users', studentId, 'portfolio_history');
 
     const [portDoc, transSnap] = await Promise.all([
       getDoc(portfolioRef),
@@ -188,13 +190,12 @@ export async function getClassroomRoster() {
     ]);
 
     const portData = portDoc.data();
-    const cash = portData?.cash ?? 50000;
+    const cash = portData?.cash ?? 100000;
     
     // Fetch holding valuation
     let holdingsValue = 0;
     const holdingsSnap = await getDocs(collection(db, 'users', studentId, 'portfolio', 'main', 'holdings'));
     
-    // We approximate or return simplified values since live fetch requires rate limit handling
     holdingsSnap.forEach(h => {
       const hData = h.data();
       holdingsValue += (hData.qty || 0) * (hData.avgPrice || 0); // Simplified using book cost
@@ -202,7 +203,7 @@ export async function getClassroomRoster() {
 
     roster.push({
       studentId,
-      studentName: data.studentName || 'Anonymous Student',
+      studentName: data.displayName || 'Anonymous Student',
       joinedAt: data.joinedAt?.toDate()?.toLocaleDateString() || 'N/A',
       cashBalance: cash,
       portfolioValue: cash + holdingsValue,
@@ -211,15 +212,63 @@ export async function getClassroomRoster() {
   }
 
   return {
-    className: classroomData?.name || 'Classroom',
+    className: classroomData?.className || 'Classroom',
     classCode: classroomData?.classCode || '',
-    rules: classroomData?.rules || {},
+    settings: classroomData?.settings || {},
     roster: roster.sort((a, b) => b.portfolioValue - a.portfolioValue)
   };
 }
 
 /**
- * Updates trading rules constraints for a classroom.
+ * Updates trading settings for a classroom.
+ */
+export async function updateClassroomSettings(settings: ClassroomSettings) {
+  const userId = await getAuthenticatedUserId();
+
+  const teacherDoc = await getDoc(doc(db, 'users', userId));
+  const classId = teacherDoc.data()?.classId;
+  if (!classId) throw new Error('No active classroom found.');
+
+  const classRef = doc(db, 'classrooms', classId);
+  
+  await setDoc(classRef, {
+    settings: {
+      startingBalance: Number(settings.startingBalance),
+      allowShortSelling: Boolean(settings.allowShortSelling),
+      allowOptions: Boolean(settings.allowOptions),
+      maxPositions: Number(settings.maxPositions),
+      restrictedAssets: settings.restrictedAssets.map(t => t.toUpperCase().trim()).filter(Boolean)
+    }
+  }, { merge: true });
+
+  return { success: true };
+}
+
+/**
+ * Gets student's active classroom details and settings.
+ */
+export async function getStudentClassroomDetails() {
+  const userId = await getAuthenticatedUserId();
+
+  const studentDoc = await getDoc(doc(db, 'users', userId));
+  const classId = studentDoc.data()?.classId;
+  if (!classId) return null; // Not in a classroom
+
+  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  if (!classDoc.exists()) return null;
+
+  const data = classDoc.data()!;
+  
+  return {
+    classId,
+    classCode: data.classCode,
+    className: data.className,
+    settings: data.settings as ClassroomSettings
+  };
+}
+
+/**
+ * Updates trading rules constraints for a classroom (Legacy rules compat)
  */
 export async function updateClassroomRules(rules: {
   maxDailyTrades: number;
@@ -245,35 +294,4 @@ export async function updateClassroomRules(rules: {
   }, { merge: true });
 
   return { success: true };
-}
-
-/**
- * Gets student's active classroom details and rules.
- */
-export async function getStudentRules() {
-  const userId = await getAuthenticatedUserId();
-
-  const studentDoc = await getDoc(doc(db, 'users', userId));
-  const classId = studentDoc.data()?.classId;
-  if (!classId) return null; // Not in a classroom
-
-  const classDoc = await getDoc(doc(db, 'classrooms', classId));
-  if (!classDoc.exists()) return null;
-
-  const data = classDoc.data()!;
-  
-  // Count today's trades
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const transactionsRef = collection(db, 'users', userId, 'transactions');
-  const q = query(transactionsRef, where('timestamp', '>=', today));
-  const transactionsSnap = await getDocs(q);
-
-  return {
-    classCode: data.classCode,
-    className: data.name,
-    rules: data.rules || {},
-    tradesToday: transactionsSnap.size
-  };
 }

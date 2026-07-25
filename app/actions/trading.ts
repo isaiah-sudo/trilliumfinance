@@ -348,41 +348,54 @@ async function validateTradeAgainstRules(
 
   const { classId } = userData;
 
-  // 2. Fetch classroom active rules
+  // 2. Fetch classroom active settings
   const classDoc = await getDoc(doc(db, 'classrooms', classId));
   if (!classDoc.exists()) {
     throw new Error('Enrolled classroom not found. Please contact your instructor.');
   }
 
   const classData = classDoc.data()!;
-  const rules = classData.rules || {};
+  const settings = classData.settings || {};
 
-  // Check Whitelist (allowedAssets)
   const upperTicker = ticker.toUpperCase();
-  if (rules.allowedAssets && rules.allowedAssets.length > 0) {
-    if (!rules.allowedAssets.includes(upperTicker)) {
-      throw new Error(`Transaction blocked: '${upperTicker}' is not on your teacher's approved assets list.`);
+
+  // Check restricted assets
+  if (settings.restrictedAssets && settings.restrictedAssets.length > 0) {
+    const isRestricted = settings.restrictedAssets.some(
+      (asset: string) => asset.toUpperCase().trim() === upperTicker
+    );
+    if (isRestricted) {
+      throw new Error(`This asset has been restricted by your instructor`);
     }
   }
 
-  // Check Blacklist (blacklistedAssets)
-  if (rules.blacklistedAssets && rules.blacklistedAssets.length > 0) {
-    if (rules.blacklistedAssets.includes(upperTicker)) {
-      throw new Error(`Transaction blocked: Trading is banned for ticker '${upperTicker}' by your teacher.`);
+  // Check current holdings for short selling and max positions checks
+  const holdingsSnap = await getDocs(collection(db, 'users', userId, 'portfolio', 'main', 'holdings'));
+  const currentHoldings = holdingsSnap.docs.map(doc => ({
+    ticker: doc.id.toUpperCase(),
+    qty: doc.data().qty || 0
+  })).filter(h => h.qty > 0);
+
+  const ownsAsset = currentHoldings.some(h => h.ticker === upperTicker);
+
+  if (type === 'BUY') {
+    // Check max positions limit
+    if (!ownsAsset && settings.maxPositions && settings.maxPositions > 0) {
+      if (currentHoldings.length >= settings.maxPositions) {
+        throw new Error(`Transaction blocked: You have reached the maximum allowed limit of ${settings.maxPositions} positions.`);
+      }
     }
-  }
+  } else if (type === 'SELL') {
+    // Check if short selling is attempted and if it is allowed
+    const holdingDocRef = doc(db, 'users', userId, 'portfolio', 'main', 'holdings', upperTicker);
+    const holdingDoc = await getDoc(holdingDocRef);
+    const currentQty = holdingDoc.exists() ? (holdingDoc.data()?.qty || 0) : 0;
 
-  // Check Day Trading Limit (maxDailyTrades)
-  if (rules.maxDailyTrades && rules.maxDailyTrades > 0) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const transactionsRef = collection(db, 'users', userId, 'transactions');
-    const q = query(transactionsRef, where('timestamp', '>=', today));
-    const transactionsSnap = await getDocs(q);
-
-    if (transactionsSnap.size >= rules.maxDailyTrades) {
-      throw new Error(`Transaction blocked: Teacher has set a maximum of ${rules.maxDailyTrades} trades per day. You have reached this limit.`);
+    if (currentQty < quantity) {
+      const allowShort = settings.allowShortSelling ?? true;
+      if (!allowShort) {
+        throw new Error('Short selling is disabled by your instructor.');
+      }
     }
   }
 }
