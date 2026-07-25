@@ -635,8 +635,55 @@ export default function DashboardPage() {
   );
 
   return (
+<<<<<<< Updated upstream
     <div className="space-y-6 relative" ref={containerRef}>
       {/* Edit Mode Notification & Toolbar Banner */}
+=======
+    <div className="space-y-6 sm:space-y-8 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
+      {/* Top Header Controls Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-lg w-full">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard Grid Layout</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mt-0.5">
+            {isEditMode ? 'Drag and resize widgets below to customize your layout.' : 'Locked view. Click Customize Layout to move or resize widgets.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {isEditMode ? (
+            <>
+              <button
+                onClick={() => setWidgetModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-500/30 text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> Add Widgets
+              </button>
+              <button
+                onClick={handleResetLayout}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4" /> Reset Default
+              </button>
+              <button
+                onClick={handleSaveLayout}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-extrabold transition-all cursor-pointer"
+              >
+                <Check className="h-4 w-4" /> Save Layout
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditMode(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-extrabold transition-all cursor-pointer"
+            >
+              <Edit3 className="h-4 w-4" /> Customize Layout
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Edit Mode Notification Banner */}
+>>>>>>> Stashed changes
       {isEditMode && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -713,8 +760,9 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-6 shadow-xl pet-container-target relative"
+        className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl pet-container-target relative w-full"
       >
+<<<<<<< Updated upstream
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
           {!isEditMode && (
@@ -728,14 +776,17 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
+=======
+        <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight mb-4 md:mb-6">Portfolio Overview</h2>
+>>>>>>> Stashed changes
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
-          <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 shadow-md transition-all duration-300">
+          <div className="p-4 md:p-6 lg:p-8 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-                <div className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
+                <div className={`text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
@@ -802,37 +853,37 @@ export default function DashboardPage() {
           </div>
 
           {/* Supporting Stats */}
-          <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800/30">
-              <div className="pb-4 md:pb-0 md:pr-6">
+          <div className="p-4 md:p-6 lg:p-8 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative w-full">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800/30">
+              <div className="pb-4 md:pb-0 md:pr-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
-                <div className={`text-2xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
+                <div className={`text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
 
-              <div className="py-4 md:py-0 md:px-6">
+              <div className="py-4 md:py-0 md:px-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl font-black tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
                     <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatNumberNoCurrency} />
                   </div>
-                  <div className={`text-[11px] font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                  <div className={`text-[11px] md:text-xs font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
                     {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
                     <AnimatedNumber value={portfolio.totalPerformancePercent} formatter={formatPercent} />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 md:pt-0 md:pl-6">
+              <div className="pt-4 md:pt-0 md:pl-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl font-black tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
                     <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
                   </div>
-                  <div className={`text-[11px] font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                  <div className={`text-[11px] md:text-xs font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
                     {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
                     <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
                   </div>

@@ -36,7 +36,11 @@ export default function DashboardWidgetCard({
     >
       {/* Widget Header */}
       <div
+<<<<<<< Updated upstream
         className={`px-5 py-3 flex items-center justify-between border-b select-none shrink-0 ${
+=======
+        className={`px-4 md:px-6 py-3.5 flex items-center justify-between border-b select-none shrink-0 ${
+>>>>>>> Stashed changes
           isEditing
             ? 'bg-slate-100/90 dark:bg-[#181f30] border-slate-200 dark:border-slate-700/60'
             : 'bg-transparent border-slate-200/60 dark:border-slate-800/50'
@@ -51,7 +55,7 @@ export default function DashboardWidgetCard({
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          <h3 className="text-slate-900 dark:text-white font-extrabold text-sm tracking-tight truncate">
+          <h3 className="text-slate-900 dark:text-white font-extrabold text-sm md:text-base tracking-tight truncate">
             {title}
           </h3>
         </div>
@@ -123,7 +127,7 @@ export default function DashboardWidgetCard({
       </div>
 
       {/* Widget Body */}
-      <div className="flex-1 min-h-0 p-5 overflow-auto">
+      <div className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-auto">
         {children}
       </div>
     </div>

@@ -1,11 +1,12 @@
 import '@/app/globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
 import { PropsWithChildren } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from '@/context/SettingsContext';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
 
 export const metadata: Metadata = {
   title: 'Trillium Finance',
@@ -14,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en" className={`${inter.variable} dark`} suppressHydrationWarning>
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans antialiased">
+    <html lang="en" className={`${inter.variable} ${playfair.variable} dark`} suppressHydrationWarning>
+      <body className="min-h-screen w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col">
         <SettingsProvider>
           <AuthProvider>{children}</AuthProvider>
         </SettingsProvider>

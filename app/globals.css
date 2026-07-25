@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* react-grid-layout & react-resizable styles */
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
+
 /* Global dark mode class applied in layout */
 html.dark {
   color-scheme: dark;
@@ -12,7 +16,10 @@ html.dark {
   font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 .font-txt-serif {
-  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+.font-serif-editorial {
+  font-family: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
 }
 .font-txt-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -134,9 +141,7 @@ html.dark {
 }
 
 
-/* react-grid-layout styles */
-@import 'react-grid-layout/css/styles.css';
-@import 'react-resizable/css/styles.css';
+/* react-grid-layout custom overrides */
 
 .react-grid-item.react-grid-placeholder {
   background: rgba(16, 185, 129, 0.15) !important;

@@ -165,8 +165,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
-      <div className="relative z-10 w-full max-w-[1700px] mx-auto px-3 sm:px-6 pt-3 sm:pt-6">
-        <header className="relative z-50 flex h-auto min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-3.5 sm:px-5 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target">
+      <div className="relative z-10 w-full min-h-screen px-4 md:px-8 lg:px-12 pt-4 sm:pt-6 flex flex-col flex-1">
+        <header className="relative z-50 w-full flex h-auto min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-4 sm:px-6 py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2.5 sm:gap-3">
@@ -446,7 +446,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </div>
           )}
 
-          <main className="w-full mt-6 pb-12">
+          <main className="w-full mt-6 pb-12 flex-1 flex flex-col">
             {children}
           </main>
         </div>

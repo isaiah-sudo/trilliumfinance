@@ -44,6 +44,124 @@ function TrilliumLogoMark() {
   );
 }
 
+function InteractiveDripDotGrid() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.offsetHeight || 1400);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.offsetWidth;
+      height = canvas.height = canvas.parentElement.offsetHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    const mouse = { x: -1000, y: -1000, active: false };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.active = true;
+    };
+
+    const handleMouseLeave = () => {
+      mouse.active = false;
+      mouse.x = -1000;
+      mouse.y = -1000;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+
+    const spacing = 22; // Dots slightly closer together
+    const hoverRadius = 90; // Tighter hover activation range
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      const cols = Math.ceil(width / spacing);
+      const rows = Math.ceil(height / spacing);
+
+      const heroCenterX = width / 2;
+      const heroCenterY = 280;
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          const x = i * spacing + spacing / 2;
+          const y = j * spacing + spacing / 2;
+
+          // Elliptical distance relative to "Master the Markets with Zero Risk" headline
+          const normDx = (x - heroCenterX) / Math.min(width * 0.44, 620);
+          const normDy = (y - heroCenterY) / 230;
+          const distSq = normDx * normDx + normDy * normDy;
+
+          // Sharp fade off right outside the text area
+          let textMask = 0;
+          if (distSq <= 0.75) {
+            textMask = 1.0;
+          } else if (distSq < 1.25) {
+            textMask = Math.pow(1.0 - (distSq - 0.75) / 0.5, 2.5); // very sharp quadratic drop-off
+          }
+
+          if (textMask <= 0.01) continue;
+
+          let targetRadius = 1.4;
+          let targetOpacity = 0.06 * textMask; // Concentrated behind hero text, barely noticeable when idle
+          let color = `rgba(148, 163, 184, ${targetOpacity})`;
+
+          if (mouse.active) {
+            const dx = mouse.x - x;
+            const dy = mouse.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < hoverRadius) {
+              const hoverFactor = 1 - dist / hoverRadius;
+              const glowIntensity = Math.pow(hoverFactor, 2);
+              
+              targetRadius = 1.4 + glowIntensity * 3.0;
+              targetOpacity = (0.06 + glowIntensity * 0.85) * textMask;
+              color = `rgba(16, 185, 129, ${targetOpacity})`; // glowing emerald on hover
+            }
+          }
+
+          ctx.beginPath();
+          ctx.arc(x, y, targetRadius, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+    />
+  );
+}
+
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -56,17 +174,45 @@ export default function LandingPage() {
   };
 
   // Fidget 1: Trading Simulator State
-  const [shareCount, setShareCount] = useState(10);
-  const sharePrice = 182.50;
-  const initialCash = 10000;
-  const totalCost = shareCount * sharePrice;
-  const remainingCash = initialCash - totalCost;
+  const [stockAssets, setStockAssets] = useState([
+    { symbol: 'AAPL', name: 'Apple Inc.', price: 189.45, change: 3.8 },
+    { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 124.50, change: 5.2 },
+    { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.20, change: -1.4 }
+  ]);
 
-  // Fidget 2: Streak State
-  const [streakCount, setStreakCount] = useState(3);
-  const [hasCheckedIn, setHasCheckedIn] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState<'AAPL' | 'NVDA' | 'TSLA'>('AAPL');
+  const [virtualCash, setVirtualCash] = useState(10000);
+  const [shareCount, setShareCount] = useState(10);
+  const [orderToast, setOrderToast] = useState<string | null>(null);
+
+  const currentAsset = stockAssets.find(a => a.symbol === selectedSymbol) || stockAssets[0];
+  const maxShares = Math.max(1, Math.floor(virtualCash / currentAsset.price));
+  const totalCost = shareCount * currentAsset.price;
+  const remainingCash = virtualCash - totalCost;
+
+  // Fidget 2: Trophy Showcase Carousel State
+  const trophiesList = [
+    { id: 1, title: 'Paper Pioneer', desc: 'Executed 1st virtual trade', icon: '🌱', xp: 100, unlocked: true },
+    { id: 2, title: 'Market Wizard', desc: 'Hit $12,000 Portfolio Equity', icon: '🏆', xp: 250, unlocked: true },
+    { id: 3, title: 'Streak Titan', desc: 'Maintained 7-Day Active Streak', icon: '🔥', xp: 150, unlocked: true },
+    { id: 4, title: 'Diamond Hands', desc: 'Held Position Through Volatility', icon: '💎', xp: 300, unlocked: false },
+    { id: 5, title: 'Bull Champ', desc: 'Reached 1,500 Total Account XP', icon: '👑', xp: 500, unlocked: false }
+  ];
+
+  const [activeTrophyIdx, setActiveTrophyIdx] = useState(1); // Default center highlighted trophy (Market Wizard)
+  const [claimedTrophies, setClaimedTrophies] = useState<number[]>([1]);
   const [xp, setXp] = useState(1250);
   const [xpNotes, setXpNotes] = useState<string[]>([]);
+
+  const handleClaimTrophy = (trophyId: number, trophyXp: number) => {
+    if (claimedTrophies.includes(trophyId)) return;
+    setClaimedTrophies(prev => [...prev, trophyId]);
+    setXp(prev => prev + trophyXp);
+    setXpNotes(prev => [...prev, `+${trophyXp} XP Unlocked! 🏆`]);
+    setTimeout(() => {
+      setXpNotes(prev => prev.slice(1));
+    }, 2500);
+  };
 
   // Interactive FAQ Accordion State
   const [openFaq, setOpenFaq] = useState<number>(0);
@@ -285,6 +431,10 @@ export default function LandingPage() {
           const validQuotes = quotes.filter(q => q.price > 0);
           if (validQuotes.length > 0) {
             setTickerQuotes(validQuotes);
+            setStockAssets(prev => prev.map(asset => {
+              const match = validQuotes.find(q => q.ticker === asset.symbol);
+              return match ? { ...asset, price: match.price, change: match.change } : asset;
+            }));
           }
         }
       } catch (err) {
@@ -300,15 +450,13 @@ export default function LandingPage() {
     };
   }, []);
 
-  const handleCheckIn = () => {
-    if (hasCheckedIn) return;
-    setHasCheckedIn(true);
-    setStreakCount((prev) => prev + 1);
-    setXp((prev) => prev + 150);
-    setXpNotes((prev) => [...prev, '+150 Streak XP!']);
+  const handleExecuteOrder = () => {
+    if (totalCost > virtualCash || shareCount <= 0) return;
+    setVirtualCash((prev) => prev - totalCost);
+    setOrderToast(`Bought ${shareCount} shares of ${selectedSymbol}!`);
     setTimeout(() => {
-      setXpNotes((prev) => prev.slice(1));
-    }, 2500);
+      setOrderToast(null);
+    }, 3000);
   };
 
   return (
@@ -319,61 +467,92 @@ export default function LandingPage() {
       <div className="absolute bottom-[5%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[140px] pointer-events-none" />
       <div className="absolute top-[35%] left-[30%] w-[35%] h-[35%] rounded-full bg-purple-500/5 blur-[120px] pointer-events-none" />
 
-      {/* Floating Glass Header */}
-      <header className="relative z-50 max-w-[1700px] mx-auto px-4 sm:px-6 py-3.5 sm:py-5 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity">
-          <div className="flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
-            <TrilliumLogoMark />
-          </div>
-          <span className="text-lg sm:text-xl font-black text-white tracking-wide whitespace-nowrap">
-            Trillium <span className="text-emerald-400">Finance</span>
-          </span>
-        </Link>
-        
-        <div className="flex items-center gap-2.5 sm:gap-4">
+      {/* Sleek Professional 3-Part Glass Navbar */}
+      <header className="w-full flex items-center justify-between px-6 py-4 bg-slate-950/80 backdrop-blur-lg border-b border-white/[0.08] sticky top-0 z-50">
+        {/* Left: Logo & Brand Name + Quick Links */}
+        <div className="flex items-center gap-8 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
+              <TrilliumLogoMark />
+            </div>
+            <span className="text-lg sm:text-xl font-black text-white tracking-wide whitespace-nowrap">
+              Trillium <span className="text-emerald-400">Finance</span>
+            </span>
+          </Link>
+
+          {/* Quick Nav Links (Positioned on Left next to Logo with White Text) */}
+          <nav className="hidden md:flex items-center gap-2 lg:gap-3 pl-4 border-l border-white/10">
+            <button
+              onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+            >
+              Simulator
+            </button>
+            <button
+              onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+            >
+              FAQ
+            </button>
+          </nav>
+        </div>
+
+        {/* Right: User Profile & Primary Controls */}
+        <div className="flex items-center gap-3 shrink-0">
           {!loading && user ? (
             <>
+              {/* Avatar Pill */}
+              <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1 text-xs font-medium text-slate-200 flex items-center gap-2">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile"
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-slate-950">
+                    {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="truncate max-w-[120px] font-semibold text-slate-200">
+                  {user.displayName || user.email?.split('@')[0] || 'User'}
+                </span>
+              </div>
+
+              {/* Primary Button */}
+              <Link href="/dashboard">
+                <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer">
+                  Dashboard
+                </button>
+              </Link>
+
+              {/* Secondary Action */}
               <button
                 onClick={async () => {
                   await signOut();
                   router.refresh();
                 }}
-                className="text-xs sm:text-sm font-bold text-slate-400 hover:text-red-400 transition-colors"
+                className="text-slate-400 hover:text-white text-xs px-2 font-medium transition-colors cursor-pointer"
               >
                 Logout
               </button>
-              <Link href="/dashboard">
-                <button className="px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all">
-                  Dashboard
-                </button>
-              </Link>
-              <div className="flex items-center gap-2.5 pl-2 border-l border-white/10">
-                <span className="text-sm font-semibold text-slate-200 hidden sm:inline-block">
-                  {user.displayName || user.email?.split('@')[0] || 'User'}
-                </span>
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt="Profile"
-                    className="h-8 w-8 rounded-full border border-emerald-500/30 object-cover"
-                  />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center text-xs font-black text-slate-950">
-                    {(user.displayName || user.email || 'U')[0].toUpperCase()}
-                  </div>
-                )}
-              </div>
             </>
           ) : (
             <>
-              <Link href="/login" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+              <Link href="/login" className="text-slate-400 hover:text-white text-xs px-2.5 py-1.5 font-medium transition-colors">
                 Sign In
               </Link>
               <Link href="/signup">
-                <button 
+                <button
                   onMouseDown={handlePulse}
                   style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all duration-200 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer"
                 >
                   Get Started
                 </button>
@@ -423,245 +602,398 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <main className="relative z-10 max-w-[1700px] mx-auto px-6 pt-10 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-        
-        {/* Left Side: Context & Call to Action */}
-        <div className="lg:col-span-6 flex flex-col items-start text-left space-y-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20 backdrop-blur-md"
-          >
-            <Sparkles className="h-4 w-4 text-emerald-400" /> Virtual Portfolio Simulator & Quests
-          </motion.div>
+      {/* Interactive Hero & Simulator Background Bleed Container */}
+      <div className="relative w-full overflow-hidden">
+        <InteractiveDripDotGrid />
 
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.1]"
-          >
-            Master the Markets with <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-500">Zero Risk</span>
-          </motion.h1>
+        {/* Hero Section - Robinhood Editorial Aesthetic with Dynamic Visuals & Ambient Lighting */}
+        <main className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-24 md:py-32 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
+          {/* Ambient Dark Radial Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] bg-emerald-500/[0.06] blur-[160px] pointer-events-none rounded-full" />
 
-          <motion.p
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-slate-300 text-base sm:text-lg font-medium leading-relaxed max-w-xl"
-          >
-            Trillium Finance matches live market asset feeds with gamified financial literacy challenges. Grow your virtual wealth, protect your streak, unlock achievement badges, and trade Apple, Microsoft, or ETFs in a complete sandbox.
-          </motion.p>
-
-          {/* Quick Context Highlights */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="grid grid-cols-2 gap-4 w-full max-w-md pt-2"
-          >
-            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <Shield className="h-5 w-5 text-emerald-400 mb-1.5" />
-              <div className="text-xs font-bold text-slate-100">100% Risk Free</div>
-              <div className="text-[10px] text-slate-300 mt-0.5">$10k starting paper cash.</div>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <Layers className="h-5 w-5 text-blue-400 mb-1.5" />
-              <div className="text-xs font-bold text-slate-100">Interactive Lessons</div>
-              <div className="text-[10px] text-slate-300 mt-0.5">Learn finance, earn legendary badges.</div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-col items-start pt-4 space-y-3"
-          >
-            {!loading && user ? (
-              <Link href="/dashboard">
-                <button 
-                  onMouseDown={handlePulse}
-                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all duration-200 shadow-[0_4px_25px_rgba(16,185,129,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
-                >
-                  Go to Dashboard <ArrowRight className="h-4 w-4" />
-                </button>
-              </Link>
-            ) : (
-              <Link href="/signup">
-                <button 
-                  onMouseDown={handlePulse}
-                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black transition-all duration-200 shadow-[0_4px_25px_rgba(16,185,129,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
-                >
-                  Start Trading Simulator <ArrowRight className="h-4 w-4" />
-                </button>
-              </Link>
-            )}
-
-            {/* Friction Reduction Micro-copy */}
-            <p className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-1.5 pt-1">
-              <span className="text-amber-400 font-bold">⚡</span> Free forever • No credit card required • Instant access
-            </p>
-          </motion.div>
-        </div>
-
-        {/* Right Side: Centered Interactive Sandbox */}
-        <div className="lg:col-span-6 flex items-center justify-center relative w-full">
-          {/* Foreground Simulator Widget, fully centered */}
-          <div className="relative z-10 w-full max-w-[500px] p-6 md:p-8 rounded-[40px] bg-slate-900/85 border border-white/10 backdrop-blur-xl shadow-2xl space-y-6 flex flex-col items-stretch">
-            {/* Ambient Background Glow inside the panel */}
-            <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-blue-500/15 to-purple-500/10 rounded-[40px] opacity-100 blur-xl pointer-events-none" />
-
-            <div className="text-center pb-2 border-b border-white/5 relative z-10">
-              <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
-                Interactive Sandbox Preview
-              </span>
-            </div>
-
-            {/* Glass Card Widget 1: Mock Trading Transaction Fidget */}
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-6">
+            {/* Category Pill Badge */}
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative z-10"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium mb-2 shadow-inner"
             >
-              <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-black tracking-widest text-emerald-400 uppercase">
-                    SIMULATOR WIDGET
-                  </span>
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <span className="text-xs text-slate-400 font-bold">Try Buying AAPL</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estimated Cost</div>
-                  <div className="text-lg font-black text-white mt-1">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                </div>
-                <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Virtual Cash Bal</div>
-                  <div className="text-lg font-black text-emerald-400 mt-1">${remainingCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                </div>
-              </div>
-
-              {/* Slider control */}
-              <div className="space-y-2.5 mt-2 bg-slate-950/20 p-4 border border-white/5 rounded-2xl">
-                <div className="flex justify-between text-xs font-bold text-slate-300">
-                  <span>Shares: {shareCount}</span>
-                  <span className="text-slate-400">AAPL Price: ${sharePrice}</span>
-                </div>
-                
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={shareCount}
-                  onChange={(e) => setShareCount(parseInt(e.target.value))}
-                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-emerald-400 focus:outline-none"
-                />
-
-                <div className="flex gap-2.5 pt-2.5">
-                  <button
-                    onClick={() => setShareCount((prev) => Math.max(1, prev - 1))}
-                    className="flex-1 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex justify-center items-center font-black"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setShareCount((prev) => Math.min(100, prev + 1))}
-                    className="flex-1 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex justify-center items-center font-black"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+              <span>✨</span> Next-Gen Financial Literacy & Trading Sandbox
             </motion.div>
 
-            {/* Glass Card Widget 2: Interactive Streak Counter Fidget */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative overflow-hidden z-10"
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-white font-serif-editorial leading-[1.08]"
             >
-              {/* Notification alert floating */}
-              <AnimatePresence>
-                {xpNotes.map((note, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="absolute top-4 right-4 bg-emerald-500 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-xl z-30"
-                  >
-                    {note}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              Master the Markets with Zero Risk
+            </motion.h1>
 
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-5 w-5 text-orange-500 fill-orange-500 animate-pulse" />
-                  <span className="text-xs font-bold text-slate-200">Daily Quest Fidget</span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Claim Streak</span>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="text-slate-300 text-lg sm:text-xl max-w-2xl mt-4 font-normal leading-relaxed"
+            >
+              Practice trading stocks and ETFs with live market data and gamified quests—100% free with zero real cash at risk.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="pt-4"
+            >
+              {user ? (
+                <Link href="/dashboard">
+                  <button
+                    onMouseDown={handlePulse}
+                    style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-8 py-3.5 rounded-full text-sm md:text-base transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.35)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] hover:scale-105 cursor-pointer inline-flex items-center gap-2"
+                  >
+                    Go to Dashboard <ArrowRight className="h-5 w-5" />
+                  </button>
+                </Link>
+              ) : (
+                <Link href="/signup">
+                  <button
+                    onMouseDown={handlePulse}
+                    style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-8 py-3.5 rounded-full text-sm md:text-base transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.35)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] hover:scale-105 cursor-pointer inline-flex items-center gap-2"
+                  >
+                    Start Paper Trading <ArrowRight className="h-5 w-5" />
+                  </button>
+                </Link>
+              )}
+            </motion.div>
+          </div>
+        </main>
+
+        {/* Sleek Section Divider 1 (Hero -> Simulator) */}
+        <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+          <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
+          <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+        </div>
+
+        {/* Interactive Sandbox Feature Showcase Section (High-Converting 2-Column Layout) */}
+        <section id="simulator" className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-16">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Column (5 cols): Explanatory Copy & Feature Bullet Points */}
+            <div className="lg:col-span-5 flex flex-col items-start text-left space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-inner">
+                <span>✨</span> Interactive Preview
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Total Account XP</div>
-                  <div className="text-xl font-black tracking-tight text-white mt-0.5">
-                    {xp} <span className="text-xs font-medium text-slate-500">XP</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                Experience the Sandbox Before You Sign Up
+              </h2>
+
+              <p className="text-slate-300 text-base leading-relaxed">
+                Test our live trading execution and daily quest mechanics in real time. No account needed to try.
+              </p>
+
+              {/* Feature List (3 Bullet Points with Emerald Icons) */}
+              <div className="space-y-4 pt-2 w-full">
+                <div className="flex items-start gap-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
+                    📈
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">Real-Time Data Feeds</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Test trades with live asset pricing.</div>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleCheckIn}
-                  disabled={hasCheckedIn}
-                  onMouseDown={handlePulse}
-                  style={{ '--pulse-ring-color': 'rgba(249, 115, 22, 0.4)' } as React.CSSProperties}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all duration-200 ${
-                    hasCheckedIn
-                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
-                      : 'bg-orange-500 hover:bg-orange-400 text-slate-950 shadow-[0_4px_15px_rgba(249,115,22,0.3)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]'
-                  }`}
-                >
-                  {hasCheckedIn ? 'Checked In ✓' : 'Daily Check-In'}
-                </button>
-              </div>
+                <div className="flex items-start gap-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
+                    🔥
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">Streak & XP Rewards</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Level up your account as you build daily financial habits.</div>
+                  </div>
+                </div>
 
-              {/* Streak row indicator */}
-              <div className="flex gap-1.5 mt-4">
-                {[...Array(7)].map((_, i) => {
-                  const dayNum = i + 1;
-                  const isClaimed = dayNum <= streakCount;
-                  return (
-                    <div
-                      key={i}
-                      className={`flex-1 h-8 rounded-lg flex flex-col justify-center items-center text-[9px] font-black border transition-all duration-300 ${
-                        isClaimed
-                          ? 'bg-gradient-to-br from-orange-500 to-amber-600 border-orange-500 text-slate-950 scale-105'
-                          : 'bg-slate-950/40 border-white/10 text-slate-500'
+                <div className="flex items-start gap-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
+                    🛡️
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">100% Risk-Free</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Complete sandbox safety with $10,000 starting paper cash.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (7 cols): Interactive Sandbox & Daily Quest Card */}
+            <div className="lg:col-span-7 flex items-center justify-center relative w-full">
+              <div className="relative z-10 w-full p-6 md:p-8 rounded-3xl bg-slate-900/60 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 flex flex-col items-stretch overflow-hidden">
+                {/* Ambient Background Glow inside the panel */}
+                <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-blue-500/15 to-purple-500/10 rounded-3xl opacity-100 blur-xl pointer-events-none" />
+
+                <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
+                    LIVE INTERACTIVE DEMO
+                  </span>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    Live Feed Active
+                  </div>
+                </div>
+
+                {/* Glass Card Widget 1: Mock Trading Transaction Fidget */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative z-10 space-y-4"
+                >
+                  {/* Stock Selector Tabs */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div className="flex items-center gap-1.5">
+                      {stockAssets.map((asset) => {
+                        const isActive = selectedSymbol === asset.symbol;
+                        return (
+                          <button
+                            key={asset.symbol}
+                            onClick={() => {
+                              setSelectedSymbol(asset.symbol as any);
+                              setShareCount((prev) => Math.min(prev, Math.max(1, Math.floor(virtualCash / asset.price))));
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-white/5'
+                            }`}
+                          >
+                            {asset.symbol}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-extrabold text-white">${currentAsset.price.toFixed(2)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-1.5 ${
+                        currentAsset.change >= 0 ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                      }`}>
+                        {currentAsset.change >= 0 ? '+' : ''}{currentAsset.change}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estimated Cost</div>
+                      <div className="text-lg font-black text-white mt-1">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Virtual Cash Bal</div>
+                      <div className="text-lg font-black text-emerald-400 mt-1">${virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                  </div>
+
+                  {/* Slider control */}
+                  <div className="space-y-2.5 bg-slate-950/20 p-4 border border-white/5 rounded-2xl">
+                    <div className="flex justify-between text-xs font-bold text-slate-300">
+                      <span>Shares: {shareCount}</span>
+                      <span className="text-slate-400">Max Shares: {maxShares}</span>
+                    </div>
+                    
+                    <input
+                      type="range"
+                      min="1"
+                      max={maxShares}
+                      value={shareCount}
+                      onChange={(e) => setShareCount(parseInt(e.target.value))}
+                      className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-emerald-400 focus:outline-none"
+                    />
+
+                    <div className="flex gap-2.5 pt-1">
+                      <button
+                        onClick={() => setShareCount((prev) => Math.max(1, prev - 1))}
+                        className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 font-bold transition-all border border-white/10 flex justify-center items-center cursor-pointer text-white text-xs"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setShareCount((prev) => Math.min(maxShares, prev + 1))}
+                        className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 font-bold transition-all border border-white/10 flex justify-center items-center cursor-pointer text-white text-xs"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Prominent Execute Paper Order Button */}
+                  <div className="relative">
+                    <button
+                      onClick={handleExecuteOrder}
+                      disabled={virtualCash < totalCost}
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                        virtualCash >= totalCost
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.01]'
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
                       }`}
                     >
-                      <span>D{dayNum}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </main>
+                      Execute Paper Order
+                    </button>
 
-      {/* Stock Market Graph Container */}
-      <div className="relative w-full max-w-[1700px] mx-auto px-6 mb-24 mt-8">
+                    {/* Toast Notification */}
+                    <AnimatePresence>
+                      {orderToast && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="absolute -top-12 left-1/2 -translate-x-1/2 bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl shadow-2xl border border-white/20 whitespace-nowrap z-30"
+                        >
+                          ✅ {orderToast}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+
+                {/* Glass Card Widget 2: Interactive Trophy Showcase Carousel */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative overflow-hidden z-10 space-y-4"
+                >
+                  {/* Floating Notification alert */}
+                  <AnimatePresence>
+                    {xpNotes.map((note, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="absolute top-3 right-4 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xl z-30"
+                      >
+                        {note}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-amber-400 fill-amber-400/20" />
+                      <span className="text-xs font-bold text-slate-200">Trophy Showcase</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold block">Account XP</span>
+                      <span className="text-xs font-black text-amber-400">{xp} XP</span>
+                    </div>
+                  </div>
+
+                  {/* 3 Trophy Row Showcase with Center Highlight */}
+                  <div className="relative flex items-center justify-between gap-2 py-1">
+                    {/* Prev Button */}
+                    <button
+                      onClick={() => setActiveTrophyIdx(prev => Math.max(0, prev - 1))}
+                      disabled={activeTrophyIdx === 0}
+                      className={`p-2 rounded-xl border transition-all z-20 cursor-pointer ${
+                        activeTrophyIdx > 0
+                          ? 'bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-white border-white/10'
+                          : 'bg-slate-900/50 text-slate-600 border-white/5 cursor-not-allowed'
+                      }`}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {/* Row of 3 Trophies Container */}
+                    <div className="flex-1 grid grid-cols-3 gap-2 items-center justify-center">
+                      {[-1, 0, 1].map((offset) => {
+                        const idx = activeTrophyIdx + offset;
+                        const trophy = trophiesList[idx];
+                        if (!trophy) {
+                          return <div key={offset} className="h-24 rounded-2xl bg-slate-950/20 border border-white/5 opacity-30" />;
+                        }
+
+                        const isCenter = offset === 0;
+                        const isClaimed = claimedTrophies.includes(trophy.id);
+
+                        return (
+                          <motion.div
+                            key={trophy.id}
+                            layout
+                            onClick={() => setActiveTrophyIdx(idx)}
+                            className={`p-3 rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer relative ${
+                              isCenter
+                                ? 'bg-gradient-to-b from-amber-500/20 to-amber-950/40 border-amber-400/60 text-white shadow-[0_0_25px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40 scale-105 z-10'
+                                : 'bg-slate-950/40 border-white/10 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 scale-95 opacity-60'
+                            }`}
+                          >
+                            <div className={`text-2xl mb-1 transition-transform ${isCenter ? 'scale-110' : ''}`}>
+                              {trophy.icon}
+                            </div>
+
+                            <div className={`text-[11px] font-black tracking-tight leading-tight line-clamp-1 ${isCenter ? 'text-amber-300' : 'text-slate-300'}`}>
+                              {trophy.title}
+                            </div>
+
+                            <div className="text-[9px] text-slate-400 font-medium line-clamp-1 mt-0.5">
+                              {trophy.desc}
+                            </div>
+
+                            {isCenter && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleClaimTrophy(trophy.id, trophy.xp);
+                                }}
+                                disabled={isClaimed}
+                                className={`mt-2 px-2.5 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer whitespace-nowrap ${
+                                  isClaimed
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-400/30'
+                                }`}
+                              >
+                                {isClaimed ? 'Claimed ✓' : `Unlock +${trophy.xp} XP`}
+                              </button>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setActiveTrophyIdx(prev => Math.min(trophiesList.length - 1, prev + 1))}
+                      disabled={activeTrophyIdx === trophiesList.length - 1}
+                      className={`p-2 rounded-xl border transition-all z-20 cursor-pointer ${
+                        activeTrophyIdx < trophiesList.length - 1
+                          ? 'bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-white border-white/10'
+                          : 'bg-slate-900/50 text-slate-600 border-white/5 cursor-not-allowed'
+                      }`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Sleek Section Divider 2 (Simulator -> Chart Timeline) */}
+      <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+        <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
+        <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+      </div>
+
+      {/* Stock Market Graph Container (Polished Animated Chart Timeline) */}
+      <div className="relative w-full px-4 md:px-8 lg:px-12 mb-16 mt-4">
         <motion.div 
           id="graph-card-container"
           initial={{ opacity: 0, y: 40 }}
@@ -674,7 +1006,7 @@ export default function LandingPage() {
           <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-teal-500/15 to-blue-500/10 rounded-[40px] opacity-100 group-hover:opacity-150 blur-2xl transition-all duration-500 pointer-events-none" />
           
           {/* Seamless Automatic Stock Chart in Background (Hardware-accelerated sliding divs) */}
-          <div className="absolute inset-0 z-0 opacity-45 group-hover:opacity-65 transition-opacity duration-500 overflow-hidden">
+          <div className="absolute inset-0 z-0 opacity-55 group-hover:opacity-75 transition-opacity duration-500 overflow-hidden">
             {/* Inject CSS rule for smooth sliding keyframes */}
             <style>{`
               @keyframes slideChart {
@@ -693,25 +1025,25 @@ export default function LandingPage() {
               <div className="w-1/2 h-full relative">
                 <svg className="w-full h-full pointer-events-none" viewBox="0 0 1000 400" preserveAspectRatio="none">
                   <defs>
-                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                    <linearGradient id="chart-fade" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.18" />
                       <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                     </linearGradient>
-                    <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#059669" />
-                      <stop offset="50%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#3b82f6" />
+                    <linearGradient id="emerald-cyan-gradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#10B981" />
+                      <stop offset="50%" stopColor="#06B6D4" />
+                      <stop offset="100%" stopColor="#3B82F6" />
                     </linearGradient>
                   </defs>
                   
                   {/* Area Gradient Fill */}
-                  <path d={areaD} fill="url(#chartGrad)" />
+                  <path d={areaD} fill="url(#chart-fade)" />
                   
-                  {/* Smooth stock wave path */}
+                  {/* Smooth stock wave path with Dual-Tone Gradient */}
                   <path 
                     d={pathD} 
                     fill="none" 
-                    stroke="url(#lineGrad)" 
+                    stroke="url(#emerald-cyan-gradient)" 
                     strokeWidth="4.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
@@ -730,12 +1062,14 @@ export default function LandingPage() {
                     left: `${(xs[14] / 1000) * 100}%`,
                     top: `${(ys[14] / 400) * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    width: "28px",
-                    height: "28px"
+                    width: "32px",
+                    height: "32px"
                   }}
                 >
-                  <span className="absolute h-7 w-7 rounded-full bg-blue-500/35 animate-ping" />
-                  <div className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-[0_0_15px_#3b82f6] group-hover/orb:scale-125 transition-transform" />
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_15px_#10b981]"></span>
+                  </span>
                 </button>
 
                 {/* Orb 2: Daily Streak Milestone */}
@@ -750,12 +1084,14 @@ export default function LandingPage() {
                     left: `${(xs[38] / 1000) * 100}%`,
                     top: `${(ys[38] / 400) * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    width: "28px",
-                    height: "28px"
+                    width: "32px",
+                    height: "32px"
                   }}
                 >
-                  <span className="absolute h-7 w-7 rounded-full bg-blue-500/35 animate-ping" />
-                  <div className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-[0_0_15px_#3b82f6] group-hover/orb:scale-125 transition-transform" />
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-500 shadow-[0_0_15px_#06b6d4]"></span>
+                  </span>
                 </button>
               </div>
 
@@ -763,25 +1099,25 @@ export default function LandingPage() {
               <div className="w-1/2 h-full relative">
                 <svg className="w-full h-full pointer-events-none" viewBox="0 0 1000 400" preserveAspectRatio="none">
                   <defs>
-                    <linearGradient id="chartGradDup" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                    <linearGradient id="chart-fade-dup" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.18" />
                       <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                     </linearGradient>
-                    <linearGradient id="lineGradDup" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#059669" />
-                      <stop offset="50%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#3b82f6" />
+                    <linearGradient id="emerald-cyan-gradient-dup" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#10B981" />
+                      <stop offset="50%" stopColor="#06B6D4" />
+                      <stop offset="100%" stopColor="#3B82F6" />
                     </linearGradient>
                   </defs>
                   
                   {/* Area Gradient Fill */}
-                  <path d={areaD} fill="url(#chartGradDup)" />
+                  <path d={areaD} fill="url(#chart-fade-dup)" />
                   
                   {/* Smooth stock wave path */}
                   <path 
                     d={pathD} 
                     fill="none" 
-                    stroke="url(#lineGradDup)" 
+                    stroke="url(#emerald-cyan-gradient-dup)" 
                     strokeWidth="4.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
@@ -800,12 +1136,14 @@ export default function LandingPage() {
                     left: `${(xs[14] / 1000) * 100}%`,
                     top: `${(ys[14] / 400) * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    width: "28px",
-                    height: "28px"
+                    width: "32px",
+                    height: "32px"
                   }}
                 >
-                  <span className="absolute h-7 w-7 rounded-full bg-blue-500/35 animate-ping" />
-                  <div className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-[0_0_15px_#3b82f6] group-hover/orb:scale-125 transition-transform" />
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_15px_#10b981]"></span>
+                  </span>
                 </button>
 
                 {/* Orb 2 (Dup) */}
@@ -820,12 +1158,14 @@ export default function LandingPage() {
                     left: `${(xs[38] / 1000) * 100}%`,
                     top: `${(ys[38] / 400) * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    width: "28px",
-                    height: "28px"
+                    width: "32px",
+                    height: "32px"
                   }}
                 >
-                  <span className="absolute h-7 w-7 rounded-full bg-blue-500/35 animate-ping" />
-                  <div className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-[0_0_15px_#3b82f6] group-hover/orb:scale-125 transition-transform" />
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-500 shadow-[0_0_15px_#06b6d4]"></span>
+                  </span>
                 </button>
               </div>
             </div>
@@ -837,7 +1177,7 @@ export default function LandingPage() {
               <path
                 d={linePath}
                 fill="none"
-                stroke="url(#lineGrad)"
+                stroke="url(#emerald-cyan-gradient)"
                 strokeWidth="3.5"
                 strokeDasharray="8 4"
                 className="animate-[dash_2s_linear_infinite]"
@@ -852,27 +1192,41 @@ export default function LandingPage() {
             </svg>
           )}
 
-          {/* Foreground content */}
-          <div className="relative z-10 flex flex-col items-center text-center justify-center my-auto max-w-3xl mx-auto space-y-6 pt-12 pointer-events-auto">
-            <h2 className="text-5xl md:text-7xl font-black tracking-tight text-white">
-              Trillium <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-500">Finance</span>
+          {/* Feathered Radial Blur Mask Layer behind Text */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div 
+              className="w-full h-full max-w-3xl bg-slate-950/80 backdrop-blur-md"
+              style={{
+                maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
+                WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)'
+              }}
+            />
+          </div>
+
+          {/* Foreground Centerpiece Text Content */}
+          <div className="relative z-10 flex flex-col items-center text-center justify-center my-auto max-w-2xl mx-auto p-6 md:p-10 space-y-4 pointer-events-auto">
+            <div className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold px-4 py-1.5 rounded-full text-xs tracking-wider uppercase inline-block shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+              🚀 Gamified Learning Journey
+            </div>
+            
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
+              Track Your Progress as You Master the Market
             </h2>
             
-            <p className="text-slate-200 text-xl md:text-3xl font-extrabold leading-relaxed tracking-wide">
-              Gamified Financial literacy for all ages, where you have fun while learning
+            <p className="text-slate-200 text-base md:text-lg leading-relaxed font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)] max-w-xl">
+              Earn achievement badges, hit daily streaks, and watch your virtual portfolio scale.
             </p>
 
-            <div className="flex flex-col items-center gap-4 w-full">
-
-              {/* Pop-up Anchor directly under the Join Now button */}
-              <div id="popup-anchor" className="w-full max-w-md relative z-40 mt-4 h-[120px]">
+            <div className="flex flex-col items-center gap-4 w-full pt-4">
+              {/* Pop-up Anchor directly under the text container */}
+              <div id="popup-anchor" className="w-full max-w-md relative z-40 h-[120px]">
                 <AnimatePresence>
                   {activeMilestone && (
                     <motion.div
                       initial={{ opacity: 0, y: 15, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                      className="p-5 rounded-2xl bg-[#0b0f19]/90 border border-emerald-500/30 shadow-2xl shadow-emerald-500/5 text-left space-y-2 relative backdrop-blur-md"
+                      className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)] text-xs font-medium text-slate-200 text-left space-y-2 relative backdrop-blur-md"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -888,7 +1242,7 @@ export default function LandingPage() {
                             setActiveMilestone(null);
                             setActiveOrbId(null);
                           }}
-                          className="text-slate-400 hover:text-white text-[10px] font-bold px-2 py-1 rounded bg-slate-800 transition-colors"
+                          className="text-slate-400 hover:text-white text-[10px] font-bold px-2 py-1 rounded bg-slate-800 transition-colors cursor-pointer"
                         >
                           ✕ Close
                         </button>
@@ -903,8 +1257,14 @@ export default function LandingPage() {
         </motion.div>
       </div>
 
+      {/* Sleek Section Divider 3 (Chart Timeline -> 3 Pillars Features) */}
+      <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center mb-6">
+        <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
+        <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+      </div>
+
       {/* 3 Pillars Section (Between Sliding Graph and FAQ) */}
-      <section className="relative z-10 max-w-[1700px] mx-auto px-6 mb-24">
+      <section id="features" className="relative z-10 w-full px-4 md:px-8 lg:px-12 mb-20">
         <div className="text-center max-w-xl mx-auto mb-12">
           <h2 className="text-xs font-black uppercase text-emerald-400 tracking-widest mb-3">
             ALL-IN-ONE EDUCATION
@@ -916,114 +1276,144 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Card 1: Virtual Trading Feed */}
-          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-6">
+          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
+            {/* Center Watermark Logo starting off-container and animating to top-right */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+              <svg 
+                className="w-full h-full max-w-[320px] max-h-[320px] p-2 text-emerald-400 opacity-0 scale-60 -translate-x-16 translate-y-16 group-hover:opacity-10 group-hover:scale-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-600 ease-out" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="1.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path 
+                  d="M2 17L8.5 10.5L13.5 15.5L22 7" 
+                  className="[stroke-dasharray:40] [stroke-dashoffset:40] group-hover:[stroke-dashoffset:0] transition-all duration-500 ease-out"
+                />
+                <polyline 
+                  points="16 7 22 7 22 13" 
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-150" 
+                />
+              </svg>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300">
               <TrendingUp className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3">
+            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
               Virtual Trading Feed
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
               Practice trading AAPL, MSFT, and other popular instruments with real-time price feeds using virtual starting cash. Zero risk, high reward.
             </p>
           </div>
 
           {/* Card 2: Gamified Quizzes */}
-          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.15)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-xl">
-            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-6">
+          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.15)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-xl">
+            {/* Center Watermark Logo - Fully Filling Container */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+              <GraduationCap className="w-full h-full max-w-[300px] max-h-[300px] p-2 text-blue-400 stroke-[1.25] opacity-0 scale-75 group-hover:opacity-10 group-hover:scale-100 transition-all duration-500 ease-out" />
+            </div>
+
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300">
               <GraduationCap className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3">
+            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
               Gamified Quizzes
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
               Complete structured lessons on compounding interest, stock indices, and macroeconomics. Build streaks to earn daily XP boosts.
             </p>
           </div>
 
           {/* Card 3: Badges & Achievements */}
-          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-xl">
-            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-6">
+          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-xl">
+            {/* Center Watermark Logo - Fully Filling Container */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+              <Trophy className="w-full h-full max-w-[300px] max-h-[300px] p-2 text-purple-400 stroke-[1.25] opacity-0 scale-75 group-hover:opacity-10 group-hover:scale-100 transition-all duration-500 ease-out" />
+            </div>
+
+            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
               <Trophy className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3">
+            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
               Badges & Achievements
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
               Unlock trophies as you execute smart trades, master quizzes, and rise through the global leaderboards. Showcase achievements to the community.
             </p>
           </div>
         </div>
       </section>
 
-      {/* FAQ / Questions & Answers Section (2-Column Side-by-Side Split Layout) */}
-      <section className="relative z-10 max-w-[1700px] mx-auto px-6 py-20 border-t border-white/5 bg-slate-950/40 backdrop-blur-sm">
+      {/* Sleek Section Divider 4 (3 Pillars Features -> FAQ) */}
+      <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+        <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
+        <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+      </div>
+
+      {/* FAQ / Questions & Answers Section (Clean In-Place Expanding Accordion) */}
+      <section id="faq" className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-20">
         <div className="text-center max-w-xl mx-auto mb-12">
           <h2 className="text-xs font-black uppercase text-emerald-400 tracking-widest mb-3">
             QUESTIONS & ANSWERS
           </h2>
-          <p className="text-3xl font-black text-white tracking-tight">
+          <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
             Frequently Asked Questions
           </p>
         </div>
 
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[360px]">
-          {/* Left Side (7 cols): Vertical stack of clickable question buttons */}
-          <div className="lg:col-span-7 flex flex-col gap-3 justify-center">
-            {faqs.map((faq, index) => {
-              const isOpen = openFaq === index;
-              return (
+        <div className="max-w-3xl mx-auto space-y-4">
+          {faqs.map((faq, index) => {
+            const isOpen = openFaq === index;
+            return (
+              <div
+                key={index}
+                className={`rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-xl ${
+                  isOpen
+                    ? 'bg-slate-900/90 border-emerald-500/50 shadow-[0_4px_30px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
+                    : 'bg-slate-900/40 border-white/[0.08] hover:border-white/20 hover:bg-slate-900/60'
+                }`}
+              >
                 <button
-                  key={index}
-                  onClick={() => setOpenFaq(index)}
-                  className={`w-full flex items-center justify-between p-5 sm:p-6 rounded-2xl border text-left font-bold transition-all duration-300 ${
-                    isOpen
-                      ? 'bg-slate-900 border-emerald-500 shadow-[0_4px_25px_rgba(16,185,129,0.2)] text-white ring-1 ring-emerald-500/40 scale-[1.01]'
-                      : 'bg-slate-900/40 border-white/[0.08] hover:border-white/20 hover:bg-slate-900/60 text-slate-300'
-                  }`}
+                  onClick={() => setOpenFaq(isOpen ? -1 : index)}
+                  className="w-full flex items-center justify-between p-5 sm:p-6 text-left cursor-pointer group"
                 >
-                  <span className="text-base font-extrabold tracking-tight pr-4">
+                  <span className={`text-base sm:text-lg font-bold tracking-tight pr-4 transition-colors ${
+                    isOpen ? 'text-emerald-400' : 'text-white group-hover:text-emerald-300'
+                  }`}>
                     {faq.q}
                   </span>
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all duration-300 ${
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-300 ${
                       isOpen
-                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 rotate-90 shadow-md shadow-emerald-500/30'
-                        : 'bg-white/5 text-slate-400 border-white/10'
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/30'
+                        : 'bg-white/5 text-slate-400 border-white/10 group-hover:bg-white/10 group-hover:text-white'
                     }`}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
-              );
-            })}
-          </div>
 
-          {/* Right Side (5 cols): Dedicated high-contrast preview panel */}
-          <div className="lg:col-span-5 flex flex-col justify-center">
-            <div className="w-full h-full min-h-[320px] p-7 sm:p-8 rounded-3xl bg-slate-900 border border-emerald-500/30 backdrop-blur-xl shadow-2xl flex flex-col justify-between relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={openFaq}
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -15 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-4 my-auto"
-                >
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-                    <Sparkles className="h-3.5 w-3.5" /> Answer Detail
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                    {faqs[openFaq].q}
-                  </h3>
-                  <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-medium">
-                    {faqs[openFaq].a}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="px-6 pb-6 pt-2 text-slate-300 text-sm sm:text-base leading-relaxed border-t border-white/5 font-normal">
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 
