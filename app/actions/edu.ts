@@ -1,5 +1,5 @@
 import { db, auth } from '@/lib/firebase';
-import { doc, getDoc, collection, setDoc, serverTimestamp, getDocs, writeBatch, query, where, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, setDoc, serverTimestamp, getDocs, writeBatch, query, where, limit, deleteDoc } from 'firebase/firestore';
 import { ClassroomSettings } from '@/types/education';
 
 // Helper to get authenticated UID on the client
@@ -58,7 +58,7 @@ function generateClassCode(): string {
 }
 
 /**
- * Creates a classroom under a teacher's account.
+ * Creates a classroom under a teacher's account. Supports multiple classrooms.
  */
 export async function createClassroom(className: string, initialSettings?: Partial<ClassroomSettings>) {
   const userId = await getAuthenticatedUserId();
@@ -67,7 +67,7 @@ export async function createClassroom(className: string, initialSettings?: Parti
   try {
     const classroomRef = doc(collection(db, 'classrooms'));
     const settings: ClassroomSettings = {
-      startingBalance: initialSettings?.startingBalance ?? 100000,
+      startingBalance: initialSettings?.startingBalance ?? 10000,
       allowShortSelling: initialSettings?.allowShortSelling ?? true,
       allowOptions: initialSettings?.allowOptions ?? true,
       maxPositions: initialSettings?.maxPositions ?? 10,
@@ -82,18 +82,75 @@ export async function createClassroom(className: string, initialSettings?: Parti
       settings
     });
 
-    // Save relationship and role on the teacher's profile
+    // Fetch existing teacher document to update teacherClassIds array and activeClassId
     const teacherRef = doc(db, 'users', userId);
+    const teacherSnap = await getDoc(teacherRef);
+    const teacherData = teacherSnap.exists() ? teacherSnap.data() : {};
+
+    const existingClassIds: string[] = teacherData.teacherClassIds || (teacherData.classId ? [teacherData.classId] : []);
+    if (!existingClassIds.includes(classroomRef.id)) {
+      existingClassIds.push(classroomRef.id);
+    }
+
     await setDoc(teacherRef, {
+      role: 'teacher',
       classId: classroomRef.id,
-      classCode,
-      role: 'teacher'
+      activeClassId: classroomRef.id,
+      teacherClassIds: existingClassIds,
+      updatedAt: serverTimestamp()
     }, { merge: true });
 
     return { success: true, classCode, classId: classroomRef.id };
   } catch (error: any) {
     console.error('Failed to create classroom:', error);
     throw new Error(error.message || 'Failed to create classroom.');
+  }
+}
+
+/**
+ * Switches teacher's currently active classroom.
+ */
+export async function switchActiveClassroom(targetClassId: string) {
+  const userId = await getAuthenticatedUserId();
+  try {
+    const teacherRef = doc(db, 'users', userId);
+    await setDoc(teacherRef, {
+      classId: targetClassId,
+      activeClassId: targetClassId
+    }, { merge: true });
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to switch active classroom:', error);
+    throw new Error(error.message || 'Failed to switch classroom.');
+  }
+}
+
+/**
+ * Gets all classrooms created by the current teacher.
+ */
+export async function getTeacherClassrooms() {
+  const userId = await getAuthenticatedUserId();
+
+  try {
+    const classroomsRef = collection(db, 'classrooms');
+    const q = query(classroomsRef, where('teacherId', '==', userId));
+    const snap = await getDocs(q);
+
+    const classrooms = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        className: data.className || 'Classroom',
+        classCode: data.classCode || '',
+        createdAt: data.createdAt,
+        settings: data.settings
+      };
+    });
+
+    return classrooms;
+  } catch (error: any) {
+    console.error('Failed to fetch teacher classrooms:', error);
+    return [];
   }
 }
 
@@ -122,8 +179,8 @@ export async function joinClassroom(classCode: string, studentName: string) {
     // 2. Register membership in `/classrooms/{classId}/roster/{studentId}`
     const rosterRef = doc(db, 'classrooms', classId, 'roster', userId);
     
-    // Check starting balance rule
-    const startingBalance = settings?.startingBalance ?? 100000;
+    // Check starting balance rule (defaults to 10000)
+    const startingBalance = settings?.startingBalance ?? 10000;
 
     // 3. Create or update user metadata and initialize portfolio
     const userRef = doc(db, 'users', userId);
@@ -159,15 +216,18 @@ export async function joinClassroom(classCode: string, studentName: string) {
 }
 
 /**
- * Gets student roster for a teacher's classroom.
+ * Gets student roster for a specific classroom or teacher's active classroom.
  */
-export async function getClassroomRoster() {
+export async function getClassroomRoster(targetClassId?: string) {
   const userId = await getAuthenticatedUserId();
 
-  // Find class owned by this teacher
-  const teacherDoc = await getDoc(doc(db, 'users', userId));
-  const classId = teacherDoc.data()?.classId;
-  if (!classId) throw new Error('No active classroom found for this teacher.');
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  
+  if (!classId) throw new Error('No active classroom found.');
 
   const classRef = doc(db, 'classrooms', classId);
   const rosterSnap = await getDocs(collection(db, 'classrooms', classId, 'roster'));
@@ -180,17 +240,19 @@ export async function getClassroomRoster() {
     const data = memberDoc.data();
     const studentId = memberDoc.id;
 
-    // Fetch the student's portfolio and transaction counts
+    // Fetch student portfolio, lesson progress, and transactions
     const portfolioRef = doc(db, 'users', studentId, 'portfolio', 'main');
     const transactionsRef = collection(db, 'users', studentId, 'portfolio_history');
+    const eduRef = doc(db, 'users', studentId, 'edu', 'progress');
 
-    const [portDoc, transSnap] = await Promise.all([
+    const [portDoc, transSnap, eduSnap] = await Promise.all([
       getDoc(portfolioRef),
-      getDocs(transactionsRef)
+      getDocs(transactionsRef),
+      getDoc(eduRef)
     ]);
 
     const portData = portDoc.data();
-    const cash = portData?.cash ?? 100000;
+    const cash = portData?.cash ?? 10000;
     
     // Fetch holding valuation
     let holdingsValue = 0;
@@ -198,8 +260,11 @@ export async function getClassroomRoster() {
     
     holdingsSnap.forEach(h => {
       const hData = h.data();
-      holdingsValue += (hData.qty || 0) * (hData.avgPrice || 0); // Simplified using book cost
+      holdingsValue += (hData.qty || 0) * (hData.avgPrice || 0);
     });
+
+    const eduData = eduSnap.exists() ? eduSnap.data() : {};
+    const completedLessonIds: number[] = eduData.completedLessonIds || [];
 
     roster.push({
       studentId,
@@ -207,11 +272,14 @@ export async function getClassroomRoster() {
       joinedAt: data.joinedAt?.toDate()?.toLocaleDateString() || 'N/A',
       cashBalance: cash,
       portfolioValue: cash + holdingsValue,
-      tradesCount: transSnap.size
+      tradesCount: transSnap.size,
+      completedLessonCount: completedLessonIds.length,
+      completedLessonIds
     });
   }
 
   return {
+    classId,
     className: classroomData?.className || 'Classroom',
     classCode: classroomData?.classCode || '',
     settings: classroomData?.settings || {},
@@ -222,11 +290,14 @@ export async function getClassroomRoster() {
 /**
  * Updates trading settings for a classroom.
  */
-export async function updateClassroomSettings(settings: ClassroomSettings) {
+export async function updateClassroomSettings(settings: ClassroomSettings, targetClassId?: string) {
   const userId = await getAuthenticatedUserId();
 
-  const teacherDoc = await getDoc(doc(db, 'users', userId));
-  const classId = teacherDoc.data()?.classId;
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
   if (!classId) throw new Error('No active classroom found.');
 
   const classRef = doc(db, 'classrooms', classId);
@@ -240,6 +311,222 @@ export async function updateClassroomSettings(settings: ClassroomSettings) {
       restrictedAssets: settings.restrictedAssets.map(t => t.toUpperCase().trim()).filter(Boolean)
     }
   }, { merge: true });
+
+  return { success: true };
+}
+
+/**
+ * Assign a lesson to a classroom.
+ */
+export async function assignLessonToClassroom(lessonId: number, title: string, dueDate?: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  const assignRef = doc(collection(db, 'classrooms', classId, 'assignments'));
+  await setDoc(assignRef, {
+    lessonId,
+    title,
+    assignedAt: serverTimestamp(),
+    dueDate: dueDate || null
+  });
+
+  return { success: true, id: assignRef.id };
+}
+
+/**
+ * Delete an assigned lesson from a classroom.
+ */
+export async function removeClassroomAssignment(assignmentId: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  await deleteDoc(doc(db, 'classrooms', classId, 'assignments', assignmentId));
+  return { success: true };
+}
+
+/**
+ * Fetch all assignments for a classroom.
+ */
+export async function getClassroomAssignments(targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) return [];
+
+  const snap = await getDocs(collection(db, 'classrooms', classId, 'assignments'));
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  }));
+}
+
+/**
+ * Create a goal for students in a classroom (e.g. portfolio target, stock profit, orders executed).
+ */
+export async function setClassroomGoal(goal: {
+  title: string;
+  type: 'portfolio_value' | 'stock_profit' | 'execute_orders' | 'complete_lessons';
+  targetValue: number;
+  ticker?: string;
+  description: string;
+  studentId?: string; // Optional: target single student or all
+  studentName?: string;
+}, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  const goalRef = doc(collection(db, 'classrooms', classId, 'goals'));
+  await setDoc(goalRef, {
+    ...goal,
+    ticker: goal.ticker ? goal.ticker.toUpperCase().trim() : '',
+    assignedAt: serverTimestamp()
+  });
+
+  return { success: true, id: goalRef.id };
+}
+
+/**
+ * Delete a goal from a classroom.
+ */
+export async function removeClassroomGoal(goalId: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  await deleteDoc(doc(db, 'classrooms', classId, 'goals', goalId));
+  return { success: true };
+}
+
+/**
+ * Fetch all goals for a classroom.
+ */
+export async function getClassroomGoals(targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) return [];
+
+  const snap = await getDocs(collection(db, 'classrooms', classId, 'goals'));
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  }));
+}
+
+/**
+ * Create a classroom announcement/broadcast message.
+ */
+export async function postClassroomAnnouncement(title: string, content: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  const annRef = doc(collection(db, 'classrooms', classId, 'announcements'));
+  await setDoc(annRef, {
+    title,
+    content,
+    createdAt: serverTimestamp()
+  });
+
+  return { success: true, id: annRef.id };
+}
+
+/**
+ * Fetch announcements for a classroom.
+ */
+export async function getClassroomAnnouncements(targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    classId = userDoc.data()?.activeClassId || userDoc.data()?.classId;
+  }
+  if (!classId) return [];
+
+  const snap = await getDocs(collection(db, 'classrooms', classId, 'announcements'));
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  }));
+}
+
+/**
+ * Remove a student from a classroom roster.
+ */
+export async function removeStudentFromClassroom(studentId: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  await deleteDoc(doc(db, 'classrooms', classId, 'roster', studentId));
+  
+  // Reset student class link
+  const studentRef = doc(db, 'users', studentId);
+  await setDoc(studentRef, { classId: null, classCode: null }, { merge: true });
+
+  return { success: true };
+}
+
+/**
+ * Reset a student's portfolio cash balance to the classroom starting balance.
+ */
+export async function resetStudentPortfolio(studentId: string, targetClassId?: string) {
+  const userId = await getAuthenticatedUserId();
+
+  let classId = targetClassId;
+  if (!classId) {
+    const teacherDoc = await getDoc(doc(db, 'users', userId));
+    classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
+  }
+  if (!classId) throw new Error('No active classroom selected.');
+
+  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  const startingBalance = classDoc.data()?.settings?.startingBalance ?? 10000;
+
+  const portfolioRef = doc(db, 'users', studentId, 'portfolio', 'main');
+  await setDoc(portfolioRef, { cash: startingBalance }, { merge: true });
 
   return { success: true };
 }
@@ -279,7 +566,7 @@ export async function updateClassroomRules(rules: {
   const userId = await getAuthenticatedUserId();
 
   const teacherDoc = await getDoc(doc(db, 'users', userId));
-  const classId = teacherDoc.data()?.classId;
+  const classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
   if (!classId) throw new Error('No active classroom found.');
 
   const classRef = doc(db, 'classrooms', classId);
@@ -295,3 +582,4 @@ export async function updateClassroomRules(rules: {
 
   return { success: true };
 }
+

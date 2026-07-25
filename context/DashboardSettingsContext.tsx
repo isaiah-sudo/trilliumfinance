@@ -17,10 +17,11 @@ interface DashboardSettingsContextProps {
   loading: boolean;
   teacherPreviewMode: boolean;
   setTeacherPreviewMode: (val: boolean) => void;
+  setActiveClassId?: (id: string) => void;
 }
 
 const defaultSettings: ClassroomSettings = {
-  startingBalance: 100000,
+  startingBalance: 10000,
   allowShortSelling: true,
   allowOptions: true,
   maxPositions: 9999,
@@ -61,39 +62,22 @@ export function DashboardSettingsProvider({ children }: { children: React.ReactN
           const userData = userSnap.data();
           const userRole = (userData.role as UserRole) || 'regular';
           const uClassCode = userData.classCode || null;
-          const uClassId = userData.classId || null;
+          const uClassId = userData.activeClassId || userData.classId || null;
 
           setRole(userRole);
           setClassCode(uClassCode);
           setClassId(uClassId);
 
-          if (userRole === 'student' && uClassId) {
-            // Subscribe to student's classroom rules
+          if ((userRole === 'student' || userRole === 'teacher') && uClassId) {
+            // Subscribe to classroom rules
             const classRef = doc(db, 'classrooms', uClassId);
             const unsubscribeClass = onSnapshot(classRef, (classSnap) => {
               if (classSnap.exists()) {
                 const classData = classSnap.data();
                 setClassName(classData.className || null);
+                if (classData.classCode) setClassCode(classData.classCode);
                 setSettings({
-                  startingBalance: classData.settings?.startingBalance ?? 100000,
-                  allowShortSelling: classData.settings?.allowShortSelling ?? true,
-                  allowOptions: classData.settings?.allowOptions ?? true,
-                  maxPositions: classData.settings?.maxPositions ?? 10,
-                  restrictedAssets: classData.settings?.restrictedAssets ?? [],
-                });
-              }
-              setLoading(false);
-            });
-            return () => unsubscribeClass();
-          } else if (userRole === 'teacher' && uClassId) {
-            // Subscribe to teacher's classroom rules to keep settings synced
-            const classRef = doc(db, 'classrooms', uClassId);
-            const unsubscribeClass = onSnapshot(classRef, (classSnap) => {
-              if (classSnap.exists()) {
-                const classData = classSnap.data();
-                setClassName(classData.className || null);
-                setSettings({
-                  startingBalance: classData.settings?.startingBalance ?? 100000,
+                  startingBalance: classData.settings?.startingBalance ?? 10000,
                   allowShortSelling: classData.settings?.allowShortSelling ?? true,
                   allowOptions: classData.settings?.allowOptions ?? true,
                   maxPositions: classData.settings?.maxPositions ?? 10,

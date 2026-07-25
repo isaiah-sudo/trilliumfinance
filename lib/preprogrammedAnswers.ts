@@ -11,7 +11,7 @@ interface PreprogrammedQA {
 const PREPROGRAMMED_QA: PreprogrammedQA[] = [
   {
     keywords: ['start trading', 'paper trade', 'paper trading', 'virtual cash', 'how to trade', 'simulator'],
-    answer: "Trillium Finance matches live market feeds with $100,000 in virtual cash so you can learn to invest with absolutely zero financial risk!\n\nTo get started:\n1. Head over to the **Simulator** tab on your dashboard.\n2. Search for any stock symbol (like AAPL or MSFT).\n3. Click **Buy** or **Sell**, enter the amount, and confirm your trade. Your portfolio performance will track live market prices!"
+    answer: "Trillium Finance matches live market feeds with $10,000 in virtual cash so you can learn to invest with absolutely zero financial risk!\n\nTo get started:\n1. Head over to the **Simulator** tab on your dashboard.\n2. Search for any stock symbol (like AAPL or MSFT).\n3. Click **Buy** or **Sell**, enter the amount, and confirm your trade. Your portfolio performance will track live market prices!"
   },
   {
     keywords: ['compounding', 'compound interest', 'compounding interest', 'how does compounding work'],

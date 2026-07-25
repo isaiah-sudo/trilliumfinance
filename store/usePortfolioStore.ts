@@ -68,29 +68,36 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     try {
       const achievements = await getUserAchievements();
       
-      // Calculate streak
-      const todayStr = new Date().toLocaleDateString('en-US');
-      const lastLogin = localStorage.getItem('trillium_last_login');
-      let currentStreak = parseInt(localStorage.getItem('trillium_streak_count') || '0', 10);
-      
-      if (!lastLogin) {
-        currentStreak = 1;
-      } else {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        const lastDate = new Date(lastLogin);
-        lastDate.setHours(0,0,0,0);
-        const diffTime = today.getTime() - lastDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      // Calculate streak with Firestore sync fallback
+      let currentStreak = 1;
+      try {
+        const { updateUserStreakState } = await import('@/app/actions/lessons');
+        const streakRes = await updateUserStreakState();
+        currentStreak = streakRes.streakCount;
+      } catch (err) {
+        const todayStr = new Date().toLocaleDateString('en-US');
+        const lastLogin = localStorage.getItem('trillium_last_login');
+        currentStreak = parseInt(localStorage.getItem('trillium_streak_count') || '1', 10);
         
-        if (diffDays === 1) {
-          currentStreak = (currentStreak % 7) + 1;
-        } else if (diffDays > 1) {
+        if (!lastLogin) {
           currentStreak = 1;
+        } else {
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const lastDate = new Date(lastLogin);
+          lastDate.setHours(0,0,0,0);
+          const diffTime = today.getTime() - lastDate.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            currentStreak = currentStreak + 1;
+          } else if (diffDays > 1) {
+            currentStreak = 1;
+          }
         }
+        localStorage.setItem('trillium_last_login', todayStr);
+        localStorage.setItem('trillium_streak_count', currentStreak.toString());
       }
-      localStorage.setItem('trillium_last_login', todayStr);
-      localStorage.setItem('trillium_streak_count', currentStreak.toString());
 
       // Calculate XP from achievements
       const getAchievementXp = (achievementId: string): number => {

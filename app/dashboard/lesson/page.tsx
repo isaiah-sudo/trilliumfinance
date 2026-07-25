@@ -33,6 +33,14 @@ import {
   Sliders,
   AlertCircle
 } from 'lucide-react';
+import { 
+  getUserLessonAndStreakData, 
+  completeLessonAction, 
+  selectStreakCommitment, 
+  claimStreakCapitalReward,
+  STREAK_REWARDS 
+} from '@/app/actions/lessons';
+import { UNITS_DATA } from './unitsData';
 
 interface TermProps {
   word: string;
@@ -54,9 +62,6 @@ function FinancialTerm({ word, definition }: TermProps) {
   );
 }
 
-// ----------------------------------------------------
-// Lesson & Unit Data Definition (20 Interactive Lessons)
-// ----------------------------------------------------
 export interface Lesson {
   id: number;
   unitId: number;
@@ -84,654 +89,32 @@ export interface Unit {
   id: number;
   title: string;
   subtitle: string;
-  color: string; // tailwind color theme
+  color: string;
   badgeIcon: string;
   lessons: Lesson[];
 }
 
-const UNITS: Unit[] = [
-  {
-    id: 1,
-    title: "Unit 1: Fundamentals of Money & Markets",
-    subtitle: "Master core financial concepts, purchasing power, and stock market basics.",
-    color: "emerald",
-    badgeIcon: "💵",
-    lessons: [
-      {
-        id: 1,
-        unitId: 1,
-        title: "1. Money & Purchasing Power",
-        subtitle: "Understand fiat money, inflation, and why $100 today isn't $100 tomorrow.",
-        icon: "💵",
-        xp: 50,
-        trilliums: 10,
-        slides: [
-          {
-            title: "What is Purchasing Power?",
-            content: "Purchasing power is the amount of real goods or services that one unit of money can buy. Over time, inflation causes prices to rise, which reduces your purchasing power.",
-            keyTakeaway: "Inflation erodes cash value over time. Investing helps your money grow faster than inflation."
-          },
-          {
-            title: "Fiat Currency vs Assets",
-            content: "Paper money (fiat currency) is backed by government trust. Unlike gold or real estate, governments can print more fiat currency, decreasing its relative value.",
-            keyTakeaway: "Holding pure cash long-term leads to a loss of purchasing power."
-          }
-        ],
-        toolType: "inflation_calc",
-        quiz: [
-          {
-            question: "What happens to your purchasing power when inflation occurs?",
-            options: [
-              "It increases because prices drop.",
-              "It decreases because goods become more expensive.",
-              "It stays exactly the same forever."
-            ],
-            correctIndex: 1,
-            explanation: "Inflation raises prices, which means each dollar buys fewer goods and services."
-          },
-          {
-            question: "Why do investors buy productive assets like stocks?",
-            options: [
-              "To keep money hidden under a mattress.",
-              "To outpace inflation and build long-term real wealth.",
-              "Because cash never loses value."
-            ],
-            correctIndex: 1,
-            explanation: "Stocks and productive assets tend to grow faster than the rate of inflation."
-          }
-        ]
-      },
-      {
-        id: 2,
-        unitId: 1,
-        title: "2. How Stock Exchanges Work",
-        subtitle: "Discover how buyers and sellers trade fractional ownership of real companies.",
-        icon: "🏛️",
-        xp: 50,
-        trilliums: 10,
-        slides: [
-          {
-            title: "What is a Stock?",
-            content: "A stock (or share) represents partial ownership of a public company. If a company has 1,000,000 shares and you buy 10,000, you own 1% of that business!",
-            keyTakeaway: "Stocks make you a real business owner with rights to future profits."
-          },
-          {
-            title: "Stock Exchanges & Order Matching",
-            content: "Exchanges like NYSE and NASDAQ bring buyers (Bid) and sellers (Ask) together. When the highest bid meets the lowest ask, a trade executes instantly.",
-            keyTakeaway: "Stock prices move based on supply (sellers) and demand (buyers)."
-          }
-        ],
-        toolType: "order_sim",
-        quiz: [
-          {
-            question: "If a company has 1,000 shares total and you own 100 shares, how much of the company do you own?",
-            options: ["1%", "10%", "50%"],
-            correctIndex: 1,
-            explanation: "100 divided by 1,000 equals 10% ownership of the company."
-          },
-          {
-            question: "What drives stock prices up in the market?",
-            options: [
-              "More buyers wanting to buy than sellers willing to sell.",
-              "The government manually setting daily stock prices.",
-              "Sellers offering stocks for free."
-            ],
-            correctIndex: 0,
-            explanation: "High demand relative to supply forces prices upward as buyers compete."
-          }
-        ]
-      },
-      {
-        id: 3,
-        unitId: 1,
-        title: "3. Reading Stock Quotes",
-        subtitle: "Decode tickers, bid/ask spreads, volume, and 52-week price ranges.",
-        icon: "📊",
-        xp: 50,
-        trilliums: 10,
-        slides: [
-          {
-            title: "Elements of a Stock Quote",
-            content: "Every stock quote shows a Ticker Symbol (e.g. AAPL), current Market Price, Net Change ($ and %), Volume (shares traded today), and 52-Week High/Low.",
-            keyTakeaway: "Stock quotes give you a real-time snapshot of market sentiment."
-          },
-          {
-            title: "Understanding Bid and Ask",
-            content: "The Bid is the highest price a buyer is willing to pay. The Ask is the lowest price a seller is willing to accept. The difference is the Spread.",
-            keyTakeaway: "Popular stocks have tiny spreads, while rare stocks have wider spreads."
-          }
-        ],
-        toolType: "quote_scanner",
-        quiz: [
-          {
-            question: "What does a stock's 'Ticker Symbol' represent?",
-            options: [
-              "A unique 1 to 5 letter code identifying a company (e.g. MSFT).",
-              "The phone number of the company CEO.",
-              "The tax ID of the stock broker."
-            ],
-            correctIndex: 0,
-            explanation: "Ticker symbols provide quick identification for trading stocks on exchanges."
-          }
-        ]
-      },
-      {
-        id: 4,
-        unitId: 1,
-        title: "4. Cash Flow & Compounding",
-        subtitle: "Learn how compound interest turns small monthly savings into vast fortunes.",
-        icon: "📈",
-        xp: 60,
-        trilliums: 12,
-        slides: [
-          {
-            title: "The Magic of Compound Interest",
-            content: "Albert Einstein called compound interest the 8th wonder of the world. You earn interest not just on your initial money, but on previous interest as well!",
-            keyTakeaway: "Time is your greatest asset. Starting early doubles and triples returns."
-          }
-        ],
-        toolType: "compound_calc",
-        quiz: [
-          {
-            question: "Why is starting to invest in your 20s better than starting in your 40s?",
-            options: [
-              "Because compound interest has decades more time to multiply gains.",
-              "Because stocks only go up in your 20s.",
-              "Because banks don't allow 40-year-olds to invest."
-            ],
-            correctIndex: 0,
-            explanation: "More years allow interest to compound exponentially on top of prior gains."
-          }
-        ]
-      },
-      {
-        id: 5,
-        unitId: 1,
-        title: "5. Risk vs Reward & Volatility",
-        subtitle: "Balance risk tolerance and portfolio volatility to avoid panic selling.",
-        icon: "⚖️",
-        xp: 60,
-        trilliums: 12,
-        slides: [
-          {
-            title: "Understanding Volatility",
-            content: "Volatility measures how wildly a stock's price fluctuates. High volatility can yield big gains or sharp drops. Low volatility provides stability.",
-            keyTakeaway: "Higher prospective returns always come with higher potential risk."
-          }
-        ],
-        toolType: "risk_matrix",
-        quiz: [
-          {
-            question: "What is the relationship between financial risk and potential return?",
-            options: [
-              "Higher potential returns generally require taking higher potential risk.",
-              "High risk guarantees high profits every single day.",
-              "Low risk investments always produce maximum wealth."
-            ],
-            correctIndex: 0,
-            explanation: "Risk and return are directly correlated in financial markets."
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 2,
-    title: "Unit 2: Stock Valuation & Fundamental Analysis",
-    subtitle: "Analyze corporate balance sheets, P/E ratios, earnings, and dividends.",
-    color: "blue",
-    badgeIcon: "🔍",
-    lessons: [
-      {
-        id: 6,
-        unitId: 2,
-        title: "6. Company Fundamentals & EPS",
-        subtitle: "Read income statements, revenue growth, and Earnings Per Share.",
-        icon: "📑",
-        xp: 65,
-        trilliums: 15,
-        slides: [
-          {
-            title: "Revenue vs Net Income",
-            content: "Revenue is total sales. Net Income is what remains after paying all expenses, taxes, and wages. Earnings Per Share (EPS) = Net Income / Total Shares.",
-            keyTakeaway: "EPS tells you how much profit the company makes for every share you hold."
-          }
-        ],
-        toolType: "financial_stmt",
-        quiz: [
-          {
-            question: "How is Earnings Per Share (EPS) calculated?",
-            options: [
-              "Net Income divided by Total Shares Outstanding.",
-              "Total Sales divided by Stock Price.",
-              "Company Cash minus Liabilities."
-            ],
-            correctIndex: 0,
-            explanation: "EPS distributes total net profits across every existing share of stock."
-          }
-        ]
-      },
-      {
-        id: 7,
-        unitId: 2,
-        title: "7. Valuation Multiples & P/E Ratio",
-        subtitle: "Determine whether a stock is bargains-cheap or dangerously overvalued.",
-        icon: "🏷️",
-        xp: 65,
-        trilliums: 15,
-        slides: [
-          {
-            title: "Price-to-Earnings (P/E) Ratio",
-            content: "P/E = Stock Price / EPS. If a stock trades at $50 and EPS is $5, P/E is 10. It shows how many dollars investors pay for $1 of company profit.",
-            keyTakeaway: "High P/E means high expected growth; low P/E may mean a bargain or a struggling company."
-          }
-        ],
-        toolType: "pe_eval",
-        quiz: [
-          {
-            question: "If a stock costs $100 and earns $10 per share per year, what is its P/E ratio?",
-            options: ["10", "100", "5"],
-            correctIndex: 0,
-            explanation: "$100 price divided by $10 earnings = P/E of 10."
-          }
-        ]
-      },
-      {
-        id: 8,
-        unitId: 2,
-        title: "8. Dividends & Passive Income",
-        subtitle: "Earn quarterly cash payouts from profitable dividend-paying stocks.",
-        icon: "💸",
-        xp: 70,
-        trilliums: 15,
-        slides: [
-          {
-            title: "What is a Dividend?",
-            content: "A dividend is cash paid out directly to shareholders from company profits. Dividend Yield = (Annual Dividend per Share / Stock Price) * 100.",
-            keyTakeaway: "Reinvesting dividends (DRIP) compounds your total returns rapidly."
-          }
-        ],
-        toolType: "dividend_calc",
-        quiz: [
-          {
-            question: "What is Dividend Yield?",
-            options: [
-              "The percentage of stock price paid out as cash to shareholders annually.",
-              "The interest rate charged by a bank on a car loan.",
-              "The fee you pay to sell stock."
-            ],
-            correctIndex: 0,
-            explanation: "Dividend yield measures annual cash income relative to the stock's purchase price."
-          }
-        ]
-      },
-      {
-        id: 9,
-        unitId: 2,
-        title: "9. Market Capitalization Classes",
-        subtitle: "Navigate Mega-Caps, Large-Caps, Mid-Caps, and Small-Cap growth stocks.",
-        icon: "🏢",
-        xp: 70,
-        trilliums: 15,
-        slides: [
-          {
-            title: "Calculating Market Cap",
-            content: "Market Cap = Stock Price * Total Shares. Mega-cap ($200B+), Large-cap ($10B-$200B), Mid-cap ($2B-$10B), Small-cap ($300M-$2B).",
-            keyTakeaway: "Large caps offer stability; small caps offer higher growth potential and volatility."
-          }
-        ],
-        toolType: "market_cap",
-        quiz: [
-          {
-            question: "If Company A has 1 Billion shares at $200 per share, what is its Market Cap?",
-            options: ["$200 Billion (Mega-Cap)", "$2 Billion (Mid-Cap)", "$20 Million (Micro-Cap)"],
-            correctIndex: 0,
-            explanation: "1 Billion * $200 = $200 Billion total market valuation."
-          }
-        ]
-      },
-      {
-        id: 10,
-        unitId: 2,
-        title: "10. Bull vs Bear Market Cycles",
-        subtitle: "Survive market crashes, market corrections, and booming bull rallies.",
-        icon: "🐂",
-        xp: 75,
-        trilliums: 18,
-        slides: [
-          {
-            title: "Bull vs Bear Markets",
-            content: "A Bull Market is a sustained rise (+20% or more). A Bear Market is a drop of 20% or more from recent peaks due to economic fear.",
-            keyTakeaway: "Bear markets create historic buying opportunities for disciplined investors."
-          }
-        ],
-        toolType: "bull_bear",
-        quiz: [
-          {
-            question: "What officially defines a Bear Market?",
-            options: [
-              "A market decline of 20% or more from recent high prices.",
-              "A sunny day on Wall Street.",
-              "A 2% drop in one afternoon."
-            ],
-            correctIndex: 0,
-            explanation: "A 20% drop across broad market indices signifies a bear market."
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 3,
-    title: "Unit 3: Portfolio Strategy & Execution Mechanics",
-    subtitle: "Execute advanced orders, construct ETF portfolios, and manage debt.",
-    color: "purple",
-    badgeIcon: "💼",
-    lessons: [
-      {
-        id: 11,
-        unitId: 3,
-        title: "11. Order Types: Market, Limit, Stop",
-        subtitle: "Control your exact entry and exit prices with precision limit & stop orders.",
-        icon: "🎯",
-        xp: 80,
-        trilliums: 18,
-        slides: [
-          {
-            title: "Market vs Limit vs Stop Orders",
-            content: "Market Order: Fills immediately at best available price. Limit Order: Fills ONLY at your target price or better. Stop-Loss: Sells automatically if price drops to protect against loss.",
-            keyTakeaway: "Use Limit orders to avoid slippage and Stop-Loss orders to cap downside."
-          }
-        ],
-        toolType: "order_type_sim",
-        quiz: [
-          {
-            question: "Which order type guarantees execution speed over exact price?",
-            options: ["Market Order", "Limit Order", "Stop-Loss Order"],
-            correctIndex: 0,
-            explanation: "Market orders execute immediately at whatever current price sellers demand."
-          }
-        ]
-      },
-      {
-        id: 12,
-        unitId: 3,
-        title: "12. Asset Allocation & Sectors",
-        subtitle: "Protect capital across Technology, Healthcare, Financials, and Energy.",
-        icon: "🍕",
-        xp: 80,
-        trilliums: 18,
-        slides: [
-          {
-            title: "Don't Put All Eggs in One Basket",
-            content: "Spread your capital across different sectors (Tech, Finance, Energy, Consumer Goods). If one sector suffers, others insulate your portfolio.",
-            keyTakeaway: "Diversification reduces portfolio volatility without sacrificing overall return."
-          }
-        ],
-        toolType: "sector_pie",
-        quiz: [
-          {
-            question: "Why should an investor diversify across multiple market sectors?",
-            options: [
-              "To prevent a crash in one sector from wiping out their entire portfolio.",
-              "To pay double the transaction fees.",
-              "Because owning only 1 stock is illegal."
-            ],
-            correctIndex: 0,
-            explanation: "Diversification lowers overall risk exposure to single company or industry failures."
-          }
-        ]
-      },
-      {
-        id: 13,
-        unitId: 3,
-        title: "13. Index Funds & Expense Ratios",
-        subtitle: "Outperform 90% of active fund managers with low-cost index ETFs.",
-        icon: "📦",
-        xp: 85,
-        trilliums: 20,
-        slides: [
-          {
-            title: "ETFs & Mutual Funds",
-            content: "An Exchange Traded Fund (ETF) holds hundreds of stocks in 1 ticker (e.g. S&P 500 ETF). Pay attention to Expense Ratios (annual management fee %).",
-            keyTakeaway: "A 1.5% fee can eat over 30% of your lifetime investment wealth!"
-          }
-        ],
-        toolType: "etf_fee",
-        quiz: [
-          {
-            question: "Why are low expense ratios (e.g. 0.03%) crucial for long-term investors?",
-            options: [
-              "High fees compound exponentially over time and strip away massive investment returns.",
-              "Low fee funds pay zero taxes.",
-              "High fee funds always outperform low fee funds."
-            ],
-            correctIndex: 0,
-            explanation: "Management fees compound over decades, making low-cost index ETFs superior."
-          }
-        ]
-      },
-      {
-        id: 14,
-        unitId: 3,
-        title: "14. Debt, Borrowing & Leverage",
-        subtitle: "Understand margin interest, debt leverage, and simulator cash borrowing.",
-        icon: "💳",
-        xp: 90,
-        trilliums: 20,
-        externalLink: "/dashboard/lesson/debt-leverage",
-        slides: [
-          {
-            title: "Leverage is a Double-Edged Sword",
-            content: "Borrowing money (margin/leverage) amplifies both gains and losses. If a leveraged trade goes wrong, you can lose more than your initial cash deposit!",
-            keyTakeaway: "Always calculate interest rates and maintain safety buffers when using margin."
-          }
-        ],
-        toolType: "debt_calc",
-        quiz: [
-          {
-            question: "What is a major risk of trading with borrowed leverage?",
-            options: [
-              "You can lose more money than you initially deposited.",
-              "The stock market instantly closes.",
-              "Interest rates automatically become 0%."
-            ],
-            correctIndex: 0,
-            explanation: "Leverage magnifies losses. If the stock falls sharply, you still owe the full principal plus interest."
-          }
-        ]
-      },
-      {
-        id: 15,
-        unitId: 3,
-        title: "15. Short Selling & Bearish Bets",
-        subtitle: "Profit when stock prices fall by borrowing and selling shares back.",
-        icon: "📉",
-        xp: 90,
-        trilliums: 20,
-        slides: [
-          {
-            title: "How Short Selling Works",
-            content: "To Short: Borrow stock from broker -> Sell at $100 -> Stock drops to $60 -> Buy back at $60 -> Return shares to broker. Profit = $40 per share!",
-            keyTakeaway: "Shorting has UNLIMITED downside risk because a stock price can rise infinitely!"
-          }
-        ],
-        toolType: "short_sim",
-        quiz: [
-          {
-            question: "Why is short selling considered higher risk than buying regular stock?",
-            options: [
-              "Because a stock's price can rise infinitely, leading to unlimited potential losses.",
-              "Because you cannot make money when stocks drop.",
-              "Because short selling is illegal."
-            ],
-            correctIndex: 0,
-            explanation: "When buying stock, your max loss is 100%. When shorting, a stock can rise 500%+, leading to huge debts."
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 4,
-    title: "Unit 4: Advanced Trading & Financial Mastery",
-    subtitle: "Master options payoff curves, technical chart analysis, taxes, and discipline.",
-    color: "amber",
-    badgeIcon: "🎓",
-    lessons: [
-      {
-        id: 16,
-        unitId: 4,
-        title: "16. Options Mechanics: Calls & Puts",
-        subtitle: "Understand strike prices, expirations, leverage, and option contracts.",
-        icon: "⚡",
-        xp: 95,
-        trilliums: 25,
-        slides: [
-          {
-            title: "Calls vs Puts",
-            content: "Call Option: Right to BUY stock at Strike Price. Put Option: Right to SELL stock at Strike Price. Contracts expire on a set date.",
-            keyTakeaway: "Options provide powerful leverage but can expire completely worthless."
-          }
-        ],
-        toolType: "options_payoff",
-        quiz: [
-          {
-            question: "If you expect a stock's price to surge dramatically upward, which option contract do you buy?",
-            options: ["Call Option", "Put Option", "Short Option"],
-            correctIndex: 0,
-            explanation: "Buying a Call option gives you the right to buy stock at a lower fixed strike price as market price rises."
-          }
-        ]
-      },
-      {
-        id: 17,
-        unitId: 4,
-        title: "17. Technical Analysis & Chart Patterns",
-        subtitle: "Spot trends with Candlesticks, Moving Averages (SMA), and Support levels.",
-        icon: "🕯️",
-        xp: 95,
-        trilliums: 25,
-        slides: [
-          {
-            title: "Candlestick Anatomy",
-            content: "Each candle shows Open, High, Low, Close (OHLC). Green candle: Closed higher than opened. Red candle: Closed lower than opened. Wicks show price extremes.",
-            keyTakeaway: "Technical patterns reveal buyer/seller momentum and key psychological support zones."
-          }
-        ],
-        toolType: "chart_pattern",
-        quiz: [
-          {
-            question: "What does a Green Candlestick indicate on a price chart?",
-            options: [
-              "The closing price was higher than the opening price for that time period.",
-              "The stock was delisted from the stock exchange.",
-              "The company lost all revenue."
-            ],
-            correctIndex: 0,
-            explanation: "Green candles signal price appreciation over the selected time interval."
-          }
-        ]
-      },
-      {
-        id: 18,
-        unitId: 4,
-        title: "18. Macroeconomics & The Federal Reserve",
-        subtitle: "Discover how Fed interest rate hikes impact stock markets and inflation.",
-        icon: "🌐",
-        xp: 100,
-        trilliums: 25,
-        slides: [
-          {
-            title: "Federal Reserve & Interest Rates",
-            content: "When the Fed raises interest rates, borrowing becomes expensive, slowing the economy down to tame inflation. High rates pressure stock valuations.",
-            keyTakeaway: "'Don't fight the Fed' is a classic Wall Street proverb for a reason!"
-          }
-        ],
-        toolType: "fed_rate",
-        quiz: [
-          {
-            question: "How do higher Federal Reserve interest rates usually impact stock valuations?",
-            options: [
-              "They increase borrowing costs for businesses, often cooling stock valuations.",
-              "They instantly double all company stock prices.",
-              "They eliminate corporate taxes."
-            ],
-            correctIndex: 0,
-            explanation: "Higher interest rates increase corporate debt costs and make conservative bonds more attractive."
-          }
-        ]
-      },
-      {
-        id: 19,
-        unitId: 4,
-        title: "19. Capital Gains Taxes & Wealth Building",
-        subtitle: "Keep more of your hard-earned profits with tax-advantaged account strategies.",
-        icon: "🏛️",
-        xp: 100,
-        trilliums: 25,
-        slides: [
-          {
-            title: "Short-Term vs Long-Term Capital Gains",
-            content: "Holding a stock less than 1 year results in Short-Term tax rates (up to 37%). Holding 1+ year qualifies for lower Long-Term rates (0%-20%).",
-            keyTakeaway: "Holding investments for over 1 year saves huge amounts in capital gains taxes."
-          }
-        ],
-        toolType: "tax_calc",
-        quiz: [
-          {
-            question: "How long must you hold an asset to qualify for lower Long-Term Capital Gains tax rates?",
-            options: ["More than 1 year (365+ days)", "At least 30 days", "Exactly 5 years"],
-            correctIndex: 0,
-            explanation: "Assets held longer than 1 year receive favorable long-term tax treatment."
-          }
-        ]
-      },
-      {
-        id: 20,
-        unitId: 4,
-        title: "20. Dollar-Cost Averaging & Financial Freedom",
-        subtitle: "Build generational wealth with automated investing and emotional discipline.",
-        icon: "👑",
-        xp: 120,
-        trilliums: 30,
-        slides: [
-          {
-            title: "Dollar-Cost Averaging (DCA)",
-            content: "DCA means investing a fixed dollar amount on a regular schedule (e.g. $200 every month), regardless of market ups and downs.",
-            keyTakeaway: "DCA removes emotion, buys more shares when prices are low, and builds massive wealth over time!"
-          }
-        ],
-        toolType: "dca_vs_lump",
-        quiz: [
-          {
-            question: "What is the primary advantage of Dollar-Cost Averaging (DCA)?",
-            options: [
-              "It removes emotional timing guesswork and builds discipline by buying regularly over time.",
-              "It guarantees you never experience a red day.",
-              "It eliminates stock transaction fees permanently."
-            ],
-            correctIndex: 0,
-            explanation: "DCA ensures you consistently buy shares during both market rallies and dips automatically."
-          }
-        ]
-      }
-    ]
-  }
-];
+const UNITS: Unit[] = UNITS_DATA;
 
 // ----------------------------------------------------
 // Main Component
 // ----------------------------------------------------
 export default function LessonsPage() {
   const { textFont, numberFont, trilliums, setTrilliums } = useSettings();
-  const { fetchAchievementsAndStreak, streakCount } = usePortfolioStore();
+  const { fetchAchievementsAndStreak, fetchPortfolio, streakCount } = usePortfolioStore();
 
   const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
 
+  // Streak Commitment State
+  const [activeCommitment, setActiveCommitment] = useState<number>(7);
+  const [claimedRewards, setClaimedRewards] = useState<number[]>([]);
+  const [showCommitmentModal, setShowCommitmentModal] = useState<boolean>(false);
+  const [rewardClaiming, setRewardClaiming] = useState<boolean>(false);
+  const [rewardSuccessMsg, setRewardSuccessMsg] = useState<string | null>(null);
+
   // Lesson Runner State
-  const [currentStep, setCurrentStep] = useState(0); // 0: slides, 1: tool, 2..N: quiz questions
+  const [currentStep, setCurrentStep] = useState(0);
   const [slideIndex, setSlideIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<Record<number, boolean>>({});
@@ -739,35 +122,75 @@ export default function LessonsPage() {
 
   useEffect(() => {
     fetchAchievementsAndStreak();
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('trillium_completed_lessons');
-      if (saved) {
-        try {
-          setCompletedLessonIds(JSON.parse(saved));
-        } catch (e) {
-          setCompletedLessonIds([1]); // default fallback
+    async function syncUserData() {
+      try {
+        const data = await getUserLessonAndStreakData();
+        setCompletedLessonIds(data.completedLessonIds);
+        setActiveCommitment(data.activeCommitment || 7);
+        setClaimedRewards(data.claimedCommitmentRewards || []);
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('trillium_completed_lessons', JSON.stringify(data.completedLessonIds));
         }
-      } else {
-        // default mark lesson 1 as completed if previously completed
-        const legacy = localStorage.getItem('lesson_1_completed_at');
-        if (legacy) {
-          setCompletedLessonIds([1]);
+      } catch (e) {
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('trillium_completed_lessons');
+          if (saved) {
+            try { setCompletedLessonIds(JSON.parse(saved)); } catch (err) { setCompletedLessonIds([1]); }
+          } else {
+            setCompletedLessonIds([1]);
+          }
         }
       }
     }
+    syncUserData();
   }, [fetchAchievementsAndStreak]);
 
-  const markLessonComplete = (lesson: Lesson) => {
+  const markLessonComplete = async (lesson: Lesson) => {
     if (!completedLessonIds.includes(lesson.id)) {
       const updated = [...completedLessonIds, lesson.id];
       setCompletedLessonIds(updated);
+      setTrilliums(trilliums + lesson.trilliums);
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('trillium_completed_lessons', JSON.stringify(updated));
         localStorage.setItem(`lesson_${lesson.id}_completed_at`, Date.now().toString());
       }
-      setTrilliums(trilliums + lesson.trilliums);
+
+      try {
+        await completeLessonAction(lesson.id, lesson.xp, lesson.trilliums);
+      } catch (e) {
+        console.error('Error saving lesson completion to Firestore:', e);
+      }
     }
     setIsCompleted(true);
+  };
+
+  const handleSelectCommitment = async (days: number) => {
+    setActiveCommitment(days);
+    try {
+      await selectStreakCommitment(days);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleClaimCapitalReward = async (days: number) => {
+    setRewardClaiming(true);
+    setRewardSuccessMsg(null);
+    try {
+      const res = await claimStreakCapitalReward(days);
+      if (res.success) {
+        setClaimedRewards(prev => [...prev, days]);
+        setRewardSuccessMsg(`🎉 Outstanding commitment! $${res.rewardCash} in fresh capital deposited into your portfolio cash! (+${res.rewardTrilliums} 💎)`);
+        await fetchPortfolio();
+        await fetchAchievementsAndStreak();
+      }
+    } catch (e: any) {
+      alert(e.message || 'Could not claim reward');
+    } finally {
+      setRewardClaiming(false);
+    }
   };
 
   const handleStartLesson = (lesson: Lesson) => {
@@ -779,7 +202,7 @@ export default function LessonsPage() {
     setIsCompleted(false);
   };
 
-  const totalLessons = 20;
+  const totalLessons = 50;
   const completedCount = completedLessonIds.length;
   const courseProgressPct = Math.round((completedCount / totalLessons) * 100);
 
@@ -797,23 +220,29 @@ export default function LessonsPage() {
                 Financial Education Path 🎓
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Master 20 interactive lessons to build real-world investing skill
+                Master 50 interactive lessons across 10 units & earn cash rewards!
               </p>
             </div>
           </div>
 
           {/* Quick Stats Badges */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end overflow-x-auto pb-1 md:pb-0">
-            {/* Streak */}
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 shadow-sm shrink-0">
+            {/* Streak Commitment Button */}
+            <button
+              onClick={() => setShowCommitmentModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 shadow-sm shrink-0 hover:scale-105 transition-all text-left"
+            >
               <Flame className="h-5 w-5 text-amber-500 animate-bounce" />
               <div>
-                <div className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400">Streak</div>
+                <div className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <span>Streak Target</span>
+                  <span className="bg-amber-500 text-white px-1 rounded text-[8px] font-bold">{activeCommitment}D</span>
+                </div>
                 <div className={`text-xs font-black text-slate-800 dark:text-slate-100 font-num-${numberFont}`}>
-                  {streakCount || 1} Days
+                  {streakCount} / {activeCommitment} Days
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Completed */}
             <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 shadow-sm shrink-0">
@@ -832,7 +261,7 @@ export default function LessonsPage() {
               <div>
                 <div className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">Total XP</div>
                 <div className={`text-xs font-black text-slate-800 dark:text-slate-100 font-num-${numberFont}`}>
-                  {completedCount * 65} XP
+                  {completedCount * 75} XP
                 </div>
               </div>
             </div>
@@ -842,7 +271,7 @@ export default function LessonsPage() {
         {/* Global Progress Bar */}
         <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800/60">
           <div className="flex justify-between items-center text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-            <span>Overall Course Progress</span>
+            <span>Overall Course Progress ({completedCount}/50 Lessons)</span>
             <span className="text-blue-600 dark:text-blue-400 font-extrabold">{courseProgressPct}% Complete</span>
           </div>
           <div className="h-3 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-800">
@@ -855,6 +284,132 @@ export default function LessonsPage() {
           </div>
         </div>
       </div>
+
+      {/* Streak Commitment & Capital Rewards Callout Card */}
+      <div className="rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 p-6 shadow-xl backdrop-blur-md relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shrink-0">
+              <Flame className="h-8 w-8 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  Duolingo-Style Streak Commitment
+                </span>
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                Commit to Daily Lessons & Earn Capital Rewards 💵
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5 max-w-xl">
+                Pledge to do a lesson every day. Complete 7 days for $50 cash capital, 14 days for $150, 30 days for $350, or 60 days for $1,000!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-stretch md:self-auto">
+            {streakCount >= activeCommitment && !claimedRewards.includes(activeCommitment) ? (
+              <button
+                disabled={rewardClaiming}
+                onClick={() => handleClaimCapitalReward(activeCommitment)}
+                className="w-full md:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-lg uppercase tracking-wider animate-bounce"
+              >
+                {rewardClaiming ? 'Claiming Cash...' : `Claim $${STREAK_REWARDS[activeCommitment]?.cash} Reward! 🎉`}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCommitmentModal(true)}
+                className="w-full md:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-black text-xs shadow-lg uppercase tracking-wider transition-all hover:scale-105"
+              >
+                Change Streak Commitment →
+              </button>
+            )}
+          </div>
+        </div>
+
+        {rewardSuccessMsg && (
+          <div className="mt-4 p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center animate-in fade-in">
+            {rewardSuccessMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Streak Commitment Selector Modal */}
+      <AnimatePresence>
+        {showCommitmentModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 sm:p-8 w-full max-w-xl shadow-2xl space-y-6"
+            >
+              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Flame className="h-6 w-6 text-amber-500" />
+                    Commit to Your Streak Goal
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Higher streak commitments yield bigger simulator cash rewards deposited to your portfolio!
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCommitmentModal(false)}
+                  className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[7, 14, 30, 60].map((days) => {
+                  const rw = STREAK_REWARDS[days];
+                  const isSelected = activeCommitment === days;
+                  const isClaimed = claimedRewards.includes(days);
+                  const isReached = streakCount >= days;
+
+                  return (
+                    <div
+                      key={days}
+                      onClick={() => handleSelectCommitment(days)}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-amber-500 bg-amber-500/10 shadow-lg scale-102'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-amber-500/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1">
+                          ⚡ {days} Days Target
+                        </span>
+                        {isClaimed ? (
+                          <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">Claimed ✓</span>
+                        ) : isReached ? (
+                          <span className="text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">Ready!</span>
+                        ) : null}
+                      </div>
+                      <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                        +${rw.cash} Cash
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+                        +{rw.trilliums} Trilliums • +{rw.xp} XP
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setShowCommitmentModal(false)}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg"
+              >
+                Confirm Commitment & Return to Path
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Duolingo Style Skill Tree Path */}
       <div className="space-y-12">

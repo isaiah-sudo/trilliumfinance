@@ -21,6 +21,7 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
+import { getMarketQuotes } from '@/app/actions/trading';
 
 function TrilliumLogoMark() {
   return (
@@ -51,7 +52,7 @@ export default function LandingPage() {
   // Fidget 1: Trading Simulator State
   const [shareCount, setShareCount] = useState(10);
   const sharePrice = 182.50;
-  const initialCash = 100000;
+  const initialCash = 10000;
   const totalCost = shareCount * sharePrice;
   const remainingCash = initialCash - totalCost;
 
@@ -146,7 +147,7 @@ export default function LandingPage() {
   const faqs = [
     {
       q: "How does the paper trading simulator work?",
-      a: "Trillium Finance matches live market feeds with $100,000 in virtual starting cash. Invest in AAPL, MSFT, and popular indices with absolutely zero financial risk."
+      a: "Trillium Finance matches live market feeds with $10,000 in virtual starting cash. Invest in AAPL, MSFT, and popular indices with absolutely zero financial risk."
     },
     {
       q: "Do I need to pay or link a credit card?",
@@ -255,6 +256,40 @@ export default function LandingPage() {
     return () => cancelAnimationFrame(frameId);
   }, [activeMilestone]);
 
+  // Ticker bar quotes state initialized with fallback default prices
+  const [tickerQuotes, setTickerQuotes] = useState<Array<{ ticker: string; price: number; change: number }>>([
+    { ticker: 'AAPL', price: 182.50, change: 1.24 },
+    { ticker: 'MSFT', price: 415.60, change: 0.85 },
+    { ticker: 'TSLA', price: 177.40, change: -2.10 },
+    { ticker: 'NVDA', price: 120.50, change: 3.15 },
+    { ticker: 'GOOGL', price: 175.20, change: 0.42 },
+    { ticker: 'AMZN', price: 180.10, change: -0.45 }
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchTickerData() {
+      try {
+        const quotes = await getMarketQuotes(['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN']);
+        if (isMounted && quotes && quotes.length > 0) {
+          const validQuotes = quotes.filter(q => q.price > 0);
+          if (validQuotes.length > 0) {
+            setTickerQuotes(validQuotes);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch Finnhub ticker quotes for landing page bar:', err);
+      }
+    }
+
+    fetchTickerData();
+    const interval = setInterval(fetchTickerData, 60000); // refresh every minute
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleCheckIn = () => {
     if (hasCheckedIn) return;
     setHasCheckedIn(true);
@@ -353,24 +388,26 @@ export default function LandingPage() {
           {/* Duplicate sets for seamless loop */}
           {[1, 2].map((setIndex) => (
             <div key={setIndex} className="flex justify-around items-center w-1/2 gap-8 text-xs font-bold text-slate-400">
-              <span className="flex items-center gap-2">
-                AAPL <span className="text-emerald-400 font-black">$182.50</span> <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">+1.24%</span>
-              </span>
-              <span className="flex items-center gap-2">
-                MSFT <span className="text-emerald-400 font-black">$415.60</span> <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">+0.85%</span>
-              </span>
-              <span className="flex items-center gap-2">
-                TSLA <span className="text-red-400 font-black">$177.40</span> <span className="text-[10px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md">-2.10%</span>
-              </span>
-              <span className="flex items-center gap-2">
-                BTC <span className="text-emerald-400 font-black">$69,420</span> <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">+4.55%</span>
-              </span>
-              <span className="flex items-center gap-2">
-                ETH <span className="text-emerald-400 font-black">$3,812</span> <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">+3.12%</span>
-              </span>
-              <span className="flex items-center gap-2">
-                AMZN <span className="text-red-400 font-black">$180.10</span> <span className="text-[10px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md">-0.45%</span>
-              </span>
+              {tickerQuotes.map((item) => {
+                const isPositive = item.change >= 0;
+                return (
+                  <span key={item.ticker} className="flex items-center gap-2">
+                    {item.ticker}{' '}
+                    <span className="text-white font-black">
+                      ${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>{' '}
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${
+                        isPositive
+                          ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                          : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                      }`}
+                    >
+                      {isPositive ? '+' : ''}{item.change.toFixed(2)}%
+                    </span>
+                  </span>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -418,7 +455,7 @@ export default function LandingPage() {
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <Shield className="h-5 w-5 text-emerald-400 mb-1.5" />
               <div className="text-xs font-bold text-slate-200">100% Risk Free</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">$100k starting paper cash.</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">$10k starting paper cash.</div>
             </div>
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <Layers className="h-5 w-5 text-blue-400 mb-1.5" />
