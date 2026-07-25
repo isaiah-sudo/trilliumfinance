@@ -19,7 +19,13 @@ import {
   ArrowRight,
   Shield,
   Layers,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck,
+  Activity,
+  Award,
+  Star,
+  ChevronDown,
+  ChevronLeft
 } from 'lucide-react';
 import { getMarketQuotes } from '@/app/actions/trading';
 
@@ -63,7 +69,7 @@ export default function LandingPage() {
   const [xpNotes, setXpNotes] = useState<string[]>([]);
 
   // Interactive FAQ Accordion State
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number>(0);
   const [activeMilestone, setActiveMilestone] = useState<{ title: string; desc: string; icon: string } | null>(null);
   const [activeOrbId, setActiveOrbId] = useState<string | null>(null);
   const [linePath, setLinePath] = useState<string>("");
@@ -156,6 +162,10 @@ export default function LandingPage() {
     {
       q: "How do streaks and XP rewards benefit me?",
       a: "Completing daily check-ins and financial quests earns you XP. Build your streak to unlock achievements, climb the rankings leaderboard, and showcase your trading mastery to the community."
+    },
+    {
+      q: "Where does Trillium Finance get its live market data?",
+      a: "We connect to real-time market data feeds for top equities (like AAPL and MSFT) and major market indices, allowing you to practice strategies against authentic live price action."
     }
   ];
 
@@ -356,14 +366,14 @@ export default function LandingPage() {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
+              <Link href="/login" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
                 Sign In
               </Link>
               <Link href="/signup">
                 <button 
                   onMouseDown={handlePulse}
                   style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all duration-200 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black transition-all duration-200 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px]"
                 >
                   Get Started
                 </button>
@@ -387,7 +397,7 @@ export default function LandingPage() {
         >
           {/* Duplicate sets for seamless loop */}
           {[1, 2].map((setIndex) => (
-            <div key={setIndex} className="flex justify-around items-center w-1/2 gap-8 text-xs font-bold text-slate-400">
+            <div key={setIndex} className="flex justify-around items-center w-1/2 gap-8 text-xs font-bold text-slate-300">
               {tickerQuotes.map((item) => {
                 const isPositive = item.change >= 0;
                 return (
@@ -414,7 +424,7 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-[1700px] mx-auto px-6 pt-10 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      <main className="relative z-10 max-w-[1700px] mx-auto px-6 pt-10 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
         
         {/* Left Side: Context & Call to Action */}
         <div className="lg:col-span-6 flex flex-col items-start text-left space-y-6">
@@ -440,7 +450,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-slate-400 text-base sm:text-lg font-medium leading-relaxed max-w-xl"
+            className="text-slate-300 text-base sm:text-lg font-medium leading-relaxed max-w-xl"
           >
             Trillium Finance matches live market asset feeds with gamified financial literacy challenges. Grow your virtual wealth, protect your streak, unlock achievement badges, and trade Apple, Microsoft, or ETFs in a complete sandbox.
           </motion.p>
@@ -452,15 +462,15 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="grid grid-cols-2 gap-4 w-full max-w-md pt-2"
           >
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
               <Shield className="h-5 w-5 text-emerald-400 mb-1.5" />
-              <div className="text-xs font-bold text-slate-200">100% Risk Free</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">$10k starting paper cash.</div>
+              <div className="text-xs font-bold text-slate-100">100% Risk Free</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">$10k starting paper cash.</div>
             </div>
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
               <Layers className="h-5 w-5 text-blue-400 mb-1.5" />
-              <div className="text-xs font-bold text-slate-200">Interactive Lessons</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Learn finance, earn legendary badges.</div>
+              <div className="text-xs font-bold text-slate-100">Interactive Lessons</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">Learn finance, earn legendary badges.</div>
             </div>
           </motion.div>
 
@@ -468,7 +478,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-wrap gap-4 items-center pt-4"
+            className="flex flex-col items-start pt-4 space-y-3"
           >
             {!loading && user ? (
               <Link href="/dashboard">
@@ -491,6 +501,11 @@ export default function LandingPage() {
                 </button>
               </Link>
             )}
+
+            {/* Friction Reduction Micro-copy */}
+            <p className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-1.5 pt-1">
+              <span className="text-amber-400 font-bold">⚡</span> Free forever • No credit card required • Instant access
+            </p>
           </motion.div>
         </div>
 
@@ -645,7 +660,7 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* Stock Market Graph Container (Seamless smooth scrolling ticker with zero empty scroll space) */}
+      {/* Stock Market Graph Container */}
       <div className="relative w-full max-w-[1700px] mx-auto px-6 mb-24 mt-8">
         <motion.div 
           id="graph-card-container"
@@ -901,50 +916,50 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Card 1: Virtual Trading Feed */}
-          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-md">
+          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-6">
               <TrendingUp className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-black text-white tracking-tight mb-3">
               Virtual Trading Feed
             </h3>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed">
               Practice trading AAPL, MSFT, and other popular instruments with real-time price feeds using virtual starting cash. Zero risk, high reward.
             </p>
           </div>
 
           {/* Card 2: Gamified Quizzes */}
-          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.1)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-md">
+          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.15)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-xl">
             <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-6">
               <GraduationCap className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-black text-white tracking-tight mb-3">
               Gamified Quizzes
             </h3>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed">
               Complete structured lessons on compounding interest, stock indices, and macroeconomics. Build streaks to earn daily XP boosts.
             </p>
           </div>
 
           {/* Card 3: Badges & Achievements */}
-          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 shadow-xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-md">
+          <div className="p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-xl">
             <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-6">
               <Trophy className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-black text-white tracking-tight mb-3">
               Badges & Achievements
             </h3>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            <p className="text-slate-300 text-sm font-medium leading-relaxed">
               Unlock trophies as you execute smart trades, master quizzes, and rise through the global leaderboards. Showcase achievements to the community.
             </p>
           </div>
         </div>
       </section>
 
-      {/* FAQ Accordion Section (Interactive element that makes it look more professional) */}
-      <section className="relative z-10 max-w-[1700px] mx-auto px-6 py-20 border-t border-white/5 bg-slate-950/40 backdrop-blur-sm [perspective:1200px]">
+      {/* FAQ / Questions & Answers Section (2-Column Side-by-Side Split Layout) */}
+      <section className="relative z-10 max-w-[1700px] mx-auto px-6 py-20 border-t border-white/5 bg-slate-950/40 backdrop-blur-sm">
         <div className="text-center max-w-xl mx-auto mb-12">
-          <h2 className="text-xs font-black uppercase text-blue-400 tracking-widest mb-3">
+          <h2 className="text-xs font-black uppercase text-emerald-400 tracking-widest mb-3">
             QUESTIONS & ANSWERS
           </h2>
           <p className="text-3xl font-black text-white tracking-tight">
@@ -952,54 +967,63 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="max-w-[1700px] mx-auto space-y-6">
-          {faqs.map((faq, index) => {
-            const isOpen = openFaq === index;
-            return (
-              <div 
-                key={index}
-                className={`grid grid-cols-1 ${isOpen ? 'lg:grid-cols-2 lg:max-w-[1700px]' : 'max-w-3xl'} gap-0 transition-all duration-300 w-full mx-auto lg:h-28`}
-              >
-                <div 
-                  className={`relative border bg-white/[0.02] backdrop-blur-md overflow-hidden transition-all duration-300 h-full ${
-                    isOpen 
-                      ? 'shadow-[0_8px_30px_rgba(16,185,129,0.08)] border-emerald-500/30 rounded-t-2xl lg:rounded-l-2xl lg:rounded-r-none border-b-0 lg:border-b lg:border-r-0' 
-                      : 'border-white/10 rounded-2xl shadow-lg hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/5 hover:border-emerald-500/30'
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[360px]">
+          {/* Left Side (7 cols): Vertical stack of clickable question buttons */}
+          <div className="lg:col-span-7 flex flex-col gap-3 justify-center">
+            {faqs.map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <button
+                  key={index}
+                  onClick={() => setOpenFaq(index)}
+                  className={`w-full flex items-center justify-between p-5 sm:p-6 rounded-2xl border text-left font-bold transition-all duration-300 ${
+                    isOpen
+                      ? 'bg-slate-900 border-emerald-500 shadow-[0_4px_25px_rgba(16,185,129,0.2)] text-white ring-1 ring-emerald-500/40 scale-[1.01]'
+                      : 'bg-slate-900/40 border-white/[0.08] hover:border-white/20 hover:bg-slate-900/60 text-slate-300'
                   }`}
-                  style={{ transformStyle: "preserve-3d" }}
                 >
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="w-full flex justify-between items-center p-6 text-left font-bold text-white hover:bg-white/5 transition-colors relative z-10 h-full"
+                  <span className="text-base font-extrabold tracking-tight pr-4">
+                    {faq.q}
+                  </span>
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all duration-300 ${
+                      isOpen
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 rotate-90 shadow-md shadow-emerald-500/30'
+                        : 'bg-white/5 text-slate-400 border-white/10'
+                    }`}
                   >
-                    <span className="text-base font-black tracking-tight">{faq.q}</span>
-                    <span className={`text-xs text-emerald-400 font-black px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 transform transition-all duration-300 ${isOpen ? 'rotate-180 bg-emerald-500 text-slate-950 border-emerald-500' : ''}`}>
-                      ▶
-                    </span>
-                  </button>
-                </div>
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scaleX: 0 }}
-                      animate={{ opacity: 1, scaleX: 1 }}
-                      exit={{ opacity: 0, scaleX: 0 }}
-                      transition={{ 
-                        opacity: { duration: 0.2 },
-                        scaleX: { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
-                      }}
-                      style={{ transformOrigin: "left", transformStyle: "preserve-3d" }}
-                      className="h-full rounded-b-2xl lg:rounded-r-2xl lg:rounded-l-none border border-t-0 lg:border-t lg:border-l-0 border-emerald-500/30 bg-[#0b0f19]/90 backdrop-blur-md shadow-[0_8px_30px_rgba(16,185,129,0.08)] overflow-hidden flex items-center"
-                    >
-                      <div className="p-6 text-sm text-slate-300 leading-relaxed font-medium">
-                        {faq.a}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Side (5 cols): Dedicated high-contrast preview panel */}
+          <div className="lg:col-span-5 flex flex-col justify-center">
+            <div className="w-full h-full min-h-[320px] p-7 sm:p-8 rounded-3xl bg-slate-900 border border-emerald-500/30 backdrop-blur-xl shadow-2xl flex flex-col justify-between relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={openFaq}
+                  initial={{ opacity: 0, x: 15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -15 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="space-y-4 my-auto"
+                >
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                    <Sparkles className="h-3.5 w-3.5" /> Answer Detail
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    {faqs[openFaq].q}
+                  </h3>
+                  <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-medium">
+                    {faqs[openFaq].a}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </section>
 

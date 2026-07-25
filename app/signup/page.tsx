@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signUpWithEmail, signInWithGoogle, signOut } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Activity } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 
 export default function SignupPage() {
@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [termsAgreed, setTermsAgreed] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
@@ -27,6 +28,10 @@ export default function SignupPage() {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+    if (!termsAgreed) {
+      setError('Please agree to the Terms of Service & Privacy Policy.');
       return;
     }
     setLoading(true);
@@ -75,7 +80,6 @@ export default function SignupPage() {
       window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Google signup flow error:', err);
-      // Explicitly reset loading immediately to unfreeze UI
       setLoading(false);
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Sign-in popup was closed before completion. Please try again.');
@@ -90,29 +94,45 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col lg:flex-row bg-slate-50 dark:bg-slate-950">
+    <div className="relative flex min-h-screen flex-col lg:flex-row bg-slate-950 overflow-hidden font-sans">
       {/* Return home Close Button */}
       <Link
         href="/"
-        className="absolute top-6 left-6 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all z-50"
+        className="absolute top-6 left-6 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all z-50 border border-white/5 bg-slate-900/60 backdrop-blur-md"
         aria-label="Back to landing page"
       >
         <X className="h-6 w-6" />
       </Link>
 
-      {/* Left Side: Interactive Trillium Flower */}
-      <div className="hidden lg:flex lg:w-3/4 h-screen">
-        <TrilliumFlower isClosed={isPasswordFocused} />
+      {/* Left Side: Interactive Canvas */}
+      <div className="hidden lg:flex lg:w-7/12 relative flex-col justify-between p-12 lg:p-16 bg-slate-950 overflow-hidden border-r border-white/10">
+        {/* Interactive Trillium Flower Container (Center stage) */}
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
+          <TrilliumFlower isClosed={isPasswordFocused} />
+        </div>
+
+        {/* Spacer to keep bottom features aligned */}
+        <div className="relative z-20" />
+
+        {/* Footer Guarantee Highlights */}
+        <div className="relative z-20 flex items-center gap-4 sm:gap-6 text-xs text-slate-300 font-bold">
+          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-md shadow-lg">
+            <Sparkles className="h-4 w-4 text-emerald-400" /> Real-Time Quotes
+          </span>
+          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-md shadow-lg">
+            <Activity className="h-4 w-4 text-blue-400" /> Daily Quests
+          </span>
+          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-md shadow-lg">
+            <ShieldCheck className="h-4 w-4 text-purple-400" /> Zero Financial Risk
+          </span>
+        </div>
       </div>
 
-      {/* Vertical divider line */}
-      <div className="hidden lg:block absolute left-3/4 top-[7.5vh] h-[85vh] w-[1px] bg-slate-200 dark:bg-slate-800 -translate-x-1/2 z-20 pointer-events-none" />
-
-      {/* Right Side: Sign Up Form */}
-      <div className="flex w-full flex-col justify-center p-8 pt-20 lg:p-12 lg:w-1/4 bg-white/95 dark:bg-[#121622]/90 border-l border-slate-200 dark:border-slate-800/80 backdrop-blur-md z-10 min-h-screen shadow-2xl">
-        <div className="w-full">
+      {/* Right Side: Sign Up Form Container */}
+      <div className="flex w-full flex-col justify-center p-8 pt-20 lg:p-12 lg:w-5/12 bg-white/95 dark:bg-[#121622]/95 border-l border-slate-200 dark:border-slate-800/80 backdrop-blur-xl z-10 min-h-screen shadow-2xl">
+        <div className="w-full max-w-md mx-auto">
           {/* Mobile-only compact flower visualization */}
-          <div className="mb-6 block h-44 w-full overflow-hidden rounded-3xl lg:hidden shadow-lg border border-slate-200 dark:border-slate-800">
+          <div className="mb-6 block h-40 w-full overflow-hidden rounded-3xl lg:hidden shadow-lg border border-slate-200 dark:border-slate-800">
             <TrilliumFlower isClosed={isPasswordFocused} />
           </div>
 
@@ -120,10 +140,14 @@ export default function SignupPage() {
             Create Account
           </h2>
           <p className="mb-8 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Enter your details to create your trillium account.
+            Enter your details to create your zero-risk trading simulator account.
           </p>
 
-          {error && <p className="mb-4 text-sm text-red-600 text-center">{error}</p>}
+          {error && (
+            <p className="mb-4 text-sm text-red-600 dark:text-red-400 text-center bg-red-500/10 py-2.5 px-3 rounded-xl border border-red-500/20 font-medium">
+              {error}
+            </p>
+          )}
           
           <form onSubmit={handleEmailSignup} className="space-y-4">
             <div>
@@ -137,7 +161,7 @@ export default function SignupPage() {
                 placeholder="username"
                 required
                 block
-                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white"
               />
             </div>
 
@@ -152,7 +176,7 @@ export default function SignupPage() {
                 placeholder="you@example.com"
                 required
                 block
-                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white"
               />
             </div>
             
@@ -169,7 +193,7 @@ export default function SignupPage() {
                 block
                 onFocus={() => setIsPasswordFocused(true)}
                 onBlur={() => setIsPasswordFocused(false)}
-                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white"
               />
             </div>
 
@@ -186,16 +210,35 @@ export default function SignupPage() {
                 block
                 onFocus={() => setIsPasswordFocused(true)}
                 onBlur={() => setIsPasswordFocused(false)}
-                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/50"
+                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white"
               />
             </div>
 
-            <Button type="submit" loading={loading} block className="py-3 bg-blue-600 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/15">
+            {/* Checkbox agreement */}
+            <div className="flex items-center gap-2 py-1 text-xs text-slate-500 dark:text-slate-400">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
+                className="rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-emerald-500 focus:ring-emerald-500/20 h-4 w-4 accent-emerald-500 cursor-pointer"
+              />
+              <label htmlFor="terms" className="cursor-pointer font-medium">
+                I agree to the <span className="text-slate-700 dark:text-slate-300 font-bold hover:underline">Terms of Service</span> & <span className="text-slate-700 dark:text-slate-300 font-bold hover:underline">Privacy Policy</span>
+              </label>
+            </div>
+
+            {/* Brand Emerald Green Primary Submit Button */}
+            <Button
+              type="submit"
+              loading={loading}
+              block
+              className="py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black transition-all shadow-lg shadow-emerald-500/20 text-sm"
+            >
               Create Account
             </Button>
           </form>
 
-          {/* Under all that have a gray line to seperate the Create account with google */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-slate-200 dark:border-slate-800/60" />
@@ -212,7 +255,7 @@ export default function SignupPage() {
             onClick={handleGoogleLogin}
             loading={loading}
             block
-            className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm"
+            className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm font-semibold"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -237,7 +280,7 @@ export default function SignupPage() {
 
           <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
             Already have an account?{' '}
-            <Link href="/login" className="font-bold text-blue-600 hover:underline dark:text-blue-400">
+            <Link href="/login" className="font-bold text-emerald-600 hover:underline dark:text-emerald-400">
               Sign In
             </Link>
           </p>

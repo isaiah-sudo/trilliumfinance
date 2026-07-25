@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
 } from "firebase/auth";
 
@@ -21,6 +22,11 @@ export const signInWithEmail = async (email: string, password: string) => {
 /** Sign‑up with email & password */
 export const signUpWithEmail = async (email: string, password: string) => {
   return await createUserWithEmailAndPassword(auth, email, password);
+};
+
+/** Send password reset email */
+export const resetPassword = async (email: string) => {
+  return await sendPasswordResetEmail(auth, email);
 };
 
 /** Sign‑out */

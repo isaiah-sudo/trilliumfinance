@@ -231,18 +231,6 @@ export const TrilliumFlower: React.FC<TrilliumFlowerProps> = ({ isClosed }) => {
           </g>
         </svg>
       </div>
-
-      {/* Dynamic Status / Caption */}
-      <div className="mt-8 text-center z-10">
-        <h3 className="text-xl font-bold tracking-wider text-emerald-400 font-txt-sans">
-          TRILLIUM FINANCE
-        </h3>
-        <p className="mt-2 text-xs text-slate-400 max-w-xs leading-relaxed">
-          {isClosed
-            ? 'Shielding your secure connection...'
-            : 'Click the petals or focus the password field.'}
-        </p>
-      </div>
     </div>
   );
 };
