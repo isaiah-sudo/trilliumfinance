@@ -134,8 +134,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
   ];
 
   if (role === 'teacher') {
-    navLinks.push({ name: 'Classroom Controls', href: '/dashboard/teacher' });
-    navLinks.push({ name: 'Educator Master Portal', href: '/teacher' });
+    navLinks.push({ name: 'Educator Portal', href: '/teacher' });
   }
 
   return (
