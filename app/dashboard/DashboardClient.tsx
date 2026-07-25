@@ -400,6 +400,26 @@ export default function DashboardPage() {
     });
   };
 
+  // Preset resize helper (Small = 4 cols, Medium = 6/8 cols, Large = 12 cols)
+  const handleResizePreset = (widgetId: string, size: 'small' | 'medium' | 'large') => {
+    const widthMap = {
+      lg: { small: 4, medium: 8, large: 12 },
+      md: { small: 3, medium: 5, large: 10 },
+      sm: { small: 2, medium: 4, large: 6 },
+    };
+
+    setLayouts((prevLayouts) => {
+      const next: ResponsiveDashboardLayouts = { ...prevLayouts };
+      (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+        const targetWidth = widthMap[bp]?.[size] || 6;
+        next[bp] = next[bp].map((item) =>
+          item.i === widgetId ? { ...item, w: targetWidth } : item
+        );
+      });
+      return next;
+    });
+  };
+
   // Add back removed widget helper
   const handleAddWidget = (widgetId: string) => {
     setLayouts((prevLayouts) => {
@@ -859,6 +879,8 @@ export default function DashboardPage() {
                 title={regItem.title}
                 isEditing={isEditMode}
                 onRemove={handleRemoveWidget}
+                onResizePreset={handleResizePreset}
+                currentWidth={item.w}
               >
                 <WidgetComp
                   portfolio={portfolio}
