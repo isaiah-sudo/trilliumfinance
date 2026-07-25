@@ -53,30 +53,47 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
             <tr>
               <th className="pb-2 pr-3 font-bold uppercase tracking-wider text-[10px]">Symbol</th>
               <th className={`pb-2 px-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Shares</th>
+              <th className={`pb-2 px-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Cur. Price</th>
               <th className={`pb-2 px-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Value</th>
-              <th className={`pb-2 pl-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Day P/L</th>
+              <th className={`pb-2 px-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Day P/L</th>
+              <th className={`pb-2 pl-3 font-bold uppercase tracking-wider text-[10px] text-right font-num-${numberFont}`}>Total P/L</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-350">
             {holdings.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-400 dark:text-slate-500 italic text-xs">
+                <td colSpan={6} className="py-6 text-center text-slate-400 dark:text-slate-500 italic text-xs">
                   No active holdings in watchlist
                 </td>
               </tr>
             ) : (
-              holdings.map((h: any) => (
-                <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="py-2.5 pr-3 font-bold text-blue-600 dark:text-blue-400">{h.symbol}</td>
-                  <td className={`py-2.5 px-3 text-right font-num-${numberFont}`}>{h.qty}</td>
-                  <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
-                    ${h.marketValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className={`py-2.5 pl-3 text-right font-bold font-num-${numberFont} ${h.dayPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
-                    {h.dayPl >= 0 ? '+' : ''}${h.dayPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              ))
+              holdings.map((h: any) => {
+                const totalPl = h.pl ?? (h.marketValue - (h.qty * (h.avgPrice || 0)));
+                const totalPlPercent = h.plPercent ?? (h.avgPrice ? ((h.currentPrice - h.avgPrice) / h.avgPrice) * 100 : 0);
+
+                return (
+                  <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="py-2.5 pr-3 font-bold text-blue-600 dark:text-blue-400">
+                      <div>{h.symbol}</div>
+                      {h.name && <div className="text-[9px] text-slate-400 font-normal truncate max-w-[100px]">{h.name}</div>}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right font-num-${numberFont}`}>{h.qty}</td>
+                    <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
+                      ${(h.currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
+                      ${(h.marketValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right font-bold font-num-${numberFont} ${(h.dayPl || 0) >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
+                      {(h.dayPl || 0) >= 0 ? '+' : ''}${(h.dayPl || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-2.5 pl-3 text-right font-bold font-num-${numberFont} ${totalPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
+                      <div>{totalPl >= 0 ? '+' : ''}${totalPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="text-[10px]">{totalPlPercent >= 0 ? '+' : ''}{totalPlPercent.toFixed(2)}%</div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
