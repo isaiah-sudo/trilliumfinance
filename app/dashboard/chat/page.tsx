@@ -28,6 +28,87 @@ function TrilliumLogoMark({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={index} className="font-extrabold text-slate-900 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
+
+function FormattedMessage({ text }: { text: string }) {
+  // Split message by double newlines or single newlines
+  const blocks = text.split(/\n/);
+  
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, idx) => {
+        const trimmed = block.trim();
+        if (!trimmed) return <div key={idx} className="h-2" />; // Render spacing for empty newlines
+        
+        // Horizontal Rule
+        if (trimmed === '---') {
+          return <hr key={idx} className="border-slate-200/60 dark:border-slate-700/60 my-3" />;
+        }
+        
+        // Headers
+        if (trimmed.startsWith('### ')) {
+          return (
+            <h4 key={idx} className="text-base font-bold text-slate-900 dark:text-white mt-3 mb-1">
+              {renderBoldText(trimmed.replace('### ', ''))}
+            </h4>
+          );
+        }
+        if (trimmed.startsWith('## ')) {
+          return (
+            <h3 key={idx} className="text-lg font-extrabold text-slate-900 dark:text-white mt-4 mb-2">
+              {renderBoldText(trimmed.replace('## ', ''))}
+            </h3>
+          );
+        }
+        
+        // Bullet List Items
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          return (
+            <div key={idx} className="flex gap-2 pl-1 my-1">
+              <span className="text-emerald-500">•</span>
+              <p className="flex-1 text-slate-700 dark:text-slate-200">
+                {renderBoldText(trimmed.substring(2))}
+              </p>
+            </div>
+          );
+        }
+        
+        // Numbered List Items
+        const numberedMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+        if (numberedMatch) {
+          return (
+            <div key={idx} className="flex gap-2 pl-1 my-1">
+              <span className="text-emerald-500 font-bold">{numberedMatch[1]}.</span>
+              <p className="flex-1 text-slate-700 dark:text-slate-200">
+                {renderBoldText(numberedMatch[2])}
+              </p>
+            </div>
+          );
+        }
+        
+        // Normal paragraph
+        return (
+          <p key={idx} className="text-slate-750 dark:text-slate-200 leading-relaxed">
+            {renderBoldText(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
@@ -205,12 +286,16 @@ export default function ChatPage() {
                     <TrilliumLogoMark className="h-4 w-4 text-slate-950" />
                   )}
                 </div>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed font-semibold shadow-md ${
+                <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-md ${
                   msg.sender === 'user'
-                    ? 'bg-blue-600/95 text-white rounded-tr-none'
-                    : 'bg-slate-100/90 dark:bg-[#0f111a]/85 text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/40 rounded-tl-none'
+                    ? 'bg-blue-600/95 text-white rounded-tr-none font-semibold'
+                    : 'bg-slate-100/90 dark:bg-[#0f111a]/85 text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/40 rounded-tl-none font-medium'
                 }`}>
-                  {msg.text}
+                  {msg.sender === 'ai' ? (
+                    <FormattedMessage text={msg.text} />
+                  ) : (
+                    msg.text
+                  )}
                 </div>
               </motion.div>
             ))}

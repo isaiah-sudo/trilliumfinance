@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebase-admin';
+import { getPreprogrammedAnswer } from '@/lib/preprogrammedAnswers';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'google/gemini-2.5-flash:free';
@@ -55,6 +56,15 @@ export async function POST(request: Request) {
     const { messages } = await request.json();
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
+    }
+
+    // 2.1 Check for pre-programmed answers
+    const lastUserMessage = [...messages].reverse().find(msg => msg.sender === 'user');
+    if (lastUserMessage && lastUserMessage.text) {
+      const preprogrammedAnswer = getPreprogrammedAnswer(lastUserMessage.text);
+      if (preprogrammedAnswer) {
+        return NextResponse.json({ text: preprogrammedAnswer });
+      }
     }
 
     // 3. Retrieve OpenRouter API Key
