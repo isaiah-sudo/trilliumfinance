@@ -635,10 +635,6 @@ export default function DashboardPage() {
   );
 
   return (
-<<<<<<< Updated upstream
-    <div className="space-y-6 relative w-full" ref={containerRef}>
-      {/* Edit Mode Notification & Toolbar Banner */}
-=======
     <div className="space-y-6 sm:space-y-8 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
       {/* Top Header Controls Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-lg w-full">
@@ -683,7 +679,6 @@ export default function DashboardPage() {
       </div>
 
       {/* Edit Mode Notification Banner */}
->>>>>>> Stashed changes
       {isEditMode && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -762,13 +757,8 @@ export default function DashboardPage() {
         transition={{ delay: 0.1 }}
         className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl pet-container-target relative w-full"
       >
-<<<<<<< Updated upstream
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
-=======
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-blue-600 dark:text-blue-400 text-2xl md:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
->>>>>>> Stashed changes
           {!isEditMode && (
             <button
               onClick={() => setIsEditMode(true)}
@@ -780,10 +770,6 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
         
         <div className="flex flex-col gap-6">
           {/* Top Layer: Net Worth */}
