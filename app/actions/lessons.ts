@@ -132,17 +132,20 @@ export async function completeLessonAction(lessonId: number, xp: number, trilliu
       const currentCompleted: number[] = data.completedLessonIds || [];
       const dates: Record<number, number> = data.lessonCompletedDates || {};
       const currentXp: number = data.totalLessonXp || 0;
+      const currentTrilliums: number = data.trilliums ?? 200;
 
       if (!currentCompleted.includes(lessonId)) {
         newlyCompleted = true;
         const updatedCompleted = [...currentCompleted, lessonId];
         dates[lessonId] = Date.now();
         const updatedXp = currentXp + xp;
+        const updatedTrilliums = currentTrilliums + (trilliums || 0);
 
         transaction.set(userRef, {
           completedLessonIds: updatedCompleted,
           lessonCompletedDates: dates,
           totalLessonXp: updatedXp,
+          trilliums: updatedTrilliums,
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
@@ -268,15 +271,18 @@ export async function claimStreakCapitalReward(targetDays: number) {
       const currentCash = Number(portData.cash ?? 10000);
       const newCash = safeAdd(currentCash, rewardConfig.cash);
       const updatedClaimed = [...claimed, targetDays];
+      const currentTrilliums = Number(userData.trilliums ?? 200);
+      const updatedTrilliums = currentTrilliums + (rewardConfig.trilliums || 0);
 
       // Update cash in portfolio
       transaction.set(portfolioRef, {
         cash: newCash
       }, { merge: true });
 
-      // Update claimed rewards in user doc
+      // Update claimed rewards and trilliums in user doc
       transaction.set(userRef, {
         claimedCommitmentRewards: updatedClaimed,
+        trilliums: updatedTrilliums,
         updatedAt: serverTimestamp()
       }, { merge: true });
     });

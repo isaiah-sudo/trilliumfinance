@@ -22,7 +22,54 @@ import DashboardWidgetCard from '@/components/dashboard/DashboardWidgetCard';
 import { WIDGET_REGISTRY } from '@/components/dashboard/WidgetRegistry';
 
 
-const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v1';
+const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v2';
+
+const sanitizeLayouts = (rawLayouts: ResponsiveDashboardLayouts): ResponsiveDashboardLayouts => {
+  if (!rawLayouts || typeof rawLayouts !== 'object') return DEFAULT_WIDGET_LAYOUTS;
+  const next: ResponsiveDashboardLayouts = {
+    lg: Array.isArray(rawLayouts.lg) ? [...rawLayouts.lg.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.lg],
+    md: Array.isArray(rawLayouts.md) ? [...rawLayouts.md.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.md],
+    sm: Array.isArray(rawLayouts.sm) ? [...rawLayouts.sm.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.sm],
+  };
+
+  if (next.lg) {
+    const graph = next.lg.find((i) => i.i === 'portfolio-graph');
+    const summary = next.lg.find((i) => i.i === 'account-summary');
+    if (graph && summary && graph.visible !== false && summary.visible !== false) {
+      if (graph.y === summary.y) {
+        if (graph.w + summary.w !== 12) {
+          graph.w = 7;
+          summary.x = 7;
+          summary.w = 5;
+        }
+      }
+    }
+    const watchlist = next.lg.find((i) => i.i === 'watchlist');
+    if (watchlist && watchlist.w < 12 && watchlist.x === 0) {
+      watchlist.w = 12;
+    }
+  }
+
+  if (next.md) {
+    const graph = next.md.find((i) => i.i === 'portfolio-graph');
+    const summary = next.md.find((i) => i.i === 'account-summary');
+    if (graph && summary && graph.visible !== false && summary.visible !== false) {
+      if (graph.y === summary.y) {
+        if (graph.w + summary.w !== 10) {
+          graph.w = 6;
+          summary.x = 6;
+          summary.w = 4;
+        }
+      }
+    }
+    const watchlist = next.md.find((i) => i.i === 'watchlist');
+    if (watchlist && watchlist.w < 10 && watchlist.x === 0) {
+      watchlist.w = 10;
+    }
+  }
+
+  return next;
+};
 
 interface TrophyCardProps {
   id: string;
@@ -326,10 +373,12 @@ export default function DashboardPage() {
       if (localData) {
         try {
           const parsed = JSON.parse(localData);
-          setLayouts(parsed);
+          setLayouts(sanitizeLayouts(parsed));
         } catch (e) {
           console.error('Failed to parse local dashboard layout', e);
         }
+      } else {
+        setLayouts(DEFAULT_WIDGET_LAYOUTS);
       }
 
       // 2. Fetch user Firestore layout if logged in
@@ -338,7 +387,7 @@ export default function DashboardPage() {
           const userDocRef = doc(db, 'users', user.uid, 'settings', 'dashboardLayout');
           const docSnap = await getDoc(userDocRef);
           if (docSnap.exists() && docSnap.data().layouts) {
-            const firestoreLayouts = docSnap.data().layouts;
+            const firestoreLayouts = sanitizeLayouts(docSnap.data().layouts);
             setLayouts(firestoreLayouts);
             localStorage.setItem(LOCAL_STORAGE_LAYOUT_KEY, JSON.stringify(firestoreLayouts));
           }
@@ -400,12 +449,37 @@ export default function DashboardPage() {
     });
   };
 
-  // Preset resize helper (Small = 4 cols, Medium = 6/8 cols, Large = 12 cols)
+  // Add back removed widget helper
+  const handleAddWidget = (widgetId: string) => {
+    setLayouts((prevLayouts) => {
+      const next: ResponsiveDashboardLayouts = { ...prevLayouts };
+      (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+        const defaultItem = DEFAULT_WIDGET_LAYOUTS[bp]?.find((item) => item.i === widgetId);
+        const exists = next[bp]?.some((item) => item.i === widgetId);
+        if (exists) {
+          next[bp] = next[bp].map((item) =>
+            item.i === widgetId ? { ...item, visible: true } : item
+          );
+        } else if (defaultItem) {
+          next[bp] = [...(next[bp] || []), { ...defaultItem, visible: true }];
+        } else {
+          next[bp] = [
+            ...(next[bp] || []),
+            { i: widgetId, x: 0, y: 100, w: bp === 'lg' ? 12 : bp === 'md' ? 10 : 6, h: 4, visible: true },
+          ];
+        }
+      });
+      return sanitizeLayouts(next);
+    });
+    setWidgetModalOpen(false);
+  };
+
+  // Preset resize helper (Small = 5 cols, Medium = 7 cols, Large = 12 cols for lg)
   const handleResizePreset = (widgetId: string, size: 'small' | 'medium' | 'large') => {
     const widthMap = {
-      lg: { small: 4, medium: 8, large: 12 },
-      md: { small: 3, medium: 5, large: 10 },
-      sm: { small: 2, medium: 4, large: 6 },
+      lg: { small: 5, medium: 7, large: 12 },
+      md: { small: 4, medium: 6, large: 10 },
+      sm: { small: 3, medium: 4, large: 6 },
     };
 
     setLayouts((prevLayouts) => {
@@ -416,22 +490,8 @@ export default function DashboardPage() {
           item.i === widgetId ? { ...item, w: targetWidth } : item
         );
       });
-      return next;
+      return sanitizeLayouts(next);
     });
-  };
-
-  // Add back removed widget helper
-  const handleAddWidget = (widgetId: string) => {
-    setLayouts((prevLayouts) => {
-      const next: ResponsiveDashboardLayouts = { ...prevLayouts };
-      (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
-        next[bp] = next[bp].map((item) =>
-          item.i === widgetId ? { ...item, visible: true } : item
-        );
-      });
-      return next;
-    });
-    setWidgetModalOpen(false);
   };
 
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
@@ -718,14 +778,23 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
           {!isEditMode && (
-            <button
-              onClick={() => setIsEditMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
-              title="Customize Grid Layout"
-            >
-              <Edit3 className="h-3.5 w-3.5 text-blue-500" />
-              <span>Edit Grid</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setWidgetModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-[11px] font-bold text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Widgets</span>
+              </button>
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
+                title="Customize Grid Layout"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-blue-500" />
+                <span>Edit Grid</span>
+              </button>
+            </div>
           )}
         </div>
 

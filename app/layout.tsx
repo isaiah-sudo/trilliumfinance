@@ -17,9 +17,9 @@ export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} dark`} suppressHydrationWarning>
       <body className="min-h-screen w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col">
-        <SettingsProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </SettingsProvider>
+        <AuthProvider>
+          <SettingsProvider>{children}</SettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
