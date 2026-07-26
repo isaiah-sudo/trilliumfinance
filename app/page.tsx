@@ -92,33 +92,53 @@ function InteractiveDripDotGrid() {
       const cols = Math.ceil(width / spacing);
       const rows = Math.ceil(height / spacing);
 
-      const heroCenterX = width / 2;
-      const heroCenterY = 280;
+      let heroCenterX = width / 2;
+      let heroCenterY = 280;
+
+      const heroEl = document.getElementById('hero-headline');
+      if (heroEl && canvas) {
+        const canvasRect = canvas.getBoundingClientRect();
+        const heroRect = heroEl.getBoundingClientRect();
+        heroCenterX = (heroRect.left + heroRect.width / 2) - canvasRect.left;
+        heroCenterY = (heroRect.top + heroRect.height / 2) - canvasRect.top + 45;
+      }
 
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
           const x = i * spacing + spacing / 2;
           const y = j * spacing + spacing / 2;
 
-          // Elliptical distance relative to "Master the Markets with Zero Risk" headline
-          const normDx = (x - heroCenterX) / Math.min(width * 0.44, 620);
-          const normDy = (y - heroCenterY) / 230;
+          // Organic drip opacity taper as y increases down into simulator
+          const verticalProgress = y / height;
+          const fadeMultiplier = Math.max(0, 1 - Math.pow(verticalProgress, 1.6));
+
+          if (fadeMultiplier <= 0) continue;
+
+          // Check proximity to "Master the Markets with Zero Risk" headline
+          const normDx = (x - heroCenterX) / Math.min(width * 0.44, 600);
+          const normDy = (y - heroCenterY) / 220;
           const distSq = normDx * normDx + normDy * normDy;
 
-          // Sharp fade off right outside the text area
-          let textMask = 0;
-          if (distSq <= 0.75) {
-            textMask = 1.0;
-          } else if (distSq < 1.25) {
-            textMask = Math.pow(1.0 - (distSq - 0.75) / 0.5, 2.5); // very sharp quadratic drop-off
+          // Headline text region boost factor (dots behind headline are always slightly activated)
+          let textBoost = 0;
+          if (distSq <= 0.7) {
+            textBoost = 1.0;
+          } else if (distSq < 1.2) {
+            textBoost = Math.pow(1.0 - (distSq - 0.7) / 0.5, 2);
           }
 
-          if (textMask <= 0.01) continue;
+          // Idle state calculations:
+          // Dots behind text are always slightly activated (~0.22 opacity emerald), others are barely noticeable (0.04)
+          const baseOpacity = (0.04 + textBoost * 0.18) * fadeMultiplier;
+          let targetRadius = 1.4 + textBoost * 0.6;
+          let targetOpacity = baseOpacity;
+          
+          // Color: emerald tint for activated text dots, slate for standard dots
+          let color = textBoost > 0.1
+            ? `rgba(16, 185, 129, ${targetOpacity})`
+            : `rgba(148, 163, 184, ${targetOpacity})`;
 
-          let targetRadius = 1.4;
-          let targetOpacity = 0.06 * textMask; // Concentrated behind hero text, barely noticeable when idle
-          let color = `rgba(148, 163, 184, ${targetOpacity})`;
-
+          // Interactive Mouse Hover Activation
           if (mouse.active) {
             const dx = mouse.x - x;
             const dy = mouse.y - y;
@@ -128,9 +148,9 @@ function InteractiveDripDotGrid() {
               const hoverFactor = 1 - dist / hoverRadius;
               const glowIntensity = Math.pow(hoverFactor, 2);
               
-              targetRadius = 1.4 + glowIntensity * 3.0;
-              targetOpacity = (0.06 + glowIntensity * 0.85) * textMask;
-              color = `rgba(16, 185, 129, ${targetOpacity})`; // glowing emerald on hover
+              targetRadius = (1.4 + textBoost * 0.6) + glowIntensity * 3.0;
+              targetOpacity = Math.min(0.9, baseOpacity + glowIntensity * 0.85);
+              color = `rgba(16, 185, 129, ${targetOpacity})`; // vibrant glowing emerald on hover
             }
           }
 
@@ -158,6 +178,10 @@ function InteractiveDripDotGrid() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      style={{
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0) 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0) 100%)'
+      }}
     />
   );
 }
@@ -184,6 +208,15 @@ export default function LandingPage() {
   const [virtualCash, setVirtualCash] = useState(10000);
   const [shareCount, setShareCount] = useState(10);
   const [orderToast, setOrderToast] = useState<string | null>(null);
+
+  // Interactive Sample Quiz State
+  const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
+
+  // Fidget 3: Customizability Showcase State
+  const [customFirstWidget, setCustomFirstWidget] = useState<'graph' | 'networth' | 'positions'>('graph');
+  const [customWidgetSize, setCustomWidgetSize] = useState<'S' | 'M' | 'L'>('M');
+  const [customColorScheme, setCustomColorScheme] = useState<'emerald' | 'blue' | 'purple'>('emerald');
+  const [customLanguage, setCustomLanguage] = useState<'en' | 'es' | 'fr'>('en');
 
   const currentAsset = stockAssets.find(a => a.symbol === selectedSymbol) || stockAssets[0];
   const maxShares = Math.max(1, Math.floor(virtualCash / currentAsset.price));
@@ -612,17 +645,8 @@ export default function LandingPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] bg-emerald-500/[0.06] blur-[160px] pointer-events-none rounded-full" />
 
           <div className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-6">
-            {/* Category Pill Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium mb-2 shadow-inner"
-            >
-              <span>✨</span> Next-Gen Financial Literacy & Trading Sandbox
-            </motion.div>
-
             <motion.h1
+              id="hero-headline"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
@@ -677,87 +701,35 @@ export default function LandingPage() {
           <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
         </div>
 
-        {/* Interactive Sandbox Feature Showcase Section (High-Converting 2-Column Layout) */}
-        <section id="simulator" className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-16">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Column (5 cols): Explanatory Copy & Feature Bullet Points */}
-            <div className="lg:col-span-5 flex flex-col items-start text-left space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-inner">
-                <span>✨</span> Interactive Preview
+        {/* Interactive Feature Showcase Section (Streamlined 3-Card System: Sandbox, Lesson, Customizability) */}
+        <section id="simulator" className="relative z-10 w-full px-6 md:px-12 lg:px-16 py-16">
+          <div className="w-full max-w-[1700px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 items-stretch">
+            
+            {/* Card 1: Interactive Trading Demo */}
+            <div className="p-8 md:p-10 rounded-[32px] bg-slate-900/60 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_60px_rgba(16,185,129,0.18)] flex flex-col justify-between overflow-hidden relative group">
+              {/* Ambient Background Glow */}
+              <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 rounded-[32px] opacity-100 blur-xl pointer-events-none" />
+
+              {/* Card Top Header */}
+              <div className="flex flex-col items-start space-y-3 pb-5 border-b border-white/10 relative z-10">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                  <span>✨</span> Interactive Sandbox
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                  Paper Trading Demo
+                </h2>
+                <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+                  Practice trading stocks with live market data and $10,000 in virtual starting cash—100% risk-free.
+                </p>
               </div>
 
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
-                Experience the Sandbox Before You Sign Up
-              </h2>
-
-              <p className="text-slate-300 text-base leading-relaxed">
-                Test our live trading execution and daily quest mechanics in real time. No account needed to try.
-              </p>
-
-              {/* Feature List (3 Bullet Points with Emerald Icons) */}
-              <div className="space-y-4 pt-2 w-full">
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
-                    📈
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">Real-Time Data Feeds</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Test trades with live asset pricing.</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
-                    🔥
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">Streak & XP Rewards</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Level up your account as you build daily financial habits.</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-base">
-                    🛡️
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">100% Risk-Free</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Complete sandbox safety with $10,000 starting paper cash.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column (7 cols): Interactive Sandbox & Daily Quest Card */}
-            <div className="lg:col-span-7 flex items-center justify-center relative w-full">
-              <div className="relative z-10 w-full p-6 md:p-8 rounded-3xl bg-slate-900/60 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 flex flex-col items-stretch overflow-hidden">
-                {/* Ambient Background Glow inside the panel */}
-                <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-blue-500/15 to-purple-500/10 rounded-3xl opacity-100 blur-xl pointer-events-none" />
-
-                <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10">
-                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
-                    LIVE INTERACTIVE DEMO
-                  </span>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    Live Feed Active
-                  </div>
-                </div>
-
-                {/* Glass Card Widget 1: Mock Trading Transaction Fidget */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5 }}
-                  className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative z-10 space-y-4"
-                >
-                  {/* Stock Selector Tabs */}
+              {/* Main Content Area */}
+              <div className="space-y-5 my-5 relative z-10 flex-1 flex flex-col justify-between">
+                {/* Mock Trading Fidget Box */}
+                <div className="p-5 md:p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-5 flex-1 flex flex-col justify-between">
+                  {/* Ticker Tabs & Live Price */}
                   <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {stockAssets.map((asset) => {
                         const isActive = selectedSymbol === asset.symbol;
                         return (
@@ -767,7 +739,7 @@ export default function LandingPage() {
                               setSelectedSymbol(asset.symbol as any);
                               setShareCount((prev) => Math.min(prev, Math.max(1, Math.floor(virtualCash / asset.price))));
                             }}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-xl text-xs md:text-sm font-black transition-all cursor-pointer ${
                               isActive
                                 ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
                                 : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-white/5'
@@ -779,7 +751,7 @@ export default function LandingPage() {
                       })}
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-extrabold text-white">${currentAsset.price.toFixed(2)}</span>
+                      <span className="text-sm md:text-base font-extrabold text-white">${currentAsset.price.toFixed(2)}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-1.5 ${
                         currentAsset.change >= 0 ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
                       }`}>
@@ -788,22 +760,23 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
+                  {/* Balance & Cost Info */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-xl">
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estimated Cost</div>
-                      <div className="text-lg font-black text-white mt-1">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="text-base md:text-lg font-black text-white mt-0.5">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </div>
-                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-2xl">
+                    <div className="p-3 bg-slate-950/40 border border-white/5 rounded-xl">
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Virtual Cash Bal</div>
-                      <div className="text-lg font-black text-emerald-400 mt-1">${virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="text-base md:text-lg font-black text-emerald-400 mt-0.5">${virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </div>
                   </div>
 
-                  {/* Slider control */}
-                  <div className="space-y-2.5 bg-slate-950/20 p-4 border border-white/5 rounded-2xl">
+                  {/* Share Count Range Control */}
+                  <div className="space-y-2 bg-slate-950/30 p-3.5 border border-white/5 rounded-xl">
                     <div className="flex justify-between text-xs font-bold text-slate-300">
                       <span>Shares: {shareCount}</span>
-                      <span className="text-slate-400">Max Shares: {maxShares}</span>
+                      <span className="text-slate-400">Max: {maxShares}</span>
                     </div>
                     
                     <input
@@ -812,31 +785,16 @@ export default function LandingPage() {
                       max={maxShares}
                       value={shareCount}
                       onChange={(e) => setShareCount(parseInt(e.target.value))}
-                      className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-emerald-400 focus:outline-none"
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-emerald-400 focus:outline-none"
                     />
-
-                    <div className="flex gap-2.5 pt-1">
-                      <button
-                        onClick={() => setShareCount((prev) => Math.max(1, prev - 1))}
-                        className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 font-bold transition-all border border-white/10 flex justify-center items-center cursor-pointer text-white text-xs"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setShareCount((prev) => Math.min(maxShares, prev + 1))}
-                        className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 font-bold transition-all border border-white/10 flex justify-center items-center cursor-pointer text-white text-xs"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
                   </div>
 
-                  {/* Prominent Execute Paper Order Button */}
+                  {/* Execute Button */}
                   <div className="relative">
                     <button
                       onClick={handleExecuteOrder}
                       disabled={virtualCash < totalCost}
-                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                      className={`w-full py-3.5 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                         virtualCash >= totalCost
                           ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.01]'
                           : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
@@ -859,129 +817,257 @@ export default function LandingPage() {
                       )}
                     </AnimatePresence>
                   </div>
-                </motion.div>
-
-                {/* Glass Card Widget 2: Interactive Trophy Showcase Carousel */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg relative overflow-hidden z-10 space-y-4"
-                >
-                  {/* Floating Notification alert */}
-                  <AnimatePresence>
-                    {xpNotes.map((note, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="absolute top-3 right-4 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xl z-30"
-                      >
-                        {note}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-amber-400 fill-amber-400/20" />
-                      <span className="text-xs font-bold text-slate-200">Trophy Showcase</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold block">Account XP</span>
-                      <span className="text-xs font-black text-amber-400">{xp} XP</span>
-                    </div>
-                  </div>
-
-                  {/* 3 Trophy Row Showcase with Center Highlight */}
-                  <div className="relative flex items-center justify-between gap-2 py-1">
-                    {/* Prev Button */}
-                    <button
-                      onClick={() => setActiveTrophyIdx(prev => Math.max(0, prev - 1))}
-                      disabled={activeTrophyIdx === 0}
-                      className={`p-2 rounded-xl border transition-all z-20 cursor-pointer ${
-                        activeTrophyIdx > 0
-                          ? 'bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-white border-white/10'
-                          : 'bg-slate-900/50 text-slate-600 border-white/5 cursor-not-allowed'
-                      }`}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    {/* Row of 3 Trophies Container */}
-                    <div className="flex-1 grid grid-cols-3 gap-2 items-center justify-center">
-                      {[-1, 0, 1].map((offset) => {
-                        const idx = activeTrophyIdx + offset;
-                        const trophy = trophiesList[idx];
-                        if (!trophy) {
-                          return <div key={offset} className="h-24 rounded-2xl bg-slate-950/20 border border-white/5 opacity-30" />;
-                        }
-
-                        const isCenter = offset === 0;
-                        const isClaimed = claimedTrophies.includes(trophy.id);
-
-                        return (
-                          <motion.div
-                            key={trophy.id}
-                            layout
-                            onClick={() => setActiveTrophyIdx(idx)}
-                            className={`p-3 rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer relative ${
-                              isCenter
-                                ? 'bg-gradient-to-b from-amber-500/20 to-amber-950/40 border-amber-400/60 text-white shadow-[0_0_25px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40 scale-105 z-10'
-                                : 'bg-slate-950/40 border-white/10 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 scale-95 opacity-60'
-                            }`}
-                          >
-                            <div className={`text-2xl mb-1 transition-transform ${isCenter ? 'scale-110' : ''}`}>
-                              {trophy.icon}
-                            </div>
-
-                            <div className={`text-[11px] font-black tracking-tight leading-tight line-clamp-1 ${isCenter ? 'text-amber-300' : 'text-slate-300'}`}>
-                              {trophy.title}
-                            </div>
-
-                            <div className="text-[9px] text-slate-400 font-medium line-clamp-1 mt-0.5">
-                              {trophy.desc}
-                            </div>
-
-                            {isCenter && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleClaimTrophy(trophy.id, trophy.xp);
-                                }}
-                                disabled={isClaimed}
-                                className={`mt-2 px-2.5 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer whitespace-nowrap ${
-                                  isClaimed
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-400/30'
-                                }`}
-                              >
-                                {isClaimed ? 'Claimed ✓' : `Unlock +${trophy.xp} XP`}
-                              </button>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => setActiveTrophyIdx(prev => Math.min(trophiesList.length - 1, prev + 1))}
-                      disabled={activeTrophyIdx === trophiesList.length - 1}
-                      className={`p-2 rounded-xl border transition-all z-20 cursor-pointer ${
-                        activeTrophyIdx < trophiesList.length - 1
-                          ? 'bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-white border-white/10'
-                          : 'bg-slate-900/50 text-slate-600 border-white/5 cursor-not-allowed'
-                      }`}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </motion.div>
+                </div>
               </div>
             </div>
+
+            {/* Card 2: Interactive Lesson Preview */}
+            <div className="p-8 md:p-10 rounded-[32px] bg-slate-900/60 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_60px_rgba(16,185,129,0.18)] flex flex-col justify-between overflow-hidden relative group">
+              {/* Ambient Background Glow */}
+              <div className="absolute -inset-px bg-gradient-to-r from-blue-500/10 via-teal-500/10 to-emerald-500/10 rounded-[32px] opacity-100 blur-xl pointer-events-none" />
+
+              {/* Card Top Header */}
+              <div className="flex flex-col items-start space-y-3 pb-5 border-b border-white/10 relative z-10">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+                  <span>📚</span> Interactive Lesson
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                  Safe vs. Risky Investing
+                </h2>
+                <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+                  Understand how diversification minimizes portfolio drawdown volatility over time.
+                </p>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="space-y-5 my-5 relative z-10 flex-1 flex flex-col justify-between">
+                {/* 10-Year Performance Curve Graph */}
+                <div className="p-4 md:p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-white">
+                    <span>10-Year Growth Comparison</span>
+                    <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Live Graph</span>
+                  </div>
+
+                  {/* SVG Chart Graphic */}
+                  <div className="relative h-36 w-full bg-slate-950/70 rounded-xl p-3 border border-white/5 overflow-hidden flex flex-col justify-between">
+                    <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 400 120" preserveAspectRatio="none">
+                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
+                      <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
+                      <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
+
+                      {/* Safe Curve */}
+                      <path d="M 10 105 Q 120 90, 230 55 T 390 15" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
+                      {/* Risky Line */}
+                      <path d="M 10 105 L 55 30 L 95 110 L 145 15 L 195 115 L 255 25 L 315 100 L 390 50" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 3" />
+                    </svg>
+
+                    {/* Chart Legend Pills */}
+                    <div className="relative z-10 flex items-center justify-between text-[10px] font-bold">
+                      <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-emerald-500/30 text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Safe (+6.5%/yr)
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-rose-500/30 text-rose-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Risky (+45%/-60%)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive End-of-Lesson Knowledge Check Quiz */}
+                <div className="p-4 md:p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+                      <span>🧠</span> Knowledge Check
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">+50 XP</span>
+                  </div>
+
+                  <p className="text-xs font-bold text-white leading-snug">
+                    Which strategy minimizes volatility while achieving steady long-term growth?
+                  </p>
+
+                  <div className="space-y-2">
+                    {[
+                      { id: 0, text: 'A) 100% Meme stock options', isCorrect: false },
+                      { id: 1, text: 'B) Diversified index funds & bonds', isCorrect: true },
+                      { id: 2, text: 'C) Cash under the mattress', isCorrect: false }
+                    ].map((opt) => {
+                      const isSelected = quizAnswer === opt.id;
+                      let btnStyle = 'bg-slate-950/60 text-slate-300 border-white/10 hover:border-emerald-500/40';
+                      if (isSelected) {
+                        if (opt.isCorrect) {
+                          btnStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
+                        } else {
+                          btnStyle = 'bg-rose-500/20 text-rose-300 border-rose-400';
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setQuizAnswer(opt.id)}
+                          className={`w-full text-left p-2.5 rounded-xl border text-xs font-medium transition-all duration-200 cursor-pointer flex items-center justify-between ${btnStyle}`}
+                        >
+                          <span className="text-white font-semibold">{opt.text}</span>
+                          {isSelected && (
+                            <span className="font-extrabold text-[11px] shrink-0 ml-2">
+                              {opt.isCorrect ? '✓ Correct!' : '✕ Incorrect'}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Ultimate Customizability Hub */}
+            <div className="p-8 md:p-10 rounded-[32px] bg-slate-900/60 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_60px_rgba(16,185,129,0.18)] flex flex-col justify-between overflow-hidden relative group">
+              {/* Ambient Background Glow */}
+              <div className="absolute -inset-px bg-gradient-to-r from-purple-500/10 via-emerald-500/10 to-cyan-500/10 rounded-[32px] opacity-100 blur-xl pointer-events-none" />
+
+              {/* Card Top Header */}
+              <div className="flex flex-col items-start space-y-3 pb-5 border-b border-white/10 relative z-10">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold">
+                  <span>🎨</span> Full Customizability
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                  Tailor Everything
+                </h2>
+                <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+                  Choose what displays first, customize widget sizes, theme colors, and multi-language settings.
+                </p>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="space-y-4 my-5 relative z-10 flex-1 flex flex-col justify-between">
+                
+                {/* Control 1: First Widget Shown */}
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
+                    1. First Displayed Widget
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'graph', label: '📈 Chart' },
+                      { id: 'networth', label: '💰 Net Worth' },
+                      { id: 'positions', label: '📊 Positions' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCustomFirstWidget(item.id as any)}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                          customFirstWidget === item.id
+                            ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                            : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-white/5'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Control 2: Color Theme & Grid Size */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">2. Color Theme</span>
+                    <div className="flex gap-1.5">
+                      {[
+                        { id: 'emerald', bg: 'bg-emerald-500' },
+                        { id: 'blue', bg: 'bg-blue-500' },
+                        { id: 'purple', bg: 'bg-purple-500' }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setCustomColorScheme(t.id as any)}
+                          className={`h-6 w-full rounded-lg ${t.bg} transition-transform cursor-pointer ${
+                            customColorScheme === t.id ? 'ring-2 ring-white scale-105' : 'opacity-60 hover:opacity-100'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">3. Widget Size</span>
+                    <div className="flex gap-1.5">
+                      {['S', 'M', 'L'].map((sz) => (
+                        <button
+                          key={sz}
+                          onClick={() => setCustomWidgetSize(sz as any)}
+                          className={`h-6 w-full rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            customWidgetSize === sz
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {sz}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Control 3: Language Selector */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">4. Multi-Language</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'en', label: '🇺🇸 English' },
+                      { id: 'es', label: '🇪🇸 Español' },
+                      { id: 'fr', label: '🇫🇷 Français' }
+                    ].map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => setCustomLanguage(lang.id as any)}
+                        className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          customLanguage === lang.id
+                            ? 'bg-emerald-500 text-slate-950 font-black'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live Customized Preview Card Box */}
+                <div className={`p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden bg-slate-950/80 ${
+                  customColorScheme === 'emerald'
+                    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                    : customColorScheme === 'blue'
+                    ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.2)]'
+                    : 'border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+                }`}>
+                  <div className="flex items-center justify-between text-xs font-bold pb-2 border-b border-white/10">
+                    <span className="text-white">
+                      {customLanguage === 'en' ? 'Live Preview:' : customLanguage === 'es' ? 'Vista Previa:' : 'Aperçu:'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                      customColorScheme === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' : customColorScheme === 'blue' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                    }`}>
+                      {customWidgetSize} Size
+                    </span>
+                  </div>
+
+                  <div className="mt-2.5 text-xs md:text-sm font-black text-white flex items-center justify-between">
+                    <span>
+                      {customFirstWidget === 'graph'
+                        ? '1st: 📈 Interactive Stock Chart'
+                        : customFirstWidget === 'networth'
+                        ? '1st: 💰 Net Worth ($12,450.00)'
+                        : '1st: 📊 Open Portfolio Positions'}
+                    </span>
+                    <span className="text-xs text-slate-400 font-normal">Reordered ✓</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
         </section>
       </div>

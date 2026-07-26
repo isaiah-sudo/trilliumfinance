@@ -11,22 +11,27 @@ html.dark {
   color-scheme: dark;
 }
 
+/* Global Font Family Rule */
+* {
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
 /* Custom font styling options */
 .font-txt-sans {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 .font-txt-serif {
-  font-family: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: var(--font-montserrat), Georgia, Cambria, serif;
 }
 .font-serif-editorial {
-  font-family: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: var(--font-montserrat), Georgia, Cambria, serif;
 }
 .font-txt-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .font-num-sans {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif !important;
   font-variant-numeric: tabular-nums;
 }
 .font-num-mono {
@@ -34,7 +39,7 @@ html.dark {
   font-variant-numeric: tabular-nums;
 }
 .font-num-serif {
-  font-family: Georgia, Cambria, serif !important;
+  font-family: var(--font-montserrat), Georgia, Cambria, serif !important;
   font-variant-numeric: tabular-nums;
 }
 
