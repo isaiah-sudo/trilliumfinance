@@ -545,10 +545,22 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
   try {
     const userId = userIdOverride || await getAuthenticatedUserId();
     const portSummary = summary || await getPortfolioSummary();
+    const snapshotsRef = collection(db, 'users', userId, 'portfolio_snapshots');
     const historyRef = collection(db, 'users', userId, 'portfolio_history');
     
-    // Simple deduplication: check if we just took a snapshot in the last hour
-    // (This is basic; could be more robust, but prevents spam)
+    const now = new Date();
+
+    // 1. Record live 1-minute snapshot
+    const newSnapRef = doc(snapshotsRef);
+    await setDoc(newSnapRef, {
+      timestamp: serverTimestamp(),
+      totalValue: portSummary.totalValue,
+      cashBalance: portSummary.cash,
+      holdingsValue: portSummary.totalValue - portSummary.cash,
+      type: '1min'
+    });
+
+    // Also write to legacy history collection
     const newDocRef = doc(historyRef);
     await setDoc(newDocRef, {
       timestamp: serverTimestamp(),
@@ -556,6 +568,52 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
       cashBalance: portSummary.cash,
       holdingsValue: portSummary.totalValue - portSummary.cash
     });
+
+    // 2. Consolidate & prune completed 30-minute milestone blocks
+    const estDateStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
+    const estNow = new Date(estDateStr);
+    const mOpen = new Date(estNow);
+    mOpen.setHours(9, 30, 0, 0);
+
+    if (estNow.getTime() >= mOpen.getTime()) {
+      const minutesSinceOpen = Math.floor((estNow.getTime() - mOpen.getTime()) / (60 * 1000));
+      const completedBlocksCount = Math.floor(minutesSinceOpen / 30);
+
+      for (let b = 0; b < completedBlocksCount; b++) {
+        const blockStartMs = mOpen.getTime() + b * 30 * 60 * 1000;
+        const blockEndMs = blockStartMs + 30 * 60 * 1000;
+        const blockStartDate = new Date(blockStartMs);
+        const blockEndDate = new Date(blockEndMs);
+
+        const q = query(
+          snapshotsRef,
+          where('timestamp', '>=', blockStartDate),
+          where('timestamp', '<=', blockEndDate)
+        );
+        const snap = await getDocs(q);
+
+        const minDocs = snap.docs.filter(d => d.data().type === '1min' || !d.data().type);
+        if (minDocs.length > 1) {
+          const sum = minDocs.reduce((acc, d) => acc + (d.data().totalValue || 0), 0);
+          const avgVal = sum / minDocs.length;
+
+          // Save single 30min milestone snapshot
+          const milestoneDocRef = doc(snapshotsRef);
+          await setDoc(milestoneDocRef, {
+            timestamp: blockEndDate,
+            totalValue: Number(avgVal.toFixed(2)),
+            cashBalance: portSummary.cash,
+            holdingsValue: portSummary.totalValue - portSummary.cash,
+            type: '30min'
+          });
+
+          // Prune/delete all 1-minute transient snapshots for this completed 30-minute block
+          for (const d of minDocs) {
+            await deleteDoc(d.ref);
+          }
+        }
+      }
+    }
 
     // Sync netWorth to user document for leaderboards
     const userRef = doc(db, 'users', userId);

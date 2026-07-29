@@ -309,6 +309,16 @@ export default function DashboardPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [layouts, setLayouts] = useState<ResponsiveDashboardLayouts>(DEFAULT_WIDGET_LAYOUTS);
   const [currentBreakpoint, setCurrentBreakpoint] = useState<keyof ResponsiveDashboardLayouts>('lg');
+  const [mounted, setMounted] = useState(false);
+
+  // Force resize calculation after client mount to prevent initial squished widget layout
+  useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const activePerformance = useMemo(() => {
     if (timeRange === '1D') {
@@ -494,14 +504,31 @@ export default function DashboardPage() {
     });
   };
 
+  const layoutsRef = useRef(layouts);
+  useEffect(() => {
+    layoutsRef.current = layouts;
+  }, [layouts]);
+
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
-    // Merge visibility flags
+    if (!allLayouts || typeof allLayouts !== 'object') return;
+
+    let hasChanged = false;
     const updatedLayouts = { ...(allLayouts as ResponsiveDashboardLayouts) };
+
     (Object.keys(updatedLayouts) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
-      const existingBpLayout = layouts[bp] || [];
+      const existingBpLayout = layoutsRef.current[bp] || [];
       if (Array.isArray(updatedLayouts[bp])) {
         updatedLayouts[bp] = updatedLayouts[bp].map((item) => {
           const existing = existingBpLayout.find((e) => e.i === item.i);
+          if (
+            !existing ||
+            existing.x !== item.x ||
+            existing.y !== item.y ||
+            existing.w !== item.w ||
+            existing.h !== item.h
+          ) {
+            hasChanged = true;
+          }
           return {
             ...item,
             visible: existing ? existing.visible !== false : true,
@@ -514,7 +541,9 @@ export default function DashboardPage() {
       }
     });
 
-    setLayouts(updatedLayouts);
+    if (hasChanged) {
+      setLayouts(updatedLayouts);
+    }
   };
 
   useEffect(() => {
@@ -956,8 +985,8 @@ export default function DashboardPage() {
 
       {/* Dynamic Grid Layout Engine */}
       <Responsive
-        className="layout"
-        width={width || 1200}
+        className="layout w-full"
+        width={mounted && width && width > 0 ? width : 1200}
         layouts={layouts}
         breakpoints={{ lg: 1200, md: 996, sm: 768 }}
         cols={{ lg: 12, md: 10, sm: 6 }}

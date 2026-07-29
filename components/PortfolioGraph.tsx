@@ -128,26 +128,53 @@ export default function PortfolioGraph({
     return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
   }, [activePoints, showBenchmark]);
 
+  // Starting & Current values for header & percentage calculation
+  const startPortVal = activePoints[0]?.portfolioValue ?? 0;
+  const currentPortVal = activePoints[activePoints.length - 1]?.portfolioValue ?? 0;
+  const usdDiff = currentPortVal - startPortVal;
+  const percentDiff = startPortVal > 0 ? (usdDiff / startPortVal) * 100 : 0;
+
+  const startSpyVal = activePoints[0]?.spyValue ?? 0;
+
   return (
     <div className="w-full flex flex-col font-sans select-none">
-      {/* Timeframe Control Tabs */}
-      <div className="flex justify-end items-center gap-1.5 mb-3">
-        {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
-          const isActive = timeRange === range;
-          return (
-            <button
-              key={range}
-              onClick={() => onTimeRangeChange(range)}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                isActive
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)] dark:bg-emerald-500/15'
-                  : 'bg-slate-100 dark:bg-[#161B26]/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/80 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-            >
-              {range}
-            </button>
-          );
-        })}
+      {/* Performance Header & Timeframe Control Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+        {/* Header Stats & Disclaimer */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-xl font-extrabold tracking-tight ${usdDiff >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              {usdDiff >= 0 ? '+' : ''}${usdDiff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className={`text-xs font-bold ${usdDiff >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              ({percentDiff >= 0 ? '+' : ''}{percentDiff.toFixed(2)}%)
+            </span>
+          </div>
+
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium sm:border-l border-slate-300 dark:border-slate-800 sm:pl-3">
+            Gray dashed line indicates SPY benchmark performance
+          </span>
+        </div>
+
+        {/* Timeframe Control Tabs */}
+        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+          {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
+            const isActive = timeRange === range;
+            return (
+              <button
+                key={range}
+                onClick={() => onTimeRangeChange(range)}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)] dark:bg-emerald-500/15'
+                    : 'bg-slate-100 dark:bg-[#161B26]/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/80 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                {range}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Chart Canvas Area */}
@@ -193,7 +220,7 @@ export default function PortfolioGraph({
                 dataKey="timeLabel"
                 axisLine={false}
                 tickLine={false}
-                interval={4} // Evenly space ~6 ticks across 26 slots
+                interval={2}
                 tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
                 dy={6}
               />
@@ -204,7 +231,7 @@ export default function PortfolioGraph({
 
               {/* TradingView Tooltip Overlay */}
               <Tooltip
-                content={<CustomTooltip timeRange={timeRange} />}
+                content={<CustomTooltip timeRange={timeRange} startPortVal={startPortVal} startSpyVal={startSpyVal} />}
                 cursor={{
                   stroke: strokeColor,
                   strokeWidth: 1,
@@ -255,31 +282,53 @@ export default function PortfolioGraph({
 }
 
 /**
- * Custom Floating Tooltip (TradingView / Robinhood Style)
+ * Custom Floating Tooltip with Values & Percentage Changes
  */
-function CustomTooltip({ active, payload, timeRange }: any) {
+function CustomTooltip({ active, payload, startPortVal, startSpyVal }: any) {
   if (!active || !payload || !payload.length) return null;
 
   const data: ChartPoint26 = payload[0].payload;
   if (data.portfolioValue === null) return null;
 
+  const portVal = data.portfolioValue;
+  const portDiff = portVal - (startPortVal || portVal);
+  const portPct = startPortVal > 0 ? (portDiff / startPortVal) * 100 : 0;
+
+  const spyVal = data.spyValue;
+  const spyDiff = spyVal !== null ? spyVal - (startSpyVal || spyVal) : 0;
+  const spyPct = startSpyVal > 0 ? (spyDiff / startSpyVal) * 100 : 0;
+
   return (
     <div className="rounded-xl bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 shadow-xl text-xs font-sans">
-      <div className="text-slate-400 font-medium mb-1">{data.timeLabel}</div>
+      <div className="text-slate-400 font-medium mb-1.5">{data.timeLabel}</div>
+      
+      {/* Portfolio Value + Percentage */}
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-emerald-400" />
         <span className="text-slate-600 dark:text-slate-300 font-semibold">Portfolio:</span>
-        <span className="text-slate-900 dark:text-white font-bold ml-auto">
-          ${data.portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
+        <div className="ml-auto flex items-baseline gap-1">
+          <span className="text-slate-900 dark:text-white font-bold">
+            ${portVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          <span className={`text-[10px] font-bold ${portPct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+            ({portPct >= 0 ? '+' : ''}{portPct.toFixed(2)}%)
+          </span>
+        </div>
       </div>
-      {data.spyValue !== null && (
-        <div className="flex items-center gap-2 mt-1">
+
+      {/* SPY Benchmark Value + Percentage */}
+      {spyVal !== null && (
+        <div className="flex items-center gap-2 mt-1.5">
           <span className="w-2 h-2 rounded-full bg-slate-400" />
           <span className="text-slate-600 dark:text-slate-400 font-medium">SPY Benchmark:</span>
-          <span className="text-slate-700 dark:text-slate-300 font-semibold ml-auto">
-            ${data.spyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
+          <div className="ml-auto flex items-baseline gap-1">
+            <span className="text-slate-700 dark:text-slate-300 font-semibold">
+              ${spyVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className={`text-[10px] font-bold ${spyPct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              ({spyPct >= 0 ? '+' : ''}{spyPct.toFixed(2)}%)
+            </span>
+          </div>
         </div>
       )}
     </div>
