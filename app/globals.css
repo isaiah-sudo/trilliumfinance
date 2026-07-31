@@ -149,8 +149,8 @@ html.dark {
 /* react-grid-layout custom overrides */
 
 .react-grid-item.react-grid-placeholder {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border: 2px dashed #10b981 !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border: 2px dashed rgba(59, 130, 246, 0.6) !important;
   border-radius: 1rem !important;
   opacity: 0.8 !important;
 }
@@ -162,4 +162,40 @@ html.dark {
 
 .react-resizable-handle:hover {
   opacity: 1;
+}
+
+/* Liquid Water Pooling & Green Wave Merge Animations */
+@keyframes liquidPool {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4), inset 0 0 15px rgba(59, 130, 246, 0.2);
+    transform: scale(0.98);
+  }
+  50% {
+    box-shadow: 0 0 25px 8px rgba(16, 185, 129, 0.3), inset 0 0 25px rgba(16, 185, 129, 0.3);
+    transform: scale(1.01);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), inset 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes greenWavePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 18px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.liquid-pool-merge {
+  animation: liquidPool 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.green-wave-finish {
+  animation: greenWavePulse 0.9s ease-out forwards;
 }

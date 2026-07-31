@@ -32,41 +32,7 @@ const sanitizeLayouts = (rawLayouts: ResponsiveDashboardLayouts): ResponsiveDash
     sm: Array.isArray(rawLayouts.sm) ? [...rawLayouts.sm.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.sm],
   };
 
-  if (next.lg) {
-    const graph = next.lg.find((i) => i.i === 'portfolio-graph');
-    const summary = next.lg.find((i) => i.i === 'account-summary');
-    if (graph && summary && graph.visible !== false && summary.visible !== false) {
-      if (graph.y === summary.y) {
-        if (graph.w + summary.w !== 12) {
-          graph.w = 7;
-          summary.x = 7;
-          summary.w = 5;
-        }
-      }
-    }
-    const watchlist = next.lg.find((i) => i.i === 'watchlist');
-    if (watchlist && watchlist.w < 12 && watchlist.x === 0) {
-      watchlist.w = 12;
-    }
-  }
 
-  if (next.md) {
-    const graph = next.md.find((i) => i.i === 'portfolio-graph');
-    const summary = next.md.find((i) => i.i === 'account-summary');
-    if (graph && summary && graph.visible !== false && summary.visible !== false) {
-      if (graph.y === summary.y) {
-        if (graph.w + summary.w !== 10) {
-          graph.w = 6;
-          summary.x = 6;
-          summary.w = 4;
-        }
-      }
-    }
-    const watchlist = next.md.find((i) => i.i === 'watchlist');
-    if (watchlist && watchlist.w < 10 && watchlist.x === 0) {
-      watchlist.w = 10;
-    }
-  }
 
   return next;
 };
@@ -305,8 +271,8 @@ export default function DashboardPage() {
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
 
-  // Layout customization states
-  const [isEditMode, setIsEditMode] = useState(false);
+  // Layout customization states - widgets are always editable
+  const [isEditMode, setIsEditMode] = useState(true);
   const [layouts, setLayouts] = useState<ResponsiveDashboardLayouts>(DEFAULT_WIDGET_LAYOUTS);
   const [currentBreakpoint, setCurrentBreakpoint] = useState<keyof ResponsiveDashboardLayouts>('lg');
   const [mounted, setMounted] = useState(false);
@@ -484,21 +450,39 @@ export default function DashboardPage() {
     setWidgetModalOpen(false);
   };
 
-  // Preset resize helper (Small = 5 cols, Medium = 7 cols, Large = 12 cols for lg)
+  // Preset resize helper (Small = 1/3 (4 cols), Medium = 2/3 (8 cols), Large = Full (12 cols) for lg)
   const handleResizePreset = (widgetId: string, size: 'small' | 'medium' | 'large') => {
-    const widthMap = {
-      lg: { small: 5, medium: 7, large: 12 },
-      md: { small: 4, medium: 6, large: 10 },
-      sm: { small: 3, medium: 4, large: 6 },
+    const widthMap: Record<string, { small: number; medium: number; large: number }> = {
+      lg: { small: 4, medium: 8, large: 12 },
+      md: { small: 3, medium: 7, large: 10 },
+      sm: { small: 2, medium: 4, large: 6 },
     };
 
     setLayouts((prevLayouts) => {
       const next: ResponsiveDashboardLayouts = { ...prevLayouts };
       (Object.keys(next) as Array<keyof ResponsiveDashboardLayouts>).forEach((bp) => {
+        const totalCols = bp === 'lg' ? 12 : bp === 'md' ? 10 : 6;
         const targetWidth = widthMap[bp]?.[size] || 6;
-        next[bp] = next[bp].map((item) =>
-          item.i === widgetId ? { ...item, w: targetWidth } : item
-        );
+        const items = next[bp] || [];
+        const targetItem = items.find((i) => i.i === widgetId);
+        if (!targetItem) return;
+
+        // Calculate sum of widths of other widgets on the same row
+        const rowOthers = items.filter((i) => i.i !== widgetId && i.y === targetItem.y && i.visible !== false);
+        const otherWidthSum = rowOthers.reduce((sum, i) => sum + i.w, 0);
+
+        if (otherWidthSum + targetWidth > totalCols) {
+          // Move ONLY the target resized widget to a new row down
+          const maxRowY = items.reduce((maxY, i) => Math.max(maxY, i.y + i.h), 0);
+          next[bp] = items.map((item) =>
+            item.i === widgetId ? { ...item, w: targetWidth, x: 0, y: maxRowY } : item
+          );
+        } else {
+          // Keep on the same row if space allows
+          next[bp] = items.map((item) =>
+            item.i === widgetId ? { ...item, w: targetWidth } : item
+          );
+        }
       });
       return sanitizeLayouts(next);
     });
@@ -724,110 +708,8 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-6 sm:space-y-8 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
-      {/* Top Header Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-lg w-full">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard Grid Layout</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mt-0.5">
-            {isEditMode ? 'Drag and resize widgets below to customize your layout.' : 'Locked view. Click Customize Layout to move or resize widgets.'}
-          </p>
-        </div>
+    <div className="space-y-3 sm:space-y-4 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
 
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          {isEditMode ? (
-            <>
-              <button
-                onClick={() => setWidgetModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-500/30 text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <Plus className="h-4 w-4" /> Add Widgets
-              </button>
-              <button
-                onClick={handleResetLayout}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <RotateCcw className="h-4 w-4" /> Reset Default
-              </button>
-              <button
-                onClick={handleSaveLayout}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-extrabold transition-all cursor-pointer"
-              >
-                <Check className="h-4 w-4" /> Save Layout
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditMode(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-extrabold transition-all cursor-pointer"
-            >
-              <Edit3 className="h-4 w-4" /> Customize Layout
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Edit Mode Notification Banner */}
-      {isEditMode && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-3.5 rounded-xl bg-slate-900/90 dark:bg-[#121622]/95 border border-emerald-500/40 text-emerald-400 text-xs font-extrabold flex items-center justify-between shadow-xl backdrop-blur-md"
-        >
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>Grid Edit Mode Active. Drag widgets by headers or use S/M/L buttons to resize.</span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setWidgetModalOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-[11px] font-bold transition-all cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Widgets
-            </button>
-            <button
-              onClick={handleResetLayout}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-bold transition-all cursor-pointer"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Default
-            </button>
-            <button
-              onClick={handleSaveLayout}
-              className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white shadow-md text-[11px] font-extrabold transition-all cursor-pointer"
-            >
-              <Check className="h-3.5 w-3.5" /> Save Layout
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {role === 'regular' && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-3xl bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-cyan-500/10 border border-blue-500/30 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600/10 border border-blue-500/25 text-blue-400 rounded-2xl">
-              <GraduationCap className="h-7 w-7" />
-            </div>
-            <div>
-              <h3 className="text-white font-bold text-base">Trillium Education Classroom</h3>
-              <p className="text-slate-400 text-xs mt-0.5">Are you a student in a class? Enter your 6-character code to join your class sandbox!</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => {
-              setJoinError('');
-              setJoinCodeInput('');
-              setJoinModalOpen(true);
-            }}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] shrink-0 cursor-pointer"
-          >
-            Join Classroom
-          </button>
-        </motion.div>
-      )}
 
       {role === 'student' && className && (
         <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-teal-400 text-xs">
@@ -848,25 +730,23 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
-          {!isEditMode && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setWidgetModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-[11px] font-bold text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Widgets</span>
-              </button>
-              <button
-                onClick={() => setIsEditMode(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
-                title="Customize Grid Layout"
-              >
-                <Edit3 className="h-3.5 w-3.5 text-blue-500" />
-                <span>Edit Grid</span>
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWidgetModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-[11px] font-bold text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Widgets</span>
+            </button>
+            <button
+              onClick={handleResetLayout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
+              title="Reset Grid Layout"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Reset Layout</span>
+            </button>
+          </div>
         </div>
         
         <div className="flex flex-col gap-6">
@@ -991,6 +871,7 @@ export default function DashboardPage() {
         breakpoints={{ lg: 1200, md: 996, sm: 768 }}
         cols={{ lg: 12, md: 10, sm: 6 }}
         rowHeight={90}
+        margin={[0, 0]}
         dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
         resizeConfig={{ enabled: isEditMode }}
         onLayoutChange={handleLayoutChange}
@@ -1001,6 +882,30 @@ export default function DashboardPage() {
           if (!regItem) return null;
           const WidgetComp = regItem.component;
 
+          // Check horizontal (same row overlap) and vertical (same column overlap) alignment connections
+          const sameRowNeighbors = visibleItems.filter(
+            (other) => other.i !== item.i && Math.abs(other.y - item.y) <= 1
+          );
+          const sameColNeighbors = visibleItems.filter(
+            (other) => other.i !== item.i && Math.abs(other.x - item.x) <= 1
+          );
+
+          const hasLeft = sameRowNeighbors.some((other) => other.x < item.x && other.x + other.w >= item.x);
+          const hasRight = sameRowNeighbors.some((other) => other.x > item.x && item.x + item.w >= other.x);
+          const hasTop = sameColNeighbors.some((other) => other.y < item.y && other.y + other.h >= item.y);
+          const hasBottom = sameColNeighbors.some((other) => other.y > item.y && item.y + item.h >= other.y);
+
+          const isMergedRow = hasLeft || hasRight;
+          const isMergedCol = hasTop || hasBottom;
+
+          const isLeftItem = !hasLeft;
+          const isRightItem = !hasRight;
+          const isTopItem = !hasTop;
+          const isBottomItem = !hasBottom;
+
+          const showRightSeparator = hasRight;
+          const showBottomSeparator = hasBottom;
+
           return (
             <div key={item.i}>
               <DashboardWidgetCard
@@ -1010,6 +915,15 @@ export default function DashboardPage() {
                 onRemove={handleRemoveWidget}
                 onResizePreset={handleResizePreset}
                 currentWidth={item.w}
+                isMergedRow={isMergedRow}
+                isMergedCol={isMergedCol}
+                isLeftItem={isLeftItem}
+                isRightItem={isRightItem}
+                isTopItem={isTopItem}
+                isBottomItem={isBottomItem}
+                showRightSeparator={showRightSeparator}
+                showBottomSeparator={showBottomSeparator}
+                isMergingAnimation={isMergedRow || isMergedCol}
               >
                 <WidgetComp
                   portfolio={portfolio}
