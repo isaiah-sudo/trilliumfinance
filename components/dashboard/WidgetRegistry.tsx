@@ -421,17 +421,17 @@ export function AchievementsTrackerWidget() {
 // 7. Quick Order / Fast Trade Widget
 export function QuickTradeWidget({ onOpenTradeModal }: WidgetComponentProps) {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-4 bg-gradient-to-br from-blue-600/10 via-indigo-600/5 to-teal-500/10 rounded-xl border border-blue-500/20">
-      <div className="p-3 bg-blue-600/20 text-blue-400 rounded-2xl border border-blue-500/30">
-        <Zap className="h-8 w-8" />
+    <div className="h-full w-full flex flex-col items-center justify-center text-center p-3 sm:p-4 space-y-2.5 sm:space-y-3.5 bg-gradient-to-br from-blue-600/10 via-indigo-600/5 to-teal-500/10 rounded-xl border border-blue-500/20 overflow-hidden">
+      <div className="p-2 sm:p-3 bg-blue-600/20 text-blue-400 rounded-2xl border border-blue-500/30 shrink-0">
+        <Zap className="h-5 w-5 sm:h-7 sm:w-7" />
       </div>
-      <div>
-        <h4 className="text-slate-900 dark:text-white font-extrabold text-sm">Quick Order Execution</h4>
-        <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Execute instant stock or option paper orders directly to your portfolio.</p>
+      <div className="px-1 shrink min-h-0 overflow-hidden">
+        <h4 className="text-slate-900 dark:text-white font-extrabold text-xs sm:text-sm truncate">Quick Order Execution</h4>
+        <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 line-clamp-2 leading-tight">Execute instant stock or option paper orders directly to your portfolio.</p>
       </div>
       <button
         onClick={onOpenTradeModal}
-        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer"
+        className="w-full max-w-[200px] py-2 sm:py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer shrink-0 truncate"
       >
         Open Order Ticket
       </button>

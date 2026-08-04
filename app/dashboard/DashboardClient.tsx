@@ -282,10 +282,16 @@ export default function DashboardPage() {
   // Force resize calculation after client mount to prevent initial squished widget layout
   useEffect(() => {
     setMounted(true);
-    const timer = setTimeout(() => {
+    const t1 = setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
     }, 50);
-    return () => clearTimeout(timer);
+    const t2 = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 300);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   const activePerformance = useMemo(() => {
@@ -537,7 +543,20 @@ export default function DashboardPage() {
     });
 
     if (hasChanged) {
-      setLayouts(updatedLayouts);
+      const sanitized = sanitizeLayouts(updatedLayouts);
+      setLayouts(sanitized);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_LAYOUT_KEY, JSON.stringify(sanitized));
+        if (user?.uid) {
+          const userDocRef = doc(db, 'users', user.uid, 'settings', 'dashboardLayout');
+          setDoc(userDocRef, {
+            layouts: sanitized,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true }).catch(() => {});
+        }
+      } catch (e) {
+        console.error('Failed to auto-save layout', e);
+      }
     }
   };
 
@@ -884,7 +903,7 @@ export default function DashboardPage() {
         rowHeight={90}
         margin={[0, 0]}
         dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
-        resizeConfig={{ enabled: isEditMode }}
+        resizeConfig={{ enabled: isEditMode, handles: ['se', 'sw'] }}
         onLayoutChange={handleLayoutChange}
         onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
       >
