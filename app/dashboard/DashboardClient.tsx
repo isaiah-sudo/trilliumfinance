@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame, GraduationCap, ShieldAlert, Edit3, Check, RotateCcw, Plus } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
@@ -229,6 +230,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { numberFont, showPets } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
@@ -434,14 +436,23 @@ export default function DashboardPage() {
         const exists = next[bp]?.some((item) => item.i === widgetId);
         if (exists) {
           next[bp] = next[bp].map((item) =>
-            item.i === widgetId ? { ...item, visible: true } : item
+            item.i === widgetId
+              ? {
+                  ...item,
+                  visible: true,
+                  w: defaultItem ? defaultItem.w : item.w,
+                  h: defaultItem ? defaultItem.h : item.h,
+                  minW: defaultItem ? defaultItem.minW : item.minW,
+                  minH: defaultItem ? defaultItem.minH : item.minH,
+                }
+              : item
           );
         } else if (defaultItem) {
           next[bp] = [...(next[bp] || []), { ...defaultItem, visible: true }];
         } else {
           next[bp] = [
             ...(next[bp] || []),
-            { i: widgetId, x: 0, y: 100, w: bp === 'lg' ? 12 : bp === 'md' ? 10 : 6, h: 4, visible: true },
+            { i: widgetId, x: 0, y: 100, w: bp === 'lg' ? 12 : bp === 'md' ? 10 : 6, h: 5, minW: 3, minH: 3, visible: true },
           ];
         }
       });
@@ -882,18 +893,31 @@ export default function DashboardPage() {
           if (!regItem) return null;
           const WidgetComp = regItem.component;
 
-          // Check horizontal (same row overlap) and vertical (same column overlap) alignment connections
-          const sameRowNeighbors = visibleItems.filter(
-            (other) => other.i !== item.i && Math.abs(other.y - item.y) <= 1
+          // Accurately check adjacent touching neighbors along 2D box edges
+          const hasLeft = visibleItems.some(
+            (other) =>
+              other.i !== item.i &&
+              other.x + other.w === item.x &&
+              Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
           );
-          const sameColNeighbors = visibleItems.filter(
-            (other) => other.i !== item.i && Math.abs(other.x - item.x) <= 1
+          const hasRight = visibleItems.some(
+            (other) =>
+              other.i !== item.i &&
+              item.x + item.w === other.x &&
+              Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
           );
-
-          const hasLeft = sameRowNeighbors.some((other) => other.x < item.x && other.x + other.w >= item.x);
-          const hasRight = sameRowNeighbors.some((other) => other.x > item.x && item.x + item.w >= other.x);
-          const hasTop = sameColNeighbors.some((other) => other.y < item.y && other.y + other.h >= item.y);
-          const hasBottom = sameColNeighbors.some((other) => other.y > item.y && item.y + item.h >= other.y);
+          const hasTop = visibleItems.some(
+            (other) =>
+              other.i !== item.i &&
+              other.y + other.h === item.y &&
+              Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
+          );
+          const hasBottom = visibleItems.some(
+            (other) =>
+              other.i !== item.i &&
+              item.y + item.h === other.y &&
+              Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
+          );
 
           const isMergedRow = hasLeft || hasRight;
           const isMergedCol = hasTop || hasBottom;
@@ -934,7 +958,7 @@ export default function DashboardPage() {
                   setHoveredData={setHoveredData}
                   handleLookAchievement={handleLookAchievement}
                   numberFont={numberFont}
-                  onOpenTradeModal={() => setTradeModalOpen(true)}
+                  onOpenTradeModal={() => router.push('/dashboard/explore')}
                   borrowedAmountJustNow={borrowedAmountJustNow}
                 />
               </DashboardWidgetCard>

@@ -44,16 +44,11 @@ export default function DashboardWidgetCard({
   showBottomSeparator = false,
   isMergingAnimation = false,
 }: DashboardWidgetCardProps) {
-  // Flatten corners on touching sides (left/right/top/bottom)
-  const tl = isLeftItem && isTopItem;
-  const tr = isRightItem && isTopItem;
-  const bl = isLeftItem && isBottomItem;
-  const br = isRightItem && isBottomItem;
-
-  const roundedClasses = `${tl ? 'rounded-tl-2xl' : 'rounded-tl-none'} ${
-    tr ? 'rounded-tr-2xl' : 'rounded-tr-none'
-  } ${bl ? 'rounded-bl-2xl' : 'rounded-bl-none'} ${
-    br ? 'rounded-br-2xl' : 'rounded-br-none'
+  // Corner classes based on neighbor positioning to form a unified container grid
+  const roundedClasses = `${isTopItem && isLeftItem ? 'rounded-tl-2xl' : 'rounded-tl-none'} ${
+    isTopItem && isRightItem ? 'rounded-tr-2xl' : 'rounded-tr-none'
+  } ${isBottomItem && isLeftItem ? 'rounded-bl-2xl' : 'rounded-bl-none'} ${
+    isBottomItem && isRightItem ? 'rounded-br-2xl' : 'rounded-br-none'
   }`;
 
   return (
@@ -94,16 +89,16 @@ export default function DashboardWidgetCard({
 
             {/* Quick Preset Size Controls */}
             {onResizePreset && (
-              <div className="flex items-center bg-slate-200/60 dark:bg-slate-800/80 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700/60 mr-1">
+              <div className="flex items-center bg-slate-200/90 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700 shadow-sm mr-1.5">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onResizePreset(id, 'small');
                   }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
                     currentWidth && currentWidth <= 4
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400 scale-105'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                   }`}
                   title="Small Size (1/3 Width)"
                 >
@@ -114,10 +109,10 @@ export default function DashboardWidgetCard({
                     e.stopPropagation();
                     onResizePreset(id, 'medium');
                   }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
                     currentWidth && currentWidth > 4 && currentWidth <= 8
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400 scale-105'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                   }`}
                   title="Medium Size (2/3 Width)"
                 >
@@ -128,10 +123,10 @@ export default function DashboardWidgetCard({
                     e.stopPropagation();
                     onResizePreset(id, 'large');
                   }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
                     currentWidth && currentWidth > 8
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400 scale-105'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                   }`}
                   title="Large Size (Full Width)"
                 >

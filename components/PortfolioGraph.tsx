@@ -137,7 +137,7 @@ export default function PortfolioGraph({
   const startSpyVal = activePoints[0]?.spyValue ?? 0;
 
   return (
-    <div className="w-full flex flex-col font-sans select-none">
+    <div className="w-full h-full flex flex-col justify-between font-sans select-none">
       {/* Performance Header & Timeframe Control Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
         {/* Header Stats & Disclaimer */}
@@ -178,7 +178,7 @@ export default function PortfolioGraph({
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="w-full h-[320px] relative">
+      <div className="w-full flex-1 h-full min-h-[220px] relative">
         {activePoints.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">
             Awaiting live portfolio snapshots...

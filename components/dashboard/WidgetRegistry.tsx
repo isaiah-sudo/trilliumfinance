@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PortfolioChart from '@/components/PortfolioChart';
-import { Trophy, Rocket, Gem, Crown, PieChart, Zap, Medal, Lock, CheckCircle2, ShieldAlert, ArrowUpRight, ArrowDownRight, RefreshCw, Flame, Award, LineChart, Wallet, BookOpen, User, DollarSign, Activity, Percent, Sparkles, TrendingUp, Newspaper, Target, Layers } from 'lucide-react';
+import { Trophy, Rocket, Gem, Crown, PieChart as PieIcon, Zap, Medal, Lock, CheckCircle2, ShieldAlert, ArrowUpRight, ArrowDownRight, RefreshCw, Flame, Award, LineChart, Wallet, BookOpen, User, DollarSign, Activity, Percent, Sparkles, TrendingUp, Newspaper, Target, Layers } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry } from '@/app/actions/leaderboard';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { AnimatedNumber } from '@/components/ui';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export interface WidgetComponentProps {
   portfolio: any;
@@ -109,50 +110,143 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
   );
 }
 
+// Distinct color palette pool with 50 unique accessible hex colors for holdings
+const HOLDING_COLOR_PALETTE = [
+  '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6366f1',
+  '#14b8a6', '#a855f7', '#ef4444', '#84cc16', '#38bdf8', '#fb7185', '#4ade80', '#facc15',
+  '#c084fc', '#22d3ee', '#fb923c', '#818cf8', '#34d399', '#f43f5e', '#a3e635', '#60a5fa',
+  '#e879f9', '#2dd4bf', '#ff8c00', '#7c3aed', '#db2777', '#0284c7', '#ea580c', '#4f46e5',
+  '#059669', '#9333ea', '#dc2626', '#65a30d', '#0284c7', '#e11d48', '#16a34a', '#d97706',
+  '#7e22ce', '#0891b2', '#c2410c', '#4338ca', '#047857', '#7e22ce', '#b91c1c', '#4d7c0f',
+  '#1d4ed8', '#be185d'
+];
+
 // 3. Account Summary & Overview Widget
 export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJustNow }: WidgetComponentProps) {
-  const totalValue = portfolio?.totalValue || 0;
-  const cash = portfolio?.cash || 0;
-  const marketValue = portfolio?.totalMarketValue || 0;
-  const cashPercent = totalValue > 0 ? Math.round((cash / totalValue) * 100) : 0;
-  const stocksPercent = 100 - cashPercent;
+  const [viewMode, setViewMode] = useState<'portfolio' | 'holdings'>('portfolio');
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const cash = Math.max(0, portfolio?.cash || 0);
+  const holdings = portfolio?.holdings || [];
+  const totalMarketValue = Math.max(0, portfolio?.totalMarketValue || 0);
+  const totalPortfolioValue = Math.max(1, cash + totalMarketValue);
+
+  // Data for Portfolio mode (Stocks vs Cash)
+  const portfolioData = [
+    { name: 'Stocks', value: totalMarketValue, color: '#3b82f6' },
+    { name: 'Cash', value: cash, color: '#2dd4bf' },
+  ];
+
+  // Data for Holdings mode (Individual stock holdings with unique assigned colors + Cash if any)
+  const holdingsData = useMemo(() => {
+    const items = holdings.map((h: any, idx: number) => ({
+      name: h.symbol || `Stock ${idx + 1}`,
+      value: Math.max(0, h.marketValue || 0),
+      color: HOLDING_COLOR_PALETTE[idx % HOLDING_COLOR_PALETTE.length],
+    }));
+    if (cash > 0) {
+      items.push({
+        name: 'Cash',
+        value: cash,
+        color: '#2dd4bf',
+      });
+    }
+    return items.length > 0 ? items : [{ name: 'Cash', value: cash || 1000, color: '#2dd4bf' }];
+  }, [holdings, cash]);
+
+  const activeData = viewMode === 'portfolio' ? portfolioData : holdingsData;
 
   return (
-    <div className="h-full flex flex-col justify-between space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50">
-          <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">
-            Buying Power / Cash
-          </div>
-          <div className={`text-xl font-black text-slate-900 dark:text-white font-num-${numberFont}`}>
-            <AnimatedNumber value={cash} formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} startOffset={borrowedAmountJustNow} />
-          </div>
-        </div>
+    <div className="h-full w-full flex flex-col justify-between space-y-2 min-h-0 select-none">
+      {/* Top Bar with Mode Toggle */}
+      <div className="flex items-center justify-between shrink-0 pb-1 border-b border-slate-200/50 dark:border-slate-800/50">
+        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+          {viewMode === 'portfolio' ? 'Asset Breakdown' : 'Holdings Breakdown'}
+        </span>
 
-        <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50">
-          <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">
-            Total Market Value
-          </div>
-          <div className={`text-xl font-black text-slate-900 dark:text-white font-num-${numberFont}`}>
-            <AnimatedNumber value={marketValue} formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-          </div>
+        <div className="flex items-center bg-slate-200/70 dark:bg-slate-800/90 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
+          <button
+            onClick={() => { setViewMode('portfolio'); setActiveIndex(null); }}
+            className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
+              viewMode === 'portfolio'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            Portfolio
+          </button>
+          <button
+            onClick={() => { setViewMode('holdings'); setActiveIndex(null); }}
+            className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
+              viewMode === 'holdings'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            Holdings
+          </button>
         </div>
       </div>
 
-      {/* Asset Allocation bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-          <span>Asset Allocation</span>
-          <span>{stocksPercent}% Stocks / {cashPercent}% Cash</span>
-        </div>
-        <div className="h-3 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex">
-          <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${stocksPercent}%` }} title={`Stocks: ${stocksPercent}%`} />
-          <div className="h-full bg-teal-400 transition-all duration-500" style={{ width: `${cashPercent}%` }} title={`Cash: ${cashPercent}%`} />
-        </div>
-        <div className="flex gap-4 text-[10px] font-bold text-slate-500">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Stocks (${marketValue.toLocaleString()})</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400" /> Cash (${cash.toLocaleString()})</span>
-        </div>
+      {/* Pie Chart Canvas filling main empty container space */}
+      <div className="flex-1 w-full min-h-[140px] relative flex items-center justify-center">
+        <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={120}>
+          <PieChart>
+            <Pie
+              data={activeData}
+              cx="50%"
+              cy="50%"
+              innerRadius="46%"
+              outerRadius="78%"
+              paddingAngle={activeData.length > 1 ? 3 : 0}
+              dataKey="value"
+              onMouseEnter={(_, index) => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+            >
+              {activeData.map((entry: { name: string; value: number; color: string }, index: number) => (
+                <Cell
+                  key={`cell-${entry.name}-${index}`}
+                  fill={entry.color}
+                  stroke="none"
+                  style={{
+                    transform: activeIndex === index ? 'scale(1.07)' : 'scale(1)',
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    filter: activeIndex === index ? 'drop-shadow(0px 6px 12px rgba(0,0,0,0.35))' : 'none',
+                    cursor: 'pointer',
+                  }}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              offset={18}
+              formatter={(val: any, name: any) => [
+                `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                `${name}:`
+              ]}
+              contentStyle={{
+                backgroundColor: '#0f111a',
+                borderColor: '#334155',
+                borderRadius: '0.75rem',
+                fontSize: '12px',
+                color: '#fff',
+                fontWeight: 700,
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Dynamic Color Identifiers Legend at bottom */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[10px] font-bold text-slate-500 shrink-0 max-h-[60px] overflow-y-auto pt-1">
+        {activeData.map((item: { name: string; value: number; color: string }) => (
+          <span key={`legend-${item.name}`} className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            <span className="text-slate-700 dark:text-slate-300 font-semibold">{item.name}</span>
+            <span className="text-slate-400">(${item.value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })})</span>
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -442,7 +536,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   },
   'watchlist': {
     id: 'watchlist',
-    title: 'Live Stock Holdings & Watchlist',
+    title: 'Holdings',
     component: WatchlistWidget,
     description: 'Real-time performance tracking of held assets',
     defaultCategory: 'starter',
