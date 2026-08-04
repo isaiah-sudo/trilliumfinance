@@ -369,23 +369,23 @@ export default function StandaloneTeacherDashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0d14] text-slate-200">
       {/* Dedicated Standalone Teacher Header Bar */}
-      <header className="border-b border-slate-800/80 bg-[#121522]/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-tr from-blue-600 to-teal-500 rounded-2xl shadow-lg shadow-blue-500/20">
-            <GraduationCap className="h-6 w-6 text-white" />
+      <header className="border-b border-slate-800/80 bg-[#121522]/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-50 gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="p-2 sm:p-2.5 bg-gradient-to-tr from-blue-600 to-teal-500 rounded-2xl shadow-lg shadow-blue-500/20 shrink-0">
+            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-white tracking-wide">Trillium Educator Master Portal</h1>
-            <p className="text-[11px] text-slate-400">Full-Screen Instructor Control & Analytics Console</p>
+            <h1 className="text-sm sm:text-base md:text-lg font-black text-white tracking-wide">Trillium Educator <span className="hidden min-[400px]:inline">Master Portal</span></h1>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block">Full-Screen Instructor Control & Analytics Console</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
           >
-            <LayoutDashboard className="h-4 w-4" /> Standard Dashboard
+            <LayoutDashboard className="h-4 w-4" /> <span className="hidden min-[380px]:inline">Standard</span> Dashboard
           </Link>
         </div>
       </header>

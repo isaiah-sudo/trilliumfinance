@@ -166,22 +166,22 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
       <div className="relative z-10 w-full min-h-screen px-4 md:px-8 lg:px-12 pt-4 sm:pt-6 flex flex-col flex-1">
-        <header className="relative z-50 w-full flex h-auto min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-4 sm:px-6 py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target">
+        <header className="relative z-50 w-full flex h-auto min-h-[60px] sm:min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-3 sm:px-5 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target gap-2">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
-              <Link href="/dashboard" className="flex items-center gap-2.5 sm:gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
+              <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5">
+                <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
                   <TrilliumLogoMark />
                 </div>
-                <span className="text-base sm:text-[17px] font-bold text-slate-900 dark:text-white tracking-wide whitespace-nowrap">
-                  Trillium <span className="text-blue-500">Finance</span>
+                <span className="text-sm sm:text-base md:text-[17px] font-bold text-slate-900 dark:text-white tracking-wide whitespace-nowrap">
+                  Trillium <span className="text-blue-500 hidden min-[360px]:inline">Finance</span>
                 </span>
               </Link>
             </div>
 
             {/* Navigation Center Section */}
-            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-2 xl:mx-4">
-              <div className="flex items-center justify-center gap-1 xl:gap-2.5 px-1 transition-all duration-500 ease-out">
+            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-3">
+              <div className="flex items-center justify-center gap-1 xl:gap-2 px-1 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
                     Portfolio: {
@@ -224,9 +224,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                         href={link.href}
                         onMouseDown={handleNavClick}
                         style={{ '--pulse-ring-color': 'rgba(59, 130, 246, 0.4)' } as React.CSSProperties}
-                        className={`text-xs xl:text-sm font-semibold transition-all duration-300 px-2.5 xl:px-3.5 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] ${
+                        className={`text-[11px] xl:text-xs font-bold transition-all duration-300 px-2 xl:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] ${
                           pathname === link.href
-                            ? 'text-blue-600 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
+                            ? 'text-blue-600 dark:text-blue-400 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-gradient-to-b hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/50 dark:hover:to-slate-800/20 border-t-transparent border-x-transparent border-b-2 border-b-transparent hover:border-t-white/30 dark:hover:border-t-slate-700/50 hover:border-x-slate-200/40 dark:hover:border-x-slate-800/50 hover:border-b-slate-300 dark:hover:border-b-slate-900 shadow-sm'
                         }`}
                       >
@@ -254,16 +254,16 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line separating nav links and profile/shop controls */}
-            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700/60 transition-all duration-500 ease-out hidden lg:block mx-2 xl:mx-4 shrink-0" />
+            <div className="h-7 w-[1px] bg-slate-200 dark:bg-slate-700/60 transition-all duration-500 ease-out hidden lg:block mx-1 xl:mx-2 shrink-0" />
 
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0 ml-auto lg:ml-0">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0 ml-auto lg:ml-0">
               {/* Shop Button */}
               <button
                 onClick={() => setIsShopOpen(true)}
                 onMouseDown={handleNavClick}
                 style={{ '--pulse-ring-color': 'rgba(6, 182, 212, 0.4)' } as React.CSSProperties}
-                className="flex h-[38px] items-center gap-1.5 sm:gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-2.5 sm:px-4 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="flex h-[36px] sm:h-[38px] items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-2.5 sm:px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
               >
                 <ShoppingBag className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
                 <span className="hidden sm:inline">Shop</span>
@@ -277,13 +277,13 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               >
                 <div 
                   onClick={() => setIsBadgeHovered(!isBadgeHovered)}
-                  className="flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 px-3 shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] cursor-pointer transition-all"
+                  className="flex h-[36px] sm:h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 px-2.5 sm:px-3 shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] cursor-pointer transition-all"
                 >
                   <TreePine className="h-4 w-4 text-green-500 shrink-0" />
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                     {levelInfo?.name || 'Novice'}
                   </span>
-                  <div className="w-16 lg:w-24 h-2.5 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden shrink-0">
+                  <div className="w-12 xl:w-20 h-2 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden shrink-0 hidden sm:block">
                     <div 
                       className="h-full bg-gradient-to-r from-blue-600 to-cyan-400"
                       style={{ width: `${levelInfo?.progress || 0}%` }}
@@ -293,7 +293,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
                 {/* Popover Card for Streak & XP Info */}
                 {isBadgeHovered && (
-                  <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] p-4 bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md z-[100] transition-all duration-200 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] p-4 bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md z-[100] transition-all duration-200 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">
                       <div className="flex items-center gap-2">
                         <TreePine className="h-4 w-4 text-emerald-500" />
@@ -361,7 +361,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Settings */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex h-[38px] w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="flex h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105 shrink-0"
                 aria-label="Settings"
               >
                 <Settings className="h-4 w-4 shrink-0" />
@@ -370,7 +370,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Logout */}
               <button
                 onClick={() => signOut()}
-                className="hidden sm:flex h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                className="hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 sm:px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105 shrink-0"
               >
                 Logout
               </button>
@@ -378,7 +378,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Mobile Navigation Toggle Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex lg:hidden h-[38px] w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a]"
+                className="flex lg:hidden h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] shrink-0"
                 aria-label="Toggle Navigation Menu"
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -388,60 +388,76 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
           {/* Mobile Navigation Drawer */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden mt-3 rounded-2xl bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/80 p-4 shadow-2xl backdrop-blur-md space-y-3 z-50 relative">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="lg:hidden mt-3 rounded-2xl bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/80 p-4 shadow-2xl backdrop-blur-md space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
+              <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((link) => {
                   const navIcons: Record<string, string> = {
-                    Portfolio: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Classroom Controls': '🛠️'
+                    Portfolio: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Educator Portal': '🛠️'
                   };
                   return (
                     <Link
                       key={link.name}
                       href={link.href}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all ${
+                      className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-bold transition-all ${
                         pathname === link.href
-                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800'
+                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 shadow-sm'
                           : 'text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span className="text-base">{navIcons[link.name] || '✨'}</span>
-                      <span>{link.name}</span>
+                      <span className="truncate">{link.name}</span>
                     </Link>
                   );
                 })}
               </div>
 
-              {/* Mobile quick info and controls */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <TreePine className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{levelInfo?.name || 'Novice'}</span>
-                  <span className="text-[10px] text-blue-500 font-extrabold">({streakCount} Day Streak 🔥)</span>
+              {/* Mobile Level & Streak Progress Map */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <div className="flex items-center gap-1.5 font-extrabold text-slate-800 dark:text-white">
+                    <TreePine className="h-4 w-4 text-emerald-500" />
+                    <span>{levelInfo?.name || 'Novice'}</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-blue-500">
+                    {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => { setIsShopOpen(true); setIsMobileMenuOpen(false); }}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400"
-                  >
-                    <ShoppingBag className="h-4 w-4" />
-                    <span>Shop</span>
-                  </button>
-                  <button
-                    onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
-                    className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                    aria-label="Settings"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => signOut()}
-                    className="flex items-center justify-center gap-1 h-9 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Logout</span>
-                  </button>
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400"
+                    style={{ width: `${levelInfo?.progress || 0}%` }}
+                  />
                 </div>
+                <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-bold pt-1">
+                  <span>7-Day Streak Map</span>
+                  <span className="text-emerald-500">{streakCount} Day Streak 🔥</span>
+                </div>
+              </div>
+
+              {/* Mobile quick actions toolbar */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => { setIsShopOpen(true); setIsMobileMenuOpen(false); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400 active:scale-95 transition-transform"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>Shop</span>
+                </button>
+                <button
+                  onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
+                  className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"
+                  aria-label="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-xs font-bold text-rose-600 dark:text-rose-400 active:scale-95 transition-transform"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
               </div>
             </div>
           )}

@@ -26,7 +26,8 @@ import {
   Star,
   ChevronDown,
   ChevronLeft,
-  X
+  X,
+  Menu
 } from 'lucide-react';
 import { getMarketQuotes } from '@/app/actions/trading';
 
@@ -190,6 +191,7 @@ function InteractiveDripDotGrid() {
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
     const target = e.currentTarget;
@@ -517,15 +519,15 @@ export default function LandingPage() {
       <div className="absolute top-[35%] left-[30%] w-[35%] h-[35%] rounded-full bg-purple-500/5 blur-[120px] pointer-events-none" />
 
       {/* Sleek Professional 3-Part Glass Navbar */}
-      <header className="w-full flex items-center justify-between px-6 py-4 bg-slate-950/80 backdrop-blur-lg border-b border-white/[0.08] sticky top-0 z-50">
+      <header className="w-full flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-slate-950/80 backdrop-blur-lg border-b border-white/[0.08] sticky top-0 z-50 gap-2">
         {/* Left: Logo & Brand Name + Quick Links */}
-        <div className="flex items-center gap-8 shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
+        <div className="flex items-center gap-4 lg:gap-8 shrink-0">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
               <TrilliumLogoMark />
             </div>
-            <span className="text-lg sm:text-xl font-black text-white tracking-wide whitespace-nowrap">
-              Trillium <span className="text-emerald-400">Finance</span>
+            <span className="text-base sm:text-lg lg:text-xl font-black text-white tracking-wide whitespace-nowrap">
+              Trillium <span className="text-emerald-400 hidden min-[360px]:inline">Finance</span>
             </span>
           </Link>
 
@@ -533,19 +535,19 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-2 lg:gap-3 pl-4 border-l border-white/10">
             <button
               onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+              className="text-white hover:text-emerald-400 text-xs lg:text-sm font-bold transition-all duration-200 px-2.5 lg:px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
             >
               Features
             </button>
             <button
               onClick={() => document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+              className="text-white hover:text-emerald-400 text-xs lg:text-sm font-bold transition-all duration-200 px-2.5 lg:px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
             >
               Simulator
             </button>
             <button
               onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-white hover:text-emerald-400 text-sm font-bold transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+              className="text-white hover:text-emerald-400 text-xs lg:text-sm font-bold transition-all duration-200 px-2.5 lg:px-3 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
             >
               FAQ
             </button>
@@ -553,30 +555,30 @@ export default function LandingPage() {
         </div>
 
         {/* Right: User Profile & Primary Controls */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {!loading && user ? (
             <>
               {/* Avatar Pill */}
-              <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1 text-xs font-medium text-slate-200 flex items-center gap-2">
+              <div className="bg-white/5 border border-white/10 rounded-full px-2.5 py-1 text-xs font-medium text-slate-200 flex items-center gap-2 max-w-[120px] sm:max-w-[180px] shrink">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
                     alt="Profile"
-                    className="h-6 w-6 rounded-full object-cover"
+                    className="h-5 w-5 sm:h-6 sm:w-6 rounded-full object-cover shrink-0"
                   />
                 ) : (
-                  <div className="h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-slate-950">
+                  <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-slate-950 shrink-0">
                     {(user.displayName || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
-                <span className="truncate max-w-[120px] font-semibold text-slate-200">
+                <span className="truncate text-xs font-semibold text-slate-200 hidden xs:inline">
                   {user.displayName || user.email?.split('@')[0] || 'User'}
                 </span>
               </div>
 
               {/* Primary Button */}
               <Link href="/dashboard">
-                <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer">
+                <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 sm:px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap">
                   Dashboard
                 </button>
               </Link>
@@ -587,29 +589,89 @@ export default function LandingPage() {
                   await signOut();
                   router.refresh();
                 }}
-                className="text-slate-400 hover:text-white text-xs px-2 font-medium transition-colors cursor-pointer"
+                className="hidden sm:inline-block text-slate-400 hover:text-white text-xs px-2 font-medium transition-colors cursor-pointer"
               >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="text-slate-400 hover:text-white text-xs px-2.5 py-1.5 font-medium transition-colors">
+              <Link href="/login" className="text-slate-400 hover:text-white text-xs px-2 py-1.5 font-medium transition-colors">
                 Sign In
               </Link>
               <Link href="/signup">
                 <button
                   onMouseDown={handlePulse}
                   style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 sm:px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
                 >
                   Get Started
                 </button>
               </Link>
             </>
           )}
+
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="flex md:hidden h-8 w-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 text-white transition-colors"
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
         </div>
       </header>
+
+      {/* Landing Page Mobile Drawer */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden sticky top-[57px] z-40 bg-slate-950/95 border-b border-white/10 p-4 space-y-3 backdrop-blur-xl animate-in fade-in slide-in-from-top-2">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => {
+                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                setIsMobileMenuOpen(false);
+              }}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-200 text-center hover:bg-white/10 transition-colors"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => {
+                document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth' });
+                setIsMobileMenuOpen(false);
+              }}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-200 text-center hover:bg-white/10 transition-colors"
+            >
+              Simulator
+            </button>
+            <button
+              onClick={() => {
+                document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                setIsMobileMenuOpen(false);
+              }}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-200 text-center hover:bg-white/10 transition-colors"
+            >
+              FAQ
+            </button>
+          </div>
+
+          {!loading && user && (
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium">Signed in as <strong className="text-white">{user.displayName || user.email}</strong></span>
+              <button
+                onClick={async () => {
+                  await signOut();
+                  setIsMobileMenuOpen(false);
+                  router.refresh();
+                }}
+                className="text-xs text-rose-400 font-bold hover:underline"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Infinite Horizontal Asset Ticker Bar */}
       <div className="w-full bg-slate-950/60 border-y border-white/5 backdrop-blur-md py-2.5 overflow-hidden relative z-40">
