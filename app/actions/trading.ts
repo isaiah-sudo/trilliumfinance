@@ -550,14 +550,14 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
     
     const now = new Date();
 
-    // 1. Record live 1-minute snapshot
+    // 1. Record live snapshot
     const newSnapRef = doc(snapshotsRef);
     await setDoc(newSnapRef, {
       timestamp: serverTimestamp(),
       totalValue: portSummary.totalValue,
       cashBalance: portSummary.cash,
       holdingsValue: portSummary.totalValue - portSummary.cash,
-      type: '1min'
+      type: '10min'
     });
 
     // Also write to legacy history collection
@@ -569,7 +569,7 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
       holdingsValue: portSummary.totalValue - portSummary.cash
     });
 
-    // 2. Consolidate & prune completed 30-minute milestone blocks
+    // 2. Consolidate & prune completed 10-minute milestone blocks
     const estDateStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
     const estNow = new Date(estDateStr);
     const mOpen = new Date(estNow);
@@ -577,11 +577,11 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
 
     if (estNow.getTime() >= mOpen.getTime()) {
       const minutesSinceOpen = Math.floor((estNow.getTime() - mOpen.getTime()) / (60 * 1000));
-      const completedBlocksCount = Math.floor(minutesSinceOpen / 30);
+      const completedBlocksCount = Math.floor(minutesSinceOpen / 10);
 
       for (let b = 0; b < completedBlocksCount; b++) {
-        const blockStartMs = mOpen.getTime() + b * 30 * 60 * 1000;
-        const blockEndMs = blockStartMs + 30 * 60 * 1000;
+        const blockStartMs = mOpen.getTime() + b * 10 * 60 * 1000;
+        const blockEndMs = blockStartMs + 10 * 60 * 1000;
         const blockStartDate = new Date(blockStartMs);
         const blockEndDate = new Date(blockEndMs);
 
@@ -597,17 +597,17 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
           const sum = minDocs.reduce((acc, d) => acc + (d.data().totalValue || 0), 0);
           const avgVal = sum / minDocs.length;
 
-          // Save single 30min milestone snapshot
+          // Save single 10min milestone snapshot
           const milestoneDocRef = doc(snapshotsRef);
           await setDoc(milestoneDocRef, {
             timestamp: blockEndDate,
             totalValue: Number(avgVal.toFixed(2)),
             cashBalance: portSummary.cash,
             holdingsValue: portSummary.totalValue - portSummary.cash,
-            type: '30min'
+            type: '10min'
           });
 
-          // Prune/delete all 1-minute transient snapshots for this completed 30-minute block
+          // Prune/delete transient snapshots for this completed 10-minute block
           for (const d of minDocs) {
             await deleteDoc(d.ref);
           }
@@ -680,6 +680,13 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     console.error('Failed to fetch snapshot data:', err);
   }
 
+  // Import market hours filter helper
+  const { filterMarketHoursOnly } = await import('@/lib/portfolioTransformation');
+  const marketOnlyPoints = filterMarketHoursOnly(rawPoints);
+  if (marketOnlyPoints.length > 0) {
+    rawPoints = marketOnlyPoints;
+  }
+
   // Handle empty state
   if (rawPoints.length === 0) {
     rawPoints = [
@@ -702,13 +709,13 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     };
   });
 
-  // Resample helper to guarantee exactly 78 points evenly distributed
-  function resampleData(data: typeof rawPoints, targetCount = 78): { time: number; value: number; spyValue: number }[] {
+  // Resample helper to guarantee clean target points evenly distributed
+  function resampleData(data: typeof rawPoints, targetCount = 40): { time: number; value: number; spyValue: number }[] {
     if (data.length === 0) return [];
     if (data.length === 1) {
       const pt = data[0];
       return Array.from({ length: targetCount }, (_, i) => ({
-        time: pt.time + i * 60,
+        time: pt.time + i * 600,
         value: pt.value,
         spyValue: pt.spyValue || baselineSpy
       }));
@@ -755,7 +762,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     return result;
   }
 
-  const targetCount = timeRange === '1D' ? 14 : 78;
+  const targetCount = 40;
   const resampled = resampleData(rawPoints, targetCount);
 
   // Fetch user achievements and unlocks
@@ -802,15 +809,8 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   }
 
   return {
-    portfolio: resampledWithMilestones.map(r => ({ 
-      time: r.time, 
-      value: r.value,
-      achievements: r.achievements 
-    })),
-    benchmark: resampledWithMilestones.map(r => ({ 
-      time: r.time, 
-      value: r.spyValue 
-    }))
+    portfolio: resampledWithMilestones,
+    benchmark: resampledWithMilestones.map(r => ({ time: r.time, value: r.spyValue }))
   };
 }
 

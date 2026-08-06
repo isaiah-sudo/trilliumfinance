@@ -628,7 +628,7 @@ export default function DashboardPage() {
 
     let intervalId: NodeJS.Timeout | undefined;
     if (timeRange === '1D') {
-      intervalId = setInterval(loadGraph, 30 * 60 * 1000); // 30 minutes
+      intervalId = setInterval(loadGraph, 10 * 60 * 1000); // 10 minutes
     }
 
     return () => {

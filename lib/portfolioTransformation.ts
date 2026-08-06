@@ -1,8 +1,9 @@
 /**
  * Portfolio Data Transformation Utility
  * 
- * Prepares raw Firestore snapshot arrays into fixed 26-point datasets for 1D, 1W, 1M, and 1Y charts.
- * Robinhood / TradingView aesthetic requirements.
+ * Prepares raw Firestore snapshot arrays into exact 10-minute interval datasets for 1D, 1W, 1M, and 1Y charts.
+ * Excludes all non-trading stock market hours (overnight hours & weekends).
+ * Market Trading Hours: 9:30 AM to 4:00 PM EST (Monday - Friday).
  */
 
 export interface RawSnapshot {
@@ -25,28 +26,59 @@ export interface ChartPoint26 {
 export type TimeRange = '1D' | '1W' | '1M' | '1Y';
 
 /**
- * Generates 26 fixed 1D time slots covering market hours:
- * 6:30 AM to 1:00 PM PST / 9:30 AM to 4:00 PM EST (390 total minutes)
- * 26 slots = 25 intervals of 15.6 minutes (936 seconds).
+ * Normalizes input timestamp to Unix seconds.
  */
+export function toSeconds(ts: number): number {
+  return ts > 1e11 ? Math.floor(ts / 1000) : Math.floor(ts);
+}
+
 /**
- * Generates 14 fixed 30-minute milestones covering market hours:
- * 9:30 AM to 4:00 PM EST (14 slots at 30-minute intervals: 9:30, 10:00, ..., 16:00 EST)
+ * Checks if a given Date is within US Stock Market trading hours:
+ * Monday through Friday, 9:30 AM to 4:00 PM EST.
+ */
+export function isMarketTradingTime(date: Date): boolean {
+  const estStr = date.toLocaleString('en-US', { timeZone: 'America/New_York' });
+  const estDate = new Date(estStr);
+  const day = estDate.getDay(); // 0 = Sun, 6 = Sat
+  if (day === 0 || day === 6) return false;
+
+  const hours = estDate.getHours();
+  const minutes = estDate.getMinutes();
+  const currentMinutes = hours * 60 + minutes;
+
+  const marketOpen = 9 * 60 + 30;  // 9:30 AM = 570 min
+  const marketClose = 16 * 60;     // 4:00 PM = 960 min
+
+  return currentMinutes >= marketOpen && currentMinutes <= marketClose;
+}
+
+/**
+ * Filters an array of raw snapshots to keep ONLY those occurring during active market trading hours.
+ */
+export function filterMarketHoursOnly(snapshots: RawSnapshot[]): RawSnapshot[] {
+  return snapshots.filter((snap) => {
+    const sec = toSeconds(snap.time);
+    return isMarketTradingTime(new Date(sec * 1000));
+  });
+}
+
+/**
+ * Generates 40 fixed 10-minute slots covering market hours for a trading day:
+ * 9:30 AM to 4:00 PM EST (390 total minutes = 40 milestone time points at 10-minute intervals).
  */
 export function generate1DSlots(referenceDate: Date = new Date()): Date[] {
   const estStr = referenceDate.toLocaleString('en-US', { timeZone: 'America/New_York' });
   const localDate = new Date(estStr);
-  
   const diffMs = referenceDate.getTime() - localDate.getTime();
-  
+
   const target930 = new Date(localDate);
   target930.setHours(9, 30, 0, 0);
-  
+
   const marketOpenMs = target930.getTime() + diffMs;
-  const slotIntervalMs = 30 * 60 * 1000; // 30 minutes (1800 seconds) per milestone
+  const slotIntervalMs = 10 * 60 * 1000; // 10 minutes (600 seconds) per slot
 
   const slots: Date[] = [];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 40; i++) {
     slots.push(new Date(marketOpenMs + i * slotIntervalMs));
   }
   return slots;
@@ -80,17 +112,7 @@ export function formatSlotLabel(date: Date, timeRange: TimeRange): string {
 }
 
 /**
- * Normalizes input timestamp to Unix seconds.
- */
-function toSeconds(ts: number): number {
-  return ts > 1e11 ? Math.floor(ts / 1000) : Math.floor(ts);
-}
-
-/**
- * Transforms raw portfolio & benchmark snapshots for the 1D view into 14 fixed 30-min milestone slots (9:30 AM to 4:00 PM EST).
- * Past completed 30-min milestones display aggregated 30-min averages,
- * the active 30-min window displays 1-min live updates up to `now`,
- * and future milestone slots beyond `now` remain null to avoid glitching.
+ * Transforms raw portfolio & benchmark snapshots for the 1D view into 40 fixed 10-minute slots (9:30 AM to 4:00 PM EST).
  */
 export function process1DSnapshots(
   portfolioRaw: RawSnapshot[],
@@ -100,19 +122,19 @@ export function process1DSnapshots(
   const slots = generate1DSlots(now);
   const marketOpenSec = Math.floor(slots[0].getTime() / 1000);
   const nowSec = Math.floor(now.getTime() / 1000);
-  
+
   const sortedPort = [...portfolioRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
   const sortedBench = [...benchmarkRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
 
   const startPortVal = sortedPort[0]?.value ?? 10000;
-  const startBenchVal = sortedBench[0]?.value ?? 510;
+  const startBenchVal = sortedBench[0]?.value ?? 510.25;
 
-  // Map snapshots into 30-minute slots (0..13)
+  // Group snapshots into 10-minute slots (0..39)
   const slotPortMap = new Map<number, RawSnapshot[]>();
   sortedPort.forEach((snapshot) => {
     const snapSec = toSeconds(snapshot.time);
-    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 1800);
-    const clampedIdx = Math.max(0, Math.min(13, calculatedIdx));
+    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 600); // 600s = 10 min
+    const clampedIdx = Math.max(0, Math.min(39, calculatedIdx));
     if (!slotPortMap.has(clampedIdx)) {
       slotPortMap.set(clampedIdx, []);
     }
@@ -122,8 +144,8 @@ export function process1DSnapshots(
   const slotBenchMap = new Map<number, RawSnapshot[]>();
   sortedBench.forEach((snapshot) => {
     const snapSec = toSeconds(snapshot.time);
-    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 1800);
-    const clampedIdx = Math.max(0, Math.min(13, calculatedIdx));
+    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 600);
+    const clampedIdx = Math.max(0, Math.min(39, calculatedIdx));
     if (!slotBenchMap.has(clampedIdx)) {
       slotBenchMap.set(clampedIdx, []);
     }
@@ -131,17 +153,17 @@ export function process1DSnapshots(
   });
 
   let lastKnownPort: number | null = sortedPort[0]?.value ?? 10000;
-  let lastKnownBench: number | null = sortedBench[0]?.value ?? 510;
+  let lastKnownBench: number | null = sortedBench[0]?.value ?? 510.25;
 
   const result: ChartPoint26[] = [];
 
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 40; i++) {
     const slotDate = slots[i];
     const slotSec = Math.floor(slotDate.getTime() / 1000);
     const label = formatSlotLabel(slotDate, '1D');
 
-    // Future slots (beyond current time) set to null to stop line cleanly at current time
-    const isFuture = slotSec > nowSec + 120;
+    // Future slots beyond current time are set to null to stop line cleanly
+    const isFuture = slotSec > nowSec + 60;
 
     if (isFuture) {
       result.push({
@@ -160,7 +182,7 @@ export function process1DSnapshots(
     const benchBucket = slotBenchMap.get(i);
 
     if (portBucket && portBucket.length > 0) {
-      // Calculate average value over the 30-min block
+      // Calculate average value over the 10-minute slot
       const sum = portBucket.reduce((acc, curr) => acc + curr.value, 0);
       lastKnownPort = sum / portBucket.length;
     } else {
@@ -206,20 +228,26 @@ export function process1DSnapshots(
 }
 
 /**
- * Group raw snapshots into 26 aggregated bucket intervals for 1W, 1M, 1Y views.
- * Empty buckets forward-fill from the prior bucket's close value so historical views have no null holes.
+ * Groups market-hours snapshots for 1W, 1M, and 1Y views.
+ * Strictly excludes any non-market trading time (overnight and weekends).
  */
 export function processMultiTimeframeSnapshots(
   portfolioRaw: RawSnapshot[],
   benchmarkRaw: RawSnapshot[],
   timeRange: TimeRange
 ): ChartPoint26[] {
-  const sortedPort = [...portfolioRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
-  const sortedBench = [...benchmarkRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
+  // 1. Filter out all non-market-hour data
+  const portMarketOnly = filterMarketHoursOnly(portfolioRaw);
+  const benchMarketOnly = filterMarketHoursOnly(benchmarkRaw);
+
+  const sortedPort = (portMarketOnly.length > 0 ? portMarketOnly : portfolioRaw)
+    .sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
+  const sortedBench = (benchMarketOnly.length > 0 ? benchMarketOnly : benchmarkRaw)
+    .sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
 
   if (sortedPort.length === 0) {
     const dummyDate = new Date();
-    return Array.from({ length: 26 }, (_, i) => ({
+    return Array.from({ length: 40 }, (_, i) => ({
       slotIndex: i,
       timeLabel: formatSlotLabel(dummyDate, timeRange),
       time: Math.floor(dummyDate.getTime() / 1000),
@@ -230,20 +258,25 @@ export function processMultiTimeframeSnapshots(
     }));
   }
 
+  const startPortVal = sortedPort[0]?.value ?? 10000;
+  const startBenchVal = sortedBench[0]?.value ?? 510.25;
+
+  // Determine target point count based on range
+  // 1W: 39 slots per day * 5 days = 195 points (or downsampled every 20-30 mins to ~40-60 points)
+  // 1M / 1Y: ~40-50 clean aligned points
+  const targetPointCount = timeRange === '1W' ? 40 : 40;
+
   const minTime = toSeconds(sortedPort[0].time);
   const maxTime = toSeconds(sortedPort[sortedPort.length - 1].time);
   const timeSpan = Math.max(maxTime - minTime, 1);
-  const bucketDuration = timeSpan / 26;
-
-  const startPortVal = sortedPort[0]?.value ?? 0;
-  const startBenchVal = sortedBench[0]?.value ?? 0;
+  const bucketDuration = timeSpan / targetPointCount;
 
   let lastKnownBucketPort = startPortVal;
   let lastKnownBucketBench = startBenchVal;
 
   const result: ChartPoint26[] = [];
 
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < targetPointCount; i++) {
     const bucketStart = minTime + i * bucketDuration;
     const bucketEnd = bucketStart + bucketDuration;
     const centerTime = bucketStart + bucketDuration / 2;
@@ -252,22 +285,20 @@ export function processMultiTimeframeSnapshots(
 
     const portBucket = sortedPort.filter((p) => {
       const sec = toSeconds(p.time);
-      return sec >= bucketStart && (i === 25 ? sec <= bucketEnd : sec < bucketEnd);
+      return sec >= bucketStart && (i === targetPointCount - 1 ? sec <= bucketEnd : sec < bucketEnd);
     });
 
     const benchBucket = sortedBench.filter((b) => {
       const sec = toSeconds(b.time);
-      return sec >= bucketStart && (i === 25 ? sec <= bucketEnd : sec < bucketEnd);
+      return sec >= bucketStart && (i === targetPointCount - 1 ? sec <= bucketEnd : sec < bucketEnd);
     });
 
     let portVal: number;
     if (portBucket.length > 0) {
-      // Calculate bucket average / close value and record as last known
       const sum = portBucket.reduce((acc, curr) => acc + curr.value, 0);
       portVal = sum / portBucket.length;
       lastKnownBucketPort = portBucket[portBucket.length - 1].value;
     } else {
-      // Empty bucket fallback: forward-fill from prior bucket's close value
       const prior = sortedPort.filter((p) => toSeconds(p.time) < bucketStart).pop();
       portVal = prior ? prior.value : lastKnownBucketPort;
       lastKnownBucketPort = portVal;
@@ -275,12 +306,12 @@ export function processMultiTimeframeSnapshots(
 
     let benchVal: number;
     if (benchBucket.length > 0) {
-      const sum = benchBucket.reduce((acc, curr) => acc + curr.value, 0);
+      const sum = benchBucket.reduce((acc, curr) => acc + (curr.spyValue || curr.value), 0);
       benchVal = sum / benchBucket.length;
       lastKnownBucketBench = benchBucket[benchBucket.length - 1].value;
     } else {
       const prior = sortedBench.filter((b) => toSeconds(b.time) < bucketStart).pop();
-      benchVal = prior ? prior.value : lastKnownBucketBench;
+      benchVal = prior ? (prior.spyValue || prior.value) : lastKnownBucketBench;
       lastKnownBucketBench = benchVal;
     }
 
@@ -308,7 +339,7 @@ export function processMultiTimeframeSnapshots(
 }
 
 /**
- * Main entry function to transform raw snapshot inputs into a consistent 26-point dataset.
+ * Main entry function to transform raw snapshot inputs into a consistent dataset.
  */
 export function transformPortfolioData(
   data: { portfolio: RawSnapshot[]; benchmark: RawSnapshot[] },

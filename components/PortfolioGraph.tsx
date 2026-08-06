@@ -220,7 +220,7 @@ export default function PortfolioGraph({
                 dataKey="timeLabel"
                 axisLine={false}
                 tickLine={false}
-                interval={2}
+                interval="preserveStartEnd"
                 tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
                 dy={6}
               />

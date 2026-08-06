@@ -33,12 +33,12 @@ async function fetchFinnhubQuote(symbol: string): Promise<number> {
 
 /**
  * Scheduled Cloud Function to capture portfolio snapshots
- * Run every 5 minutes, Monday through Friday.
- * Scheduler cron configuration: every 5 minutes (Monday-Friday)
+ * Run every 10 minutes, Monday through Friday during market hours.
+ * Scheduler cron configuration: every 10 minutes (Monday-Friday)
  * Timezone: America/New_York
  */
 export const capturePortfolioSnapshots = functions.pubsub
-  .schedule('*/30 * * * 1-5')
+  .schedule('*/10 * * * 1-5')
   .timeZone('America/New_York')
   .onRun(async (context) => {
     // 1. Guard clause: Ensure execution is within trading hours (9:30 AM to 4:00 PM EST)
