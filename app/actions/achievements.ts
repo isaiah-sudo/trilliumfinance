@@ -1,29 +1,31 @@
 import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
 
+export type RarityType = 'Purple' | 'Gold' | 'Silver' | 'Bronze';
+
 export interface Achievement {
   id: string;
   title: string;
   description: string;
   iconType: string;
+  rarity: RarityType;
 }
 
 export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'FIRST_TRADE', title: 'First Trade', description: 'Execute your first trade.', iconType: 'Rocket' },
-  { id: 'DIAMOND_HANDS', title: 'Diamond Hands', description: 'Make a trade that holds significant value.', iconType: 'Gem' },
-  { id: 'WHALE', title: 'The Whale', description: 'Reach a net worth of $100,000.', iconType: 'Crown' },
-  { id: 'DIVERSIFIED', title: 'Diversified', description: 'Hold 5 different stocks in your portfolio.', iconType: 'PieChart' },
-  { id: 'DAY_TRADER', title: 'Day Trader', description: 'Execute 5 trades in a single day.', iconType: 'Zap' },
-  // 9 New Trophies
-  { id: 'RISK_TAKER', title: 'Risk Taker', description: 'Execute a single trade exceeding $10,000 value.', iconType: 'Zap' },
-  { id: 'PIONEER', title: 'Pioneer', description: 'Read the latest stock analysis in the Market Explorer.', iconType: 'Rocket' },
-  { id: 'COMMUNITY_LEADER', title: 'Community Leader', description: 'Send messages and exchange strategies in chat.', iconType: 'Crown' },
-  { id: 'BULL_MARKET', title: 'Bull Market', description: 'Achieve a portfolio performance over +15% total return.', iconType: 'Trophy' },
-  { id: 'BEAR_SURVIVOR', title: 'Bear Survivor', description: 'Retain positive returns during active market downtrends.', iconType: 'Trophy' },
-  { id: 'FINANCIAL_GURU', title: 'Financial Guru', description: 'Complete detailed analysis on at least 10 different stocks.', iconType: 'PieChart' },
-  { id: 'HIGH_ROLLER', title: 'High Roller', description: 'Complete 25 or more transactions since opening your account.', iconType: 'Gem' },
-  { id: 'SHREWD_INVESTOR', title: 'Shrewd Investor', description: 'Hold cash reserves equal to less than 10% of portfolio value.', iconType: 'PieChart' },
-  { id: 'STEADY_HAND', title: 'Steady Hand', description: 'Retain a stock position for more than 5 market days.', iconType: 'TreePine' },
+  { id: 'FIRST_TRADE', title: 'First Trade', description: 'Execute your first trade.', iconType: 'Rocket', rarity: 'Bronze' },
+  { id: 'DIAMOND_HANDS', title: 'Diamond Hands', description: 'Make a trade that holds significant value.', iconType: 'Gem', rarity: 'Gold' },
+  { id: 'WHALE', title: 'The Whale', description: 'Reach a net worth of $100,000.', iconType: 'Crown', rarity: 'Purple' },
+  { id: 'DIVERSIFIED', title: 'Diversified', description: 'Hold 5 different stocks in your portfolio.', iconType: 'PieChart', rarity: 'Silver' },
+  { id: 'DAY_TRADER', title: 'Day Trader', description: 'Execute 5 trades in a single day.', iconType: 'Zap', rarity: 'Gold' },
+  { id: 'RISK_TAKER', title: 'Risk Taker', description: 'Execute a single trade exceeding $10,000 value.', iconType: 'Zap', rarity: 'Purple' },
+  { id: 'PIONEER', title: 'Pioneer', description: 'Read the latest stock analysis in the Market Explorer.', iconType: 'Rocket', rarity: 'Bronze' },
+  { id: 'COMMUNITY_LEADER', title: 'Community Leader', description: 'Send messages and exchange strategies in chat.', iconType: 'Crown', rarity: 'Silver' },
+  { id: 'BULL_MARKET', title: 'Bull Market', description: 'Achieve a portfolio performance over +15% total return.', iconType: 'Trophy', rarity: 'Purple' },
+  { id: 'BEAR_SURVIVOR', title: 'Bear Survivor', description: 'Retain positive returns during active market downtrends.', iconType: 'Trophy', rarity: 'Gold' },
+  { id: 'FINANCIAL_GURU', title: 'Financial Guru', description: 'Complete detailed analysis on at least 10 different stocks.', iconType: 'PieChart', rarity: 'Silver' },
+  { id: 'HIGH_ROLLER', title: 'High Roller', description: 'Complete 25 or more transactions since opening your account.', iconType: 'Gem', rarity: 'Gold' },
+  { id: 'SHREWD_INVESTOR', title: 'Shrewd Investor', description: 'Hold cash reserves equal to less than 10% of portfolio value.', iconType: 'PieChart', rarity: 'Silver' },
+  { id: 'STEADY_HAND', title: 'Steady Hand', description: 'Retain a stock position for more than 5 market days.', iconType: 'TreePine', rarity: 'Bronze' },
 ];
 
 export async function getUserAchievements(userId?: string): Promise<string[]> {

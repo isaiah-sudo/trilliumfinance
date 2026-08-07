@@ -146,6 +146,23 @@ html.dark {
 }
 
 
+/* 3D Depth bevel & shadow effects for bottom of containers & widgets */
+.container-3d-bevel {
+  box-shadow:
+    0 12px 28px -4px rgba(0, 0, 0, 0.45),
+    0 8px 16px -2px rgba(0, 0, 0, 0.3),
+    inset 0 -3px 0 0 rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.light .container-3d-bevel, html:not(.dark) .container-3d-bevel {
+  box-shadow:
+    0 12px 28px -4px rgba(15, 23, 42, 0.15),
+    0 8px 16px -2px rgba(15, 23, 42, 0.1),
+    inset 0 -3px 0 0 rgba(148, 163, 184, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+}
+
 /* react-grid-layout custom overrides */
 
 .react-grid-item.react-grid-placeholder {
@@ -158,34 +175,62 @@ html.dark {
 /* react-grid-layout & react-resizable handle styles */
 
 .react-resizable-handle {
-  opacity: 0.3;
+  opacity: 0.4;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  width: 14px !important;
-  height: 14px !important;
-  bottom: 3px !important;
+  width: 16px !important;
+  height: 16px !important;
+  bottom: 4px !important;
   z-index: 40;
+  background-image: none !important;
+}
+
+.react-resizable-handle::after {
+  display: none !important;
 }
 
 .react-resizable-handle-se {
-  right: 3px !important;
-  border-right: 3px solid rgba(148, 163, 184, 0.6) !important;
-  border-bottom: 3px solid rgba(148, 163, 184, 0.6) !important;
-  border-bottom-right-radius: 4px;
+  right: 4px !important;
+  border-right: 2.5px solid rgba(148, 163, 184, 0.7) !important;
+  border-bottom: 2.5px solid rgba(148, 163, 184, 0.7) !important;
+  border-bottom-right-radius: 3px;
 }
 
 .react-resizable-handle-sw {
-  left: 3px !important;
-  border-left: 3px solid rgba(148, 163, 184, 0.6) !important;
-  border-bottom: 3px solid rgba(148, 163, 184, 0.6) !important;
-  border-bottom-left-radius: 4px;
+  left: 5px !important;
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Down-Left Arrow for bottom-left (SW) drag handle */
+.react-resizable-handle-sw::before {
+  content: '';
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-left: 2.5px solid rgba(148, 163, 184, 0.85);
+  border-bottom: 2.5px solid rgba(148, 163, 184, 0.85);
+  transform: rotate(0deg);
+  transition: border-color 0.2s ease;
 }
 
 .react-resizable-handle:hover,
 .react-resizable-handle:active {
   opacity: 1 !important;
-  border-color: #3b82f6 !important;
-  transform: scale(1.3);
+  transform: scale(1.25);
   filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9));
+}
+
+.react-resizable-handle-se:hover,
+.react-resizable-handle-se:active {
+  border-color: #3b82f6 !important;
+}
+
+.react-resizable-handle-sw:hover::before,
+.react-resizable-handle-sw:active::before {
+  border-color: #3b82f6 !important;
 }
 
 /* Liquid Water Pooling & Green Wave Merge Animations */

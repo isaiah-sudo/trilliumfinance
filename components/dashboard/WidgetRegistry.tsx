@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import PortfolioChart from '@/components/PortfolioChart';
-import { Trophy, Rocket, Gem, Crown, PieChart as PieIcon, Zap, Medal, Lock, CheckCircle2, ShieldAlert, ArrowUpRight, ArrowDownRight, RefreshCw, Flame, Award, LineChart, Wallet, BookOpen, User, DollarSign, Activity, Percent, Sparkles, TrendingUp, Newspaper, Target, Layers } from 'lucide-react';
+import { Trophy, Rocket, Gem, Crown, PieChart as PieIcon, Zap, Medal, Lock, CheckCircle2, ShieldAlert, ArrowUpRight, ArrowDownRight, RefreshCw, Flame, Award, LineChart, Wallet, BookOpen, User, DollarSign, Activity, Percent, Sparkles, TrendingUp, Newspaper, Target, Layers, Plus, X } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry } from '@/app/actions/leaderboard';
-import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
+import { ACHIEVEMENTS, getUserAchievements, RarityType } from '@/app/actions/achievements';
 import { AnimatedNumber } from '@/components/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -78,7 +78,7 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
                       <div>{h.symbol}</div>
                       {h.name && <div className="text-[9px] text-slate-400 font-normal truncate max-w-[100px]">{h.name}</div>}
                     </td>
-                    <td className={`py-2.5 px-3 text-right font-num-${numberFont}`}>{h.qty}</td>
+                    <td className={`py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-white font-num-${numberFont}`}>{h.qty}</td>
                     <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
                       ${(h.currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
@@ -123,7 +123,8 @@ const HOLDING_COLOR_PALETTE = [
 
 // 3. Account Summary & Overview Widget
 export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJustNow }: WidgetComponentProps) {
-  const [viewMode, setViewMode] = useState<'portfolio' | 'holdings'>('portfolio');
+  const [viewMode, setViewMode] = useState<'portfolio' | 'positions'>('portfolio');
+  const [displayUnit, setDisplayUnit] = useState<'currency' | 'percent'>('currency');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const cash = Math.max(0, portfolio?.cash || 0);
@@ -137,54 +138,90 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
     { name: 'Cash', value: cash, color: '#2dd4bf' },
   ];
 
-  // Data for Holdings mode (Individual stock holdings with unique assigned colors + Cash if any)
-  const holdingsData = useMemo(() => {
+  // Data for Positions mode (Only user positions, excluding cash)
+  const positionsData = useMemo(() => {
     const items = holdings.map((h: any, idx: number) => ({
       name: h.symbol || `Stock ${idx + 1}`,
       value: Math.max(0, h.marketValue || 0),
       color: HOLDING_COLOR_PALETTE[idx % HOLDING_COLOR_PALETTE.length],
     }));
-    if (cash > 0) {
-      items.push({
-        name: 'Cash',
-        value: cash,
-        color: '#2dd4bf',
-      });
-    }
-    return items.length > 0 ? items : [{ name: 'Cash', value: cash || 1000, color: '#2dd4bf' }];
-  }, [holdings, cash]);
+    return items.length > 0 ? items : [{ name: 'No Positions', value: 0, color: '#64748b' }];
+  }, [holdings]);
 
-  const activeData = viewMode === 'portfolio' ? portfolioData : holdingsData;
+  const activeData = viewMode === 'portfolio' ? portfolioData : positionsData;
+  const activeTotalValue = viewMode === 'portfolio' ? totalPortfolioValue : (totalMarketValue || 1);
 
   return (
     <div className="h-full w-full flex flex-col justify-between space-y-2 min-h-0 select-none">
-      {/* Top Bar with Mode Toggle */}
+      {/* Top Bar with Unit Toggle ($ / %) & Mode Toggle */}
       <div className="flex items-center justify-between shrink-0 pb-1 border-b border-slate-200/50 dark:border-slate-800/50">
         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-          {viewMode === 'portfolio' ? 'Asset Breakdown' : 'Holdings Breakdown'}
+          {viewMode === 'portfolio' ? 'Asset Breakdown' : 'Positions Breakdown'}
         </span>
 
-        <div className="flex items-center bg-slate-200/70 dark:bg-slate-800/90 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
-          <button
-            onClick={() => { setViewMode('portfolio'); setActiveIndex(null); }}
-            className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
-              viewMode === 'portfolio'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-            }`}
-          >
-            Portfolio
-          </button>
-          <button
-            onClick={() => { setViewMode('holdings'); setActiveIndex(null); }}
-            className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
-              viewMode === 'holdings'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-            }`}
-          >
-            Holdings
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Unit Toggle: $ and % */}
+          <div className="flex items-center bg-slate-200/70 dark:bg-slate-800/90 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
+            <button
+              onClick={() => setDisplayUnit('currency')}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                displayUnit === 'currency'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+              title="Display values in USD ($)"
+            >
+              $
+            </button>
+            <button
+              onClick={() => setDisplayUnit('percent')}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                displayUnit === 'percent'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+              title="Display values in Percentages (%)"
+            >
+              %
+            </button>
+          </div>
+
+          {/* Mode Toggle: Portfolio vs Positions */}
+          <div className="flex items-center bg-slate-200/70 dark:bg-slate-800/90 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
+            <button
+              onClick={() => { setViewMode('portfolio'); setActiveIndex(null); }}
+              className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
+                viewMode === 'portfolio'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              Portfolio
+            </button>
+            <button
+              onClick={() => { setViewMode('positions'); setActiveIndex(null); }}
+              className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
+                viewMode === 'positions'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              Positions
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Prominent Bolder Market Value Header Above Pie Chart */}
+      <div className="text-center pt-1 shrink-0">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          {viewMode === 'portfolio' ? 'Total Portfolio Market Value' : 'Total Positions Value'}
+        </div>
+        <div className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white font-num-sans">
+          ${(viewMode === 'portfolio' ? totalPortfolioValue : totalMarketValue).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
         </div>
       </div>
 
@@ -221,7 +258,9 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
             <Tooltip
               offset={18}
               formatter={(val: any, name: any) => [
-                `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                displayUnit === 'percent'
+                  ? `${((Number(val || 0) / activeTotalValue) * 100).toFixed(2)}%`
+                  : `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                 `${name}:`
               ]}
               contentStyle={{
@@ -240,13 +279,19 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
 
       {/* Dynamic Color Identifiers Legend at bottom */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[10px] font-bold text-slate-500 shrink-0 max-h-[60px] overflow-y-auto pt-1">
-        {activeData.map((item: { name: string; value: number; color: string }) => (
-          <span key={`legend-${item.name}`} className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-            <span className="text-slate-700 dark:text-slate-300 font-semibold">{item.name}</span>
-            <span className="text-slate-400">(${item.value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })})</span>
-          </span>
-        ))}
+        {activeData.map((item: { name: string; value: number; color: string }) => {
+          const displayVal = displayUnit === 'percent'
+            ? `${((item.value / activeTotalValue) * 100).toFixed(1)}%`
+            : `$${item.value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+          return (
+            <span key={`legend-${item.name}`} className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="text-slate-700 dark:text-slate-300 font-semibold">{item.name}</span>
+              <span className="text-slate-400">({displayVal})</span>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -307,7 +352,7 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
     async function loadData() {
       try {
         const data = await getLeaderboard();
-        setLeaders(data.slice(0, 5));
+        setLeaders(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -325,23 +370,81 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
     );
   }
 
+  const top3 = leaders.slice(0, 3);
+  const rest = leaders.slice(3, 7);
+
   return (
-    <div className="h-full flex flex-col justify-between space-y-3">
-      <div className="space-y-2">
-        {leaders.map((leader, idx) => (
+    <div className="h-full flex flex-col justify-between space-y-4 overflow-y-auto pr-1">
+      {/* Top 3 Podium Cards */}
+      {top3.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 items-end pt-2">
+          {/* Rank 2 (Silver) */}
+          {top3.length >= 2 ? (
+            <div className="order-1 flex flex-col items-center">
+              <div className="w-full rounded-xl bg-slate-800/80 border border-slate-700/60 p-2.5 flex flex-col items-center text-center shadow-md relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gray-300 to-gray-400" />
+                <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center mb-1.5 ring-2 ring-gray-400/30">
+                  <Medal className="h-4 w-4 text-gray-300" />
+                </div>
+                <span className="text-[9px] font-extrabold text-gray-400 uppercase">Rank 2</span>
+                <h5 className="text-xs font-bold text-white truncate max-w-full">{top3[1].displayName}</h5>
+                <p className="text-[10px] text-blue-400 font-extrabold font-num-sans">
+                  ${top3[1].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          ) : <div className="order-1" />}
+
+          {/* Rank 1 (Gold) */}
+          {top3.length >= 1 ? (
+            <div className="order-2 flex flex-col items-center -mt-2">
+              <div className="w-full rounded-xl bg-gradient-to-b from-amber-500/15 to-slate-800/90 border border-amber-500/40 p-3 flex flex-col items-center text-center shadow-[0_0_15px_rgba(245,158,11,0.2)] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-amber-600" />
+                <div className="h-11 w-11 rounded-full bg-amber-500/20 flex items-center justify-center mb-1.5 ring-2 ring-amber-500/40">
+                  <Trophy className="h-5 w-5 text-amber-400" />
+                </div>
+                <span className="text-[9px] font-extrabold text-amber-400 uppercase">Rank 1</span>
+                <h5 className="text-xs font-extrabold text-white truncate max-w-full">{top3[0].displayName}</h5>
+                <p className="text-xs text-amber-400 font-black font-num-sans">
+                  ${top3[0].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          ) : <div className="order-2" />}
+
+          {/* Rank 3 (Bronze) */}
+          {top3.length >= 3 ? (
+            <div className="order-3 flex flex-col items-center">
+              <div className="w-full rounded-xl bg-slate-800/80 border border-slate-700/60 p-2.5 flex flex-col items-center text-center shadow-md relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-700 to-amber-800" />
+                <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center mb-1.5 ring-2 ring-amber-700/30">
+                  <Award className="h-4 w-4 text-amber-600" />
+                </div>
+                <span className="text-[9px] font-extrabold text-amber-600 uppercase">Rank 3</span>
+                <h5 className="text-xs font-bold text-white truncate max-w-full">{top3[2].displayName}</h5>
+                <p className="text-[10px] text-blue-400 font-extrabold font-num-sans">
+                  ${top3[2].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          ) : <div className="order-3" />}
+        </div>
+      )}
+
+      {/* Rest of Rankings List */}
+      <div className="space-y-1.5">
+        {rest.map((leader) => (
           <div
-            key={leader.id || idx}
-            className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 text-xs"
+            key={leader.id || leader.rank}
+            className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 text-xs"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                idx === 0 ? 'bg-amber-500 text-[#0f111a]' : idx === 1 ? 'bg-slate-300 text-slate-900' : idx === 2 ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {idx + 1}
+              <span className="w-5 h-5 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                {leader.rank}
               </span>
               <span className="font-bold text-slate-900 dark:text-white truncate">{leader.displayName}</span>
             </div>
-            <span className={`font-black text-blue-500 font-num-${numberFont} shrink-0`}>
+            <span className={`font-black text-slate-700 dark:text-slate-300 font-num-${numberFont} shrink-0 text-[11px]`}>
               ${leader.netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </span>
           </div>
@@ -351,10 +454,89 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
   );
 }
 
-// 6. Achievements Tracker Widget
+// Helper icon resolver for trophy modal
+function renderAchievementIcon(iconType: string, isUnlocked: boolean) {
+  const className = `h-6 w-6 ${isUnlocked ? 'text-amber-400' : 'text-slate-500'}`;
+  switch (iconType) {
+    case 'Rocket': return <Rocket className={className} />;
+    case 'Gem': return <Gem className={className} />;
+    case 'Crown': return <Crown className={className} />;
+    case 'PieChart': return <PieIcon className={className} />;
+    case 'Zap': return <Zap className={className} />;
+    case 'Trophy': return <Trophy className={className} />;
+    default: return <Award className={className} />;
+  }
+}
+
+// Rarity style helper
+function getRarityStyle(rarity: RarityType = 'Bronze', isUnlocked: boolean) {
+  if (!isUnlocked) {
+    return {
+      border: 'border-slate-800/80',
+      bg: 'bg-slate-900/40',
+      text: 'text-slate-500',
+      badgeBg: 'bg-slate-800 text-slate-500',
+      glow: 'shadow-none',
+      iconColor: 'text-slate-600',
+    };
+  }
+
+  switch (rarity) {
+    case 'Purple':
+      return {
+        border: 'border-purple-500/60',
+        bg: 'bg-gradient-to-b from-purple-600/20 via-purple-950/30 to-slate-900/90',
+        text: 'text-purple-300',
+        badgeBg: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+        glow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+        iconColor: 'text-purple-400',
+      };
+    case 'Gold':
+      return {
+        border: 'border-amber-500/60',
+        bg: 'bg-gradient-to-b from-amber-500/20 via-amber-950/30 to-slate-900/90',
+        text: 'text-amber-300',
+        badgeBg: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+        glow: 'shadow-[0_0_20px_rgba(245,158,11,0.3)]',
+        iconColor: 'text-amber-400',
+      };
+    case 'Silver':
+      return {
+        border: 'border-slate-300/60',
+        bg: 'bg-gradient-to-b from-slate-300/15 via-slate-800/40 to-slate-900/90',
+        text: 'text-slate-200',
+        badgeBg: 'bg-slate-300/20 text-slate-200 border border-slate-300/30',
+        glow: 'shadow-[0_0_15px_rgba(203,213,225,0.2)]',
+        iconColor: 'text-slate-300',
+      };
+    case 'Bronze':
+    default:
+      return {
+        border: 'border-amber-700/60',
+        bg: 'bg-gradient-to-b from-amber-800/20 via-slate-800/40 to-slate-900/90',
+        text: 'text-amber-200',
+        badgeBg: 'bg-amber-800/20 text-amber-200 border border-amber-700/30',
+        glow: 'shadow-[0_0_15px_rgba(180,83,9,0.2)]',
+        iconColor: 'text-amber-600',
+      };
+  }
+}
+
+// 6. Achievements & Milestones Tracker Widget (Square 1:1 Floating Containers + Cursor Tracking Tilt + Screen Blur Popup Modal)
 export function AchievementsTrackerWidget() {
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  // Default to blank slate (null for all 3 slots)
+  const [slotSelections, setSlotSelections] = useState<(string | null)[]>([null, null, null]);
+
+  // Cursor tracking tilt state for each slot
+  const [tilt, setTilt] = useState<{ [key: number]: { rx: number; ry: number } }>({
+    0: { rx: 0, ry: 0 },
+    1: { rx: 0, ry: 0 },
+    2: { rx: 0, ry: 0 },
+  });
 
   useEffect(() => {
     async function loadData() {
@@ -370,9 +552,34 @@ export function AchievementsTrackerWidget() {
     loadData();
   }, []);
 
-  const total = ACHIEVEMENTS.length;
-  const unlocked = unlockedIds.length;
-  const percent = Math.round((unlocked / total) * 100);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, slotIdx: number) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    // Calculate 3D tilt "looking" angle towards cursor
+    const rx = -(y / (rect.height / 2)) * 14;
+    const ry = (x / (rect.width / 2)) * 14;
+    setTilt((prev) => ({ ...prev, [slotIdx]: { rx, ry } }));
+  };
+
+  const handleMouseLeave = (slotIdx: number) => {
+    setTilt((prev) => ({ ...prev, [slotIdx]: { rx: 0, ry: 0 } }));
+  };
+
+  const handleOpenSlot = (slotIdx: number) => {
+    setSelectedSlot(slotIdx);
+    setModalOpen(true);
+  };
+
+  const handleSelectTrophy = (achievementId: string) => {
+    if (selectedSlot !== null) {
+      const updated = [...slotSelections];
+      updated[selectedSlot] = achievementId;
+      setSlotSelections(updated);
+    }
+    setModalOpen(false);
+    setSelectedSlot(null);
+  };
 
   if (loading) {
     return (
@@ -382,38 +589,176 @@ export function AchievementsTrackerWidget() {
     );
   }
 
+  const unlockedList = ACHIEVEMENTS.filter((a) => unlockedIds.includes(a.id));
+  const lockedList = ACHIEVEMENTS.filter((a) => !unlockedIds.includes(a.id));
+  const slotData = slotSelections.map((id) => ACHIEVEMENTS.find((a) => a.id === id));
+
   return (
-    <div className="h-full flex flex-col justify-between space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-purple-400" />
-          <span className="text-xs font-bold text-slate-900 dark:text-white">Overall Milestone Progress</span>
-        </div>
-        <span className="text-xs font-black text-purple-400">{unlocked} / {total} Unlocked ({percent}%)</span>
-      </div>
+    <div className="h-full w-full flex items-center justify-center p-2 sm:p-4 relative select-none">
+      {/* Three Square Floating Containers Scaling Proportionately with Parent Container */}
+      <div className="flex items-center justify-center gap-3 sm:gap-6 w-full h-full my-auto">
+        {[0, 1, 2].map((slotIdx) => {
+          const ach = slotData[slotIdx];
+          const isUnlocked = ach ? unlockedIds.includes(ach.id) : false;
+          const isMiddle = slotIdx === 1;
+          const style = ach ? getRarityStyle(ach.rarity, isUnlocked) : null;
+          const currentTilt = tilt[slotIdx] || { rx: 0, ry: 0 };
 
-      <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-purple-600 to-fuchsia-500 transition-all duration-500" style={{ width: `${percent}%` }} />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {ACHIEVEMENTS.slice(0, 6).map((ach) => {
-          const isUnlocked = unlockedIds.includes(ach.id);
           return (
             <div
-              key={ach.id}
-              className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs transition-colors ${
-                isUnlocked
-                  ? 'bg-purple-950/20 border-purple-500/30 text-purple-200'
-                  : 'bg-slate-900/30 border-slate-800/40 text-slate-500 opacity-60'
-              }`}
+              key={`slot-${slotIdx}`}
+              className="flex-1 h-full max-h-[85%] max-w-[30%] flex justify-center items-center"
+              style={{ perspective: 600 }}
             >
-              <Award className={`h-4 w-4 shrink-0 ${isUnlocked ? 'text-purple-400' : 'text-slate-600'}`} />
-              <span className="font-bold truncate">{ach.title}</span>
+              <div
+                onMouseMove={(e) => handleMouseMove(e, slotIdx)}
+                onMouseLeave={() => handleMouseLeave(slotIdx)}
+                style={{
+                  transform: `rotateX(${currentTilt.rx}deg) rotateY(${currentTilt.ry}deg)`,
+                  transition: currentTilt.rx === 0 && currentTilt.ry === 0 ? 'transform 0.4s ease-out' : 'none',
+                  transformStyle: 'preserve-3d',
+                }}
+                className={`aspect-square w-full h-auto max-h-full rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-center p-3 sm:p-4 text-center relative group transition-all shadow-xl ${
+                  isMiddle ? 'scale-105 z-10' : 'z-0'
+                } ${
+                  ach
+                    ? `${style?.bg} ${style?.border} ${style?.glow}`
+                    : 'bg-slate-950/40 border-dashed border-slate-700/60 hover:border-blue-500/50'
+                }`}
+              >
+                {ach ? (
+                  <div className="flex flex-col items-center justify-center h-full w-full relative" style={{ transform: 'translateZ(12px)' }}>
+                    <div className="mb-1.5 p-2 sm:p-3 rounded-2xl bg-slate-900/60 border border-slate-700/50 shadow-inner">
+                      {renderAchievementIcon(ach.iconType, isUnlocked)}
+                    </div>
+                    <span className={`text-xs sm:text-sm font-black truncate max-w-full px-1 ${style?.text}`}>
+                      {ach.title}
+                    </span>
+                    <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full mt-1.5 ${style?.badgeBg}`}>
+                      {ach.rarity}
+                    </span>
+
+                    <button
+                      onClick={() => handleOpenSlot(slotIdx)}
+                      className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white transition-all cursor-pointer shadow-md"
+                      title="Change Trophy"
+                    >
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  // Blank Slate with Plus button scaling proportionately
+                  <div className="flex flex-col items-center justify-center gap-2" style={{ transform: 'translateZ(8px)' }}>
+                    <button
+                      onClick={() => handleOpenSlot(slotIdx)}
+                      className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 text-blue-400 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-lg hover:scale-110"
+                      title="Add Trophy to Showcase"
+                    >
+                      <Plus className="h-5 w-5 sm:h-7 sm:w-7" />
+                    </button>
+                    <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest">EMPTY</span>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* Screen-Wide Centered Modal with Full Screen Backdrop Blur & Close X */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-xl p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-[#101420]/95 border border-slate-700/80 rounded-3xl p-6 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] space-y-6 max-h-[85vh] flex flex-col relative">
+            {/* Top Right Close Button X */}
+            <button
+              onClick={() => setModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-full bg-slate-800/80 hover:bg-rose-600 text-slate-400 hover:text-white border border-slate-700 transition-all cursor-pointer shadow-lg"
+              title="Close Popup"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-800/80 shrink-0 pr-10">
+              <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
+                <Trophy className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">Trophy Case Showcase</h3>
+                <p className="text-xs font-semibold text-slate-400">Select a trophy to feature in your 3D showcase slot.</p>
+              </div>
+            </div>
+
+            {/* Modal Content with Rarity Tags & Sorted Rows */}
+            <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+              {/* Row 1: Unlocked Trophies */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" /> Unlocked Trophies ({unlockedList.length})
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {unlockedList.map((ach) => {
+                    const style = getRarityStyle(ach.rarity, true);
+                    return (
+                      <div
+                        key={ach.id}
+                        onClick={() => handleSelectTrophy(ach.id)}
+                        className={`p-3.5 rounded-2xl border ${style.bg} ${style.border} hover:border-blue-400 cursor-pointer transition-all hover:scale-[1.02] shadow-md flex items-center gap-3 group`}
+                      >
+                        <div className={`p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 ${style.iconColor} group-hover:scale-110 transition-transform`}>
+                          {renderAchievementIcon(ach.iconType, true)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-sm font-extrabold text-white group-hover:text-amber-300 transition-colors truncate">
+                              {ach.title}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${style.badgeBg}`}>
+                              {ach.rarity}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 line-clamp-2 mt-0.5">{ach.description}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 2: Locked Trophies */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Lock className="h-4 w-4" /> Locked Trophies ({lockedList.length})
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {lockedList.map((ach) => (
+                    <div
+                      key={ach.id}
+                      onClick={() => handleSelectTrophy(ach.id)}
+                      className="p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800/60 hover:border-slate-700 opacity-60 hover:opacity-100 cursor-pointer transition-all hover:scale-[1.01] flex items-center gap-3 group"
+                    >
+                      <div className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-500">
+                        {renderAchievementIcon(ach.iconType, false)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-sm font-bold text-slate-300 truncate">{ach.title}</span>
+                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 shrink-0">
+                            {ach.rarity}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 line-clamp-2 mt-0.5">{ach.description}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -543,7 +888,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   },
   'account-summary': {
     id: 'account-summary',
-    title: 'Account Summary & Overview',
+    title: 'Pie Chart',
     component: AccountSummaryWidget,
     description: 'Buying power, available cash, and asset allocation',
     defaultCategory: 'starter',

@@ -756,7 +756,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl pet-container-target relative w-full"
+        className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl container-3d-bevel pet-container-target relative w-full"
       >
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>

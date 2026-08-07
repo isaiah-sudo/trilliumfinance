@@ -53,18 +53,18 @@ export default function DashboardWidgetCard({
 
   return (
     <div
-      className={`h-full w-full flex flex-col ${roundedClasses} bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-xl ${
+      className={`h-full w-full flex flex-col ${roundedClasses} bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-xl container-3d-bevel ${
         isMergingAnimation ? 'liquid-pool-merge green-wave-finish' : ''
       } transition-all duration-300 overflow-hidden relative`}
     >
-      {/* Sleek vertical (right) divider line matching container border opacity, stopping before edges */}
+      {/* Sleek vertical (right) divider line matching container border opacity, centered on border */}
       {showRightSeparator && (
-        <div className="absolute right-0 top-3 bottom-3 w-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
+        <div className="absolute right-[-0.5px] top-0 bottom-0 w-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
       )}
 
-      {/* Sleek horizontal (bottom) divider line matching container border opacity, stopping before edges */}
+      {/* Sleek horizontal (bottom) divider line matching container border opacity, centered on border */}
       {showBottomSeparator && (
-        <div className="absolute bottom-0 left-3 right-3 h-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
+        <div className="absolute bottom-[-0.5px] left-0 right-0 h-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
       )}
       {/* Widget Header */}
       <div
