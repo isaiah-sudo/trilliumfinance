@@ -133,7 +133,7 @@ export default function LeaderboardPage() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-slate-200">{leader.displayName}</h4>
-                  <p className="text-xs text-slate-500">Trader</p>
+                  <p className="text-xs text-slate-500">Trader Account</p>
                 </div>
               </div>
               <div className="text-right">

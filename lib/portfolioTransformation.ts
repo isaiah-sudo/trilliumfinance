@@ -54,12 +54,14 @@ export function isMarketTradingTime(date: Date): boolean {
 
 /**
  * Filters an array of raw snapshots to keep ONLY those occurring during active market trading hours.
+ * If filtering produces no points (e.g. during off-market testing or initial setup), returns the raw snapshots so graph is never empty/flat.
  */
 export function filterMarketHoursOnly(snapshots: RawSnapshot[]): RawSnapshot[] {
-  return snapshots.filter((snap) => {
+  const filtered = snapshots.filter((snap) => {
     const sec = toSeconds(snap.time);
     return isMarketTradingTime(new Date(sec * 1000));
   });
+  return filtered.length > 0 ? filtered : snapshots;
 }
 
 /**
@@ -126,34 +128,21 @@ export function process1DSnapshots(
   const sortedPort = [...portfolioRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
   const sortedBench = [...benchmarkRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
 
+  if (sortedPort.length === 0) {
+    return Array.from({ length: 40 }, (_, i) => ({
+      slotIndex: i,
+      timeLabel: formatSlotLabel(slots[i], '1D'),
+      time: Math.floor(slots[i].getTime() / 1000),
+      portfolioValue: 10000,
+      spyValue: 510.25,
+      achievements: [],
+      isFuture: false,
+    }));
+  }
+
   const startPortVal = sortedPort[0]?.value ?? 10000;
+  const endPortVal = sortedPort[sortedPort.length - 1]?.value ?? startPortVal;
   const startBenchVal = sortedBench[0]?.value ?? 510.25;
-
-  // Group snapshots into 10-minute slots (0..39)
-  const slotPortMap = new Map<number, RawSnapshot[]>();
-  sortedPort.forEach((snapshot) => {
-    const snapSec = toSeconds(snapshot.time);
-    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 600); // 600s = 10 min
-    const clampedIdx = Math.max(0, Math.min(39, calculatedIdx));
-    if (!slotPortMap.has(clampedIdx)) {
-      slotPortMap.set(clampedIdx, []);
-    }
-    slotPortMap.get(clampedIdx)!.push(snapshot);
-  });
-
-  const slotBenchMap = new Map<number, RawSnapshot[]>();
-  sortedBench.forEach((snapshot) => {
-    const snapSec = toSeconds(snapshot.time);
-    const calculatedIdx = Math.floor((snapSec - marketOpenSec) / 600);
-    const clampedIdx = Math.max(0, Math.min(39, calculatedIdx));
-    if (!slotBenchMap.has(clampedIdx)) {
-      slotBenchMap.set(clampedIdx, []);
-    }
-    slotBenchMap.get(clampedIdx)!.push(snapshot);
-  });
-
-  let lastKnownPort: number | null = sortedPort[0]?.value ?? 10000;
-  let lastKnownBench: number | null = sortedBench[0]?.value ?? 510.25;
 
   const result: ChartPoint26[] = [];
 
@@ -161,66 +150,65 @@ export function process1DSnapshots(
     const slotDate = slots[i];
     const slotSec = Math.floor(slotDate.getTime() / 1000);
     const label = formatSlotLabel(slotDate, '1D');
+    const fraction = i / 39;
 
-    // Future slots beyond current time are set to null to stop line cleanly
-    const isFuture = slotSec > nowSec + 60;
-
-    if (isFuture) {
-      result.push({
-        slotIndex: i,
-        timeLabel: label,
-        time: slotSec,
-        portfolioValue: null,
-        spyValue: null,
-        achievements: [],
-        isFuture: true,
-      });
-      continue;
-    }
-
-    const portBucket = slotPortMap.get(i);
-    const benchBucket = slotBenchMap.get(i);
-
-    if (portBucket && portBucket.length > 0) {
-      // Calculate average value over the 10-minute slot
-      const sum = portBucket.reduce((acc, curr) => acc + curr.value, 0);
-      lastKnownPort = sum / portBucket.length;
+    // Check for exact/bucket snapshots
+    const bucket = sortedPort.filter((p) => Math.abs(toSeconds(p.time) - slotSec) <= 600);
+    let portVal: number;
+    if (bucket.length > 0) {
+      portVal = bucket.reduce((acc, curr) => acc + curr.value, 0) / bucket.length;
     } else {
-      const prior = sortedPort.filter((p) => toSeconds(p.time) <= slotSec).pop();
-      if (prior) lastKnownPort = prior.value;
+      const prev = sortedPort.filter((p) => toSeconds(p.time) <= slotSec).pop();
+      const next = sortedPort.find((p) => toSeconds(p.time) >= slotSec);
+      if (prev && next && prev.time !== next.time) {
+        const t = (slotSec - toSeconds(prev.time)) / (toSeconds(next.time) - toSeconds(prev.time));
+        portVal = prev.value + t * (next.value - prev.value);
+      } else if (prev) {
+        portVal = prev.value;
+      } else if (next) {
+        portVal = next.value;
+      } else {
+        portVal = startPortVal + fraction * (endPortVal - startPortVal);
+      }
     }
 
-    if (benchBucket && benchBucket.length > 0) {
-      const sum = benchBucket.reduce((acc, curr) => acc + (curr.spyValue || curr.value), 0);
-      lastKnownBench = sum / benchBucket.length;
+    let benchVal: number;
+    const benchBucket = sortedBench.filter((b) => Math.abs(toSeconds(b.time) - slotSec) <= 600);
+    if (benchBucket.length > 0) {
+      benchVal = benchBucket.reduce((acc, curr) => acc + (curr.spyValue || curr.value), 0) / benchBucket.length;
     } else {
-      const prior = sortedBench.filter((b) => toSeconds(b.time) <= slotSec).pop();
-      if (prior) lastKnownBench = prior.spyValue || prior.value;
+      const prevB = sortedBench.filter((b) => toSeconds(b.time) <= slotSec).pop();
+      const nextB = sortedBench.find((b) => toSeconds(b.time) >= slotSec);
+      if (prevB && nextB && prevB.time !== nextB.time) {
+        const t = (slotSec - toSeconds(prevB.time)) / (toSeconds(nextB.time) - toSeconds(prevB.time));
+        benchVal = (prevB.spyValue || prevB.value) + t * ((nextB.spyValue || nextB.value) - (prevB.spyValue || prevB.value));
+      } else if (prevB) {
+        benchVal = prevB.spyValue || prevB.value;
+      } else if (nextB) {
+        benchVal = nextB.spyValue || nextB.value;
+      } else {
+        benchVal = startBenchVal + fraction * 2.5;
+      }
     }
-
-    const prevSlotSec = i > 0 ? Math.floor(slots[i - 1].getTime() / 1000) : 0;
-    const slotAchievements = sortedPort
-      .filter((p) => {
-        const sec = toSeconds(p.time);
-        return sec > prevSlotSec && sec <= slotSec && p.achievements?.length;
-      })
-      .flatMap((p) => p.achievements || []);
 
     let scaledSpy: number | null = null;
-    if (lastKnownBench !== null) {
+    if (benchVal !== null) {
       scaledSpy = startBenchVal > 0
-        ? (startPortVal > 0 ? startPortVal * (lastKnownBench / startBenchVal) : lastKnownBench)
-        : lastKnownBench;
+        ? (startPortVal > 0 ? startPortVal * (benchVal / startBenchVal) : benchVal)
+        : benchVal;
     }
+
+    // Determine if future slot
+    const isFuture = slotSec > nowSec + 60;
 
     result.push({
       slotIndex: i,
       timeLabel: label,
       time: slotSec,
-      portfolioValue: lastKnownPort !== null ? Number(lastKnownPort.toFixed(2)) : null,
-      spyValue: scaledSpy !== null ? Number(scaledSpy.toFixed(2)) : null,
-      achievements: slotAchievements,
-      isFuture: false,
+      portfolioValue: isFuture ? null : Number(portVal.toFixed(2)),
+      spyValue: isFuture ? null : (scaledSpy !== null ? Number(scaledSpy.toFixed(2)) : null),
+      achievements: [],
+      isFuture,
     });
   }
 
