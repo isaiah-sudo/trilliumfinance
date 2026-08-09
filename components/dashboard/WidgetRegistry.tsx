@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import PortfolioChart from '@/components/PortfolioChart';
 import { Trophy, Rocket, Gem, Crown, PieChart as PieIcon, Zap, Medal, Lock, CheckCircle2, ShieldAlert, ArrowUpRight, ArrowDownRight, RefreshCw, Flame, Award, LineChart, Wallet, BookOpen, User, DollarSign, Activity, Percent, Sparkles, TrendingUp, Newspaper, Target, Layers, Plus, X } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry } from '@/app/actions/leaderboard';
@@ -75,8 +76,26 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
                 return (
                   <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-2.5 pr-3 font-bold text-blue-600 dark:text-blue-400">
-                      <div>{h.symbol}</div>
-                      {h.name && <div className="text-[9px] text-slate-400 font-normal truncate max-w-[100px]">{h.name}</div>}
+                      <div className="flex items-center gap-2.5">
+                        {h.logo ? (
+                          <img
+                            src={h.logo}
+                            alt={h.symbol}
+                            className="w-7 h-7 rounded-full object-contain bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0 border border-slate-200 dark:border-slate-700/60 shadow-sm"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-[10px] font-black shrink-0 shadow-sm">
+                            {h.symbol.slice(0, 2)}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <div className="leading-tight">{h.symbol}</div>
+                          {h.name && <div className="text-[9px] text-slate-400 font-normal truncate max-w-[110px] leading-tight">{h.name}</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className={`py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-white font-num-${numberFont}`}>{h.qty}</td>
                     <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
@@ -538,6 +557,11 @@ export function AchievementsTrackerWidget() {
     2: { rx: 0, ry: 0 },
   });
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -665,8 +689,8 @@ export function AchievementsTrackerWidget() {
         })}
       </div>
 
-      {/* Screen-Wide Centered Modal with Full Screen Backdrop Blur & Close X */}
-      {modalOpen && (
+      {/* Screen-Wide Centered Modal with Full Screen Backdrop Blur via React Portal */}
+      {mounted && modalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-xl p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-2xl bg-[#101420]/95 border border-slate-700/80 rounded-3xl p-6 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] space-y-6 max-h-[85vh] flex flex-col relative">
             {/* Top Right Close Button X */}
@@ -757,7 +781,8 @@ export function AchievementsTrackerWidget() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

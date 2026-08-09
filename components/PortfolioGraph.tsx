@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -18,6 +19,63 @@ import {
   TimeRange,
   transformPortfolioData,
 } from '@/lib/portfolioTransformation';
+
+function getMarketStatus(): { isOpen: boolean; label: string } {
+  const now = new Date();
+  const estStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
+  const estDate = new Date(estStr);
+  const estDay = estDate.getDay(); // 0 = Sun, 6 = Sat
+
+  const hours = estDate.getHours();
+  const minutes = estDate.getMinutes();
+  const seconds = estDate.getSeconds();
+  const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+  const marketOpenSec = 9 * 3600 + 30 * 60; // 9:30 AM EST
+  const marketCloseSec = 16 * 3600;         // 4:00 PM EST
+
+  const isWeekday = estDay >= 1 && estDay <= 5;
+  const isOpen = isWeekday && currentTotalSeconds >= marketOpenSec && currentTotalSeconds < marketCloseSec;
+
+  if (isOpen) {
+    const remainingSec = marketCloseSec - currentTotalSeconds;
+    const h = Math.floor(remainingSec / 3600);
+    const m = Math.floor((remainingSec % 3600) / 60);
+    const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return { isOpen: true, label: `Closes in ${timeStr}` };
+  } else {
+    let daysUntilOpen = 0;
+    if (isWeekday && currentTotalSeconds < marketOpenSec) {
+      daysUntilOpen = 0;
+    } else if (estDay === 5 && currentTotalSeconds >= marketCloseSec) {
+      daysUntilOpen = 3;
+    } else if (estDay === 6) {
+      daysUntilOpen = 2;
+    } else if (estDay === 0) {
+      daysUntilOpen = 1;
+    } else {
+      daysUntilOpen = 1;
+    }
+
+    let remainingSec = 0;
+    if (daysUntilOpen === 0) {
+      remainingSec = marketOpenSec - currentTotalSeconds;
+    } else {
+      const secondsUntilMidnight = (24 * 3600) - currentTotalSeconds;
+      remainingSec = secondsUntilMidnight + ((daysUntilOpen - 1) * 24 * 3600) + marketOpenSec;
+    }
+
+    const totalHours = Math.floor(remainingSec / 3600);
+    const m = Math.floor((remainingSec % 3600) / 60);
+
+    if (totalHours >= 24) {
+      const d = Math.floor(totalHours / 24);
+      const h = totalHours % 24;
+      return { isOpen: false, label: `Opens in ${d}d ${h}h` };
+    }
+    return { isOpen: false, label: `Opens in ${totalHours}h ${m}m` };
+  }
+}
 
 export interface PortfolioGraphProps {
   data: { portfolio: RawSnapshot[]; benchmark: RawSnapshot[] };
@@ -37,8 +95,20 @@ export default function PortfolioGraph({
   showBenchmark = true,
 }: PortfolioGraphProps) {
   const [isHovering, setIsHovering] = useState(false);
+  const [selectedBenchmark, setSelectedBenchmark] = useState<'SPY' | 'DJI' | 'NASDAQ'>('SPY');
+  const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; label: string }>({ isOpen: false, label: '' });
 
-  // Transform raw data into the exact 26-point dataset
+  useEffect(() => {
+    const updateStatus = () => {
+      setMarketStatus(getMarketStatus());
+    };
+    updateStatus();
+    const interval = setInterval(updateStatus, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Transform raw data into dataset
   const chartData = useMemo(() => {
     return transformPortfolioData(data, timeRange);
   }, [data, timeRange]);
@@ -57,9 +127,9 @@ export default function PortfolioGraph({
   }, [activePoints]);
 
   // Modern Robinhood / TradingView aesthetic palette
-  const strokeColor = isPositive ? '#10B981' : '#F43F5E'; // Emerald Green / Crimson Rose
+  const strokeColor = isPositive ? '#10B981' : '#F43F5E';
   const gradientId = isPositive ? 'portfolioGainGradient' : 'portfolioLossGradient';
-  const spyColor = '#64748B'; // Slate Gray for Benchmark
+  const spyColor = '#64748B';
 
   // Custom Mouse Move Handler for smooth tooltips and parent callbacks
   const handleMouseMove = (state: any) => {
@@ -140,7 +210,7 @@ export default function PortfolioGraph({
     <div className="w-full h-full flex flex-col justify-between font-sans select-none">
       {/* Performance Header & Timeframe Control Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-        {/* Header Stats & Disclaimer */}
+        {/* Header Stats & Benchmark Dropdown */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-baseline gap-1.5">
             <span className={`text-xl font-extrabold tracking-tight ${usdDiff >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
@@ -151,9 +221,49 @@ export default function PortfolioGraph({
             </span>
           </div>
 
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium sm:border-l border-slate-300 dark:border-slate-800 sm:pl-3">
-            Gray dashed line indicates SPY benchmark performance
-          </span>
+          <div className="flex items-center gap-2.5 sm:border-l border-slate-300 dark:border-slate-800 sm:pl-3">
+            {/* Market Countdown Timer */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${marketStatus.isOpen ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${marketStatus.isOpen ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+              </span>
+              <span className={`font-bold ${marketStatus.isOpen ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                {marketStatus.label}
+              </span>
+            </div>
+
+            {/* Benchmark Selector Button */}
+            <div className="relative">
+              <button
+                onClick={() => setIsBenchmarkMenuOpen(!isBenchmarkMenuOpen)}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-[#161B26] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-sm"
+              >
+                <span>{selectedBenchmark}</span>
+                <ChevronDown className="h-3 w-3 text-slate-400" />
+              </button>
+
+              {isBenchmarkMenuOpen && (
+                <div className="absolute left-0 mt-1 w-28 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xl py-1 z-30 font-sans">
+                  {(['SPY', 'DJI', 'NASDAQ'] as const).map((bm) => (
+                    <button
+                      key={bm}
+                      onClick={() => {
+                        setSelectedBenchmark(bm);
+                        setIsBenchmarkMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-bold flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors ${
+                        selectedBenchmark === bm ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <span>{bm}</span>
+                      {selectedBenchmark === bm && <Check className="h-3 w-3 text-emerald-500" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Timeframe Control Tabs */}
@@ -240,7 +350,7 @@ export default function PortfolioGraph({
 
               {/* TradingView Tooltip Overlay */}
               <Tooltip
-                content={<CustomTooltip timeRange={timeRange} startPortVal={startPortVal} startSpyVal={startSpyVal} />}
+                content={<CustomTooltip timeRange={timeRange} selectedBenchmark={selectedBenchmark} startPortVal={startPortVal} startSpyVal={startSpyVal} />}
                 cursor={{
                   stroke: strokeColor,
                   strokeWidth: 1,
@@ -293,7 +403,7 @@ export default function PortfolioGraph({
 /**
  * Custom Floating Tooltip with Values & Percentage Changes
  */
-function CustomTooltip({ active, payload, timeRange, startPortVal, startSpyVal }: any) {
+function CustomTooltip({ active, payload, timeRange, selectedBenchmark = 'SPY', startPortVal, startSpyVal }: any) {
   if (!active || !payload || !payload.length) return null;
 
   const data: ChartPoint26 = payload[0].payload;
@@ -338,11 +448,11 @@ function CustomTooltip({ active, payload, timeRange, startPortVal, startSpyVal }
         </div>
       </div>
 
-      {/* SPY Benchmark Value + Percentage */}
+      {/* SPY / Benchmark Value + Percentage */}
       {spyVal !== null && (
         <div className="flex items-center gap-2 mt-1.5">
           <span className="w-2 h-2 rounded-full bg-slate-400" />
-          <span className="text-slate-600 dark:text-slate-400 font-medium">SPY Benchmark:</span>
+          <span className="text-slate-600 dark:text-slate-400 font-medium">{selectedBenchmark} Benchmark:</span>
           <div className="ml-auto flex items-baseline gap-1">
             <span className="text-slate-700 dark:text-slate-300 font-semibold">
               ${spyVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

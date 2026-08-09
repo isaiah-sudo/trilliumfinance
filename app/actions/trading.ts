@@ -135,13 +135,13 @@ export async function fetchFinnhubQuote(symbol: string) {
 async function fetchFinnhubProfile(symbol: string) {
   try {
     const token = getFinnhubToken();
-    if (!token) return { name: symbol };
+    if (!token) return { name: symbol, logo: null };
     const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol.toUpperCase()}&token=${token}`);
-    if (!res.ok) return { name: symbol };
+    if (!res.ok) return { name: symbol, logo: null };
     const data = await res.json();
-    return { name: data.name || symbol };
+    return { name: data.name || symbol, logo: data.logo || null };
   } catch (err) {
-    return { name: symbol };
+    return { name: symbol, logo: null };
   }
 }
 
@@ -233,6 +233,13 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       // Proceed with defaults defined earlier (cash already set, balanceHistory fallback applied)
     }
 
+    // Check if market is closed today because it's a weekend (Saturday or Sunday EST)
+    const now = new Date();
+    const estDateStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
+    const estDate = new Date(estDateStr);
+    const estDay = estDate.getDay();
+    const isWeekend = estDay === 0 || estDay === 6;
+
     const holdingsList = [];
     let totalMarketValue = 0;
     let totalCostBasis = 0;
@@ -257,7 +264,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
         const costBase = calculateAssetCostBasis(holdingData.qty, holdingData.avgPrice || 0);
         const pl = calculateAssetPLUSD(marketValue, costBase);
         const plPercent = calculateAssetPLPercent(currentPrice, holdingData.avgPrice || 0);
-        const holdingDayPL = calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
+        const holdingDayPL = isWeekend ? 0 : calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
 
         totalMarketValue = safeAdd(totalMarketValue, marketValue);
         totalCostBasis = safeAdd(totalCostBasis, costBase);
@@ -266,6 +273,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
         holdingsList.push({
           symbol: ticker,
           name: profileData.name,
+          logo: profileData.logo,
           qty: holdingData.qty,
           avgPrice: holdingData.avgPrice || 0,
           currentPrice,

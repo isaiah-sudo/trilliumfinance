@@ -763,10 +763,10 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setWidgetModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-[11px] font-bold text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
+              className="flex items-center justify-center p-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
+              title="Add Widgets"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add Widgets</span>
+              <Plus className="h-4 w-4" />
             </button>
             <button
               onClick={handleResetLayout}

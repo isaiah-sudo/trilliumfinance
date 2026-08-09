@@ -125,7 +125,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
   };
 
   const navLinks = [
-    { name: 'Portfolio', href: '/dashboard' },
+    { name: 'Dashboard', href: '/dashboard' },
     { name: 'Explore', href: '/dashboard/explore' },
     { name: 'News', href: '/dashboard/news' },
     { name: 'Chat', href: '/dashboard/chat' },
@@ -181,11 +181,11 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
             {/* Navigation Center Section */}
             <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-3">
-              <div className="flex items-center justify-center gap-1 xl:gap-2 px-1 transition-all duration-500 ease-out">
+              <div className="flex items-center justify-center gap-2.5 xl:gap-4 px-1 transition-all duration-500 ease-out">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: string }> = {
-                    Portfolio: {
-                      title: 'My Portfolio',
+                    Dashboard: {
+                      title: 'My Dashboard',
                       desc: 'See how much money you have, what stocks you own, and watch your progress grow on simple charts.',
                       icon: '💼',
                     },
@@ -392,7 +392,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((link) => {
                   const navIcons: Record<string, string> = {
-                    Portfolio: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Educator Portal': '🛠️'
+                    Dashboard: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Educator Portal': '🛠️'
                   };
                   return (
                     <Link
