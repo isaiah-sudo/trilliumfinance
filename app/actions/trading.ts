@@ -638,14 +638,17 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
 export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   const userId = await getAuthenticatedUserId();
 
-  // Get live portfolio summary to guarantee graph matches actual current net worth
+  // Get live portfolio summary to guarantee graph matches actual current net worth & day performance
   let currentNetWorth = 10000;
+  let dayPerformanceUSD = 0;
   try {
     const summary = await getPortfolioSummary();
     currentNetWorth = summary.totalValue || 10000;
+    dayPerformanceUSD = summary.dayPerformanceUSD || 0;
   } catch (e) {
     console.error('Failed to get portfolio summary for graph:', e);
   }
+  const startOfDayNetWorth = currentNetWorth - dayPerformanceUSD;
   
   // Calculate timestamps
   const now = new Date();
@@ -704,6 +707,18 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     console.error('Failed to fetch snapshot data:', err);
   }
 
+  if (timeRange === '1D') {
+    // Ensure baseline starting point at 9:30 AM exists
+    const hasStartPoint = rawPoints.some((p) => Math.abs(p.time - startTimestamp) <= 300);
+    if (!hasStartPoint) {
+      rawPoints.unshift({
+        time: startTimestamp,
+        value: startOfDayNetWorth,
+        spyValue: 510.25,
+      });
+    }
+  }
+
   // Always append current live net worth as the final point
   rawPoints.push({
     time: endTimestamp,
@@ -714,10 +729,10 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   // Sort by time
   rawPoints.sort((a, b) => a.time - b.time);
 
-  // If points are sparse or all have identical values (flat line), generate organic realistic market trajectory from starting capital ($10,000) to currentNetWorth
+  // If points are sparse or all have identical values (flat line), generate organic realistic market trajectory
   const allSameValue = rawPoints.every((p) => Math.abs(p.value - rawPoints[0].value) < 0.01);
   if (rawPoints.length <= 2 || allSameValue) {
-    const startVal = 10000;
+    const startVal = timeRange === '1D' ? startOfDayNetWorth : (rawPoints[0]?.value || 10000);
     const endVal = currentNetWorth;
     const pointCount = 40;
     const syntheticPoints = [];
@@ -730,10 +745,10 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
       
       // Micro market wave variation
       const sineWave = Math.sin(i * 0.45) * 0.15 + Math.cos(i * 0.25) * 0.1;
-      const waveAmplitude = Math.max(30, Math.abs(diff) * 0.25);
+      const waveAmplitude = Math.max(10, Math.abs(diff) * 0.25);
       
       let val = startVal + t * diff;
-      if (i < pointCount - 1) {
+      if (i > 0 && i < pointCount - 1) {
         val += sineWave * waveAmplitude;
       }
       

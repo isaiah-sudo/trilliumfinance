@@ -89,6 +89,9 @@ export function generate1DSlots(referenceDate: Date = new Date()): Date[] {
 /**
  * Formats a Date object into a readable time/date string for tooltips and axes.
  */
+/**
+ * Formats a Date object into a readable time/date string for tooltips and axes.
+ */
 export function formatSlotLabel(date: Date, timeRange: TimeRange): string {
   if (timeRange === '1D') {
     return date.toLocaleTimeString('en-US', {
@@ -102,14 +105,18 @@ export function formatSlotLabel(date: Date, timeRange: TimeRange): string {
     return date.toLocaleDateString('en-US', {
       timeZone: 'America/New_York',
       weekday: 'short',
-      hour: 'numeric',
-      minute: '2-digit',
+    });
+  }
+  if (timeRange === '1M') {
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
     });
   }
   return date.toLocaleDateString('en-US', {
     timeZone: 'America/New_York',
     month: 'short',
-    day: 'numeric',
   });
 }
 
@@ -122,7 +129,6 @@ export function process1DSnapshots(
   now: Date = new Date()
 ): ChartPoint26[] {
   const slots = generate1DSlots(now);
-  const marketOpenSec = Math.floor(slots[0].getTime() / 1000);
   const nowSec = Math.floor(now.getTime() / 1000);
 
   const sortedPort = [...portfolioRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
@@ -152,23 +158,26 @@ export function process1DSnapshots(
     const label = formatSlotLabel(slotDate, '1D');
     const fraction = i / 39;
 
-    // Check for exact/bucket snapshots
-    const bucket = sortedPort.filter((p) => Math.abs(toSeconds(p.time) - slotSec) <= 600);
     let portVal: number;
-    if (bucket.length > 0) {
-      portVal = bucket.reduce((acc, curr) => acc + curr.value, 0) / bucket.length;
+    if (i === 0) {
+      portVal = startPortVal;
     } else {
-      const prev = sortedPort.filter((p) => toSeconds(p.time) <= slotSec).pop();
-      const next = sortedPort.find((p) => toSeconds(p.time) >= slotSec);
-      if (prev && next && prev.time !== next.time) {
-        const t = (slotSec - toSeconds(prev.time)) / (toSeconds(next.time) - toSeconds(prev.time));
-        portVal = prev.value + t * (next.value - prev.value);
-      } else if (prev) {
-        portVal = prev.value;
-      } else if (next) {
-        portVal = next.value;
+      const bucket = sortedPort.filter((p) => Math.abs(toSeconds(p.time) - slotSec) <= 600);
+      if (bucket.length > 0) {
+        portVal = bucket.reduce((acc, curr) => acc + curr.value, 0) / bucket.length;
       } else {
-        portVal = startPortVal + fraction * (endPortVal - startPortVal);
+        const prev = sortedPort.filter((p) => toSeconds(p.time) <= slotSec).pop();
+        const next = sortedPort.find((p) => toSeconds(p.time) >= slotSec);
+        if (prev && next && prev.time !== next.time) {
+          const t = (slotSec - toSeconds(prev.time)) / (toSeconds(next.time) - toSeconds(prev.time));
+          portVal = prev.value + t * (next.value - prev.value);
+        } else if (prev) {
+          portVal = prev.value;
+        } else if (next) {
+          portVal = next.value;
+        } else {
+          portVal = startPortVal + fraction * (endPortVal - startPortVal);
+        }
       }
     }
 
@@ -210,6 +219,16 @@ export function process1DSnapshots(
       achievements: [],
       isFuture,
     });
+  }
+
+  // Ensure the latest non-future slot reflects the exact current net worth
+  const activeIndices = result
+    .map((p, idx) => (p.portfolioValue !== null ? idx : -1))
+    .filter((idx) => idx !== -1);
+
+  if (activeIndices.length > 0) {
+    const lastActiveIdx = activeIndices[activeIndices.length - 1];
+    result[lastActiveIdx].portfolioValue = Number(endPortVal.toFixed(2));
   }
 
   return result;

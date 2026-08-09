@@ -221,6 +221,15 @@ export default function PortfolioGraph({
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
+                tickFormatter={(value: string, index: number) => {
+                  if (!chartData || index === undefined) return value;
+                  if (timeRange === '1W' || timeRange === '1M' || timeRange === '1Y') {
+                    if (index > 0 && chartData[index - 1]?.timeLabel === value) {
+                      return '';
+                    }
+                  }
+                  return value;
+                }}
                 tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
                 dy={6}
               />
@@ -284,7 +293,7 @@ export default function PortfolioGraph({
 /**
  * Custom Floating Tooltip with Values & Percentage Changes
  */
-function CustomTooltip({ active, payload, startPortVal, startSpyVal }: any) {
+function CustomTooltip({ active, payload, timeRange, startPortVal, startSpyVal }: any) {
   if (!active || !payload || !payload.length) return null;
 
   const data: ChartPoint26 = payload[0].payload;
@@ -298,9 +307,22 @@ function CustomTooltip({ active, payload, startPortVal, startSpyVal }: any) {
   const spyDiff = spyVal !== null ? spyVal - (startSpyVal || spyVal) : 0;
   const spyPct = startSpyVal > 0 ? (spyDiff / startSpyVal) * 100 : 0;
 
+  let displayTime = data.timeLabel;
+  if (data.time && (timeRange === '1W' || timeRange === '1M' || timeRange === '1Y')) {
+    const d = new Date(data.time * 1000);
+    displayTime = d.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
   return (
     <div className="rounded-xl bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 shadow-xl text-xs font-sans">
-      <div className="text-slate-400 font-medium mb-1.5">{data.timeLabel}</div>
+      <div className="text-slate-400 font-medium mb-1.5">{displayTime}</div>
       
       {/* Portfolio Value + Percentage */}
       <div className="flex items-center gap-2">
