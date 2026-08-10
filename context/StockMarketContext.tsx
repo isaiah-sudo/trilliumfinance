@@ -88,6 +88,8 @@ const StockMarketContext = createContext<StockMarketContextValue>({
 });
 
 const CACHE_KEY = 'trillium_global_stock_market_v1';
+const TIMESTAMP_KEY = 'trillium_global_stock_market_time_v1';
+const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours threshold for full daily sync
 
 export function StockMarketProvider({ children }: PropsWithChildren) {
   const [stocks, setStocks] = useState<StockQuote[]>(() => {
@@ -121,8 +123,59 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
 
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
+  // Function to persist stock state and timestamp to cache
+  const saveToCache = (updatedStocks: StockQuote[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const now = Date.now();
+        localStorage.setItem(CACHE_KEY, JSON.stringify(updatedStocks));
+        localStorage.setItem(TIMESTAMP_KEY, now.toString());
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(updatedStocks));
+        sessionStorage.setItem(TIMESTAMP_KEY, now.toString());
+      } catch (e) {
+        console.error('Failed to save stock cache', e);
+      }
+    }
+  };
+
+  // Background EOD / Daily sweep to fetch fresh quotes for all stocks if cache is stale (>6 hrs)
+  const refreshCacheIfStale = async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
+      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+      const isStale = Date.now() - lastTime > REFRESH_INTERVAL_MS;
+
+      if (isStale || lastTime === 0) {
+        // Fetch top stocks in batch to update daily closing prices
+        const topTickers = BASE_STOCKS.map(s => s.ticker).slice(0, 15);
+        const { getMarketQuotes } = await import('@/app/actions/trading');
+        const quotes = await getMarketQuotes(topTickers);
+        
+        if (quotes && quotes.length > 0) {
+          setStocks(prev => {
+            const updated = prev.map(stock => {
+              const quote = quotes.find(q => q.ticker === stock.ticker);
+              if (quote && quote.price > 0) {
+                return { ...stock, price: quote.price, change: quote.change, loading: false };
+              }
+              return stock;
+            });
+            saveToCache(updated);
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Daily cache refresh failed, continuing with current cached prices:', err);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
+
+    // Check and refresh cache on mount if stale
+    refreshCacheIfStale();
 
     // Staggered global tick synchronized by timestamp
     const tickGlobalMarket = async () => {
@@ -149,13 +202,7 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
               return stock;
             });
 
-            // Save updated prices globally to cache
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.setItem(CACHE_KEY, JSON.stringify(updated));
-                sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated));
-              } catch (e) {}
-            }
+            saveToCache(updated);
             return updated;
           });
           setLastUpdated(Date.now());
@@ -192,3 +239,4 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
 export function useStockMarket() {
   return useContext(StockMarketContext);
 }
+
