@@ -143,7 +143,7 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                     
                     <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 p-2.5 flex items-center justify-center shadow-inner shrink-0 overflow-hidden relative">
                       <img 
-                        src={profile.logo || `https://logo.clearbit.com/${(profile.weburl || symbol).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}`} 
+                        src={profile.logo || `https://www.google.com/s2/favicons?sz=128&domain=${(profile.weburl || symbol).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}`} 
                         alt={profile.name} 
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';

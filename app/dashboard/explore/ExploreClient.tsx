@@ -125,7 +125,7 @@ export default function MarketExplorer() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-2 flex items-center justify-center shadow-inner shrink-0 overflow-hidden relative">
                       <img 
-                        src={stock.logo || `https://logo.clearbit.com/${stock.ticker.toLowerCase()}.com`} 
+                        src={stock.logo || `https://www.google.com/s2/favicons?sz=128&domain=${stock.ticker.toLowerCase()}.com`} 
                         alt={stock.name} 
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -222,7 +222,7 @@ export default function MarketExplorer() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 p-2 flex items-center justify-center overflow-hidden shrink-0 relative">
                     <img 
-                      src={selectedStock.logo || `https://logo.clearbit.com/${selectedStock.ticker.toLowerCase()}.com`} 
+                      src={selectedStock.logo || `https://www.google.com/s2/favicons?sz=128&domain=${selectedStock.ticker.toLowerCase()}.com`} 
                       alt={selectedStock.name} 
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
