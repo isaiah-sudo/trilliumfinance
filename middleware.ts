@@ -4,6 +4,20 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') || '';
+
+  // Detect news subdomain (e.g. news.trilliumfinance.net or news.localhost:3000 or news.127.0.0.1.nip.io)
+  const isNewsSubdomain = host.startsWith('news.') || host.includes('news.trilliumfinance.net') || host.includes('news.localhost');
+
+  if (isNewsSubdomain) {
+    if (pathname === '/') {
+      return NextResponse.rewrite(new URL('/news-catalog', request.url));
+    }
+    if (pathname.startsWith('/article/')) {
+      const articleId = pathname.replace('/article/', '');
+      return NextResponse.rewrite(new URL(`/news-catalog/${articleId}`, request.url));
+    }
+  }
 
   // Protect dashboard and education routes
   const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/edu');
