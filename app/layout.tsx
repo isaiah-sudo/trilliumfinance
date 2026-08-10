@@ -4,6 +4,7 @@ import { Inter, Playfair_Display, Montserrat } from 'next/font/google';
 import { PropsWithChildren } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from '@/context/SettingsContext';
+import { StockMarketProvider } from '@/context/StockMarketContext';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -23,10 +24,15 @@ export default function RootLayout({ children }: PropsWithChildren) {
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${montserrat.variable} dark`} suppressHydrationWarning>
       <body className="min-h-screen w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col">
         <AuthProvider>
-          <SettingsProvider>{children}</SettingsProvider>
+          <SettingsProvider>
+            <StockMarketProvider>
+              {children}
+            </StockMarketProvider>
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>
   );
 }
+
 

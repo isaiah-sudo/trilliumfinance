@@ -138,23 +138,24 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
               {!loading && !error && profile && (
                 <div className="space-y-8">
                   {/* Premium branding header card */}
-                  <div className="flex items-center gap-4 bg-[#141925]/60 border border-slate-800/50 p-5 rounded-3xl shadow-lg relative overflow-hidden group">
+                  <div className="flex items-center gap-4 bg-[#141925]/80 border border-slate-800/60 p-5 rounded-3xl shadow-lg relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl pointer-events-none" />
                     
-                    {profile.logo ? (
+                    <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 p-2.5 flex items-center justify-center shadow-inner shrink-0 overflow-hidden relative">
                       <img 
-                        src={profile.logo} 
+                        src={profile.logo || `https://logo.clearbit.com/${(profile.weburl || symbol).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}`} 
                         alt={profile.name} 
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove('hidden');
                         }}
-                        className="w-16 h-16 rounded-2xl bg-white p-2 border border-slate-800 object-contain shadow-inner"
+                        className="w-full h-full object-contain filter drop-shadow"
                       />
-                    ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-teal-500/20 border border-white/5 flex items-center justify-center text-2xl font-black text-white shadow-inner uppercase">
+                      <div className="hidden absolute inset-0 flex items-center justify-center text-2xl font-black text-white bg-gradient-to-br from-blue-500/30 to-teal-500/30 uppercase">
                         {profile.name[0] || symbol[0]}
                       </div>
-                    )}
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-black text-white tracking-tight truncate leading-snug">{profile.name}</h3>
@@ -162,8 +163,8 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                         <span className="font-mono text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
                           {profile.ticker}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                          <Landmark className="h-3 w-3" /> {profile.exchange}
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Landmark className="h-3 w-3 text-slate-500" /> {profile.exchange}
                         </span>
                       </div>
                     </div>
@@ -171,62 +172,72 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
 
                   {/* Company Profile paragraph */}
                   <div className="space-y-3">
-                    <h4 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Company Profile</h4>
-                    <p className="text-sm text-slate-300 leading-relaxed font-medium bg-[#141925]/40 border border-slate-800/60 p-5 rounded-3xl shadow-inner">
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Company Profile</h4>
+                    <p className="text-sm text-slate-300 leading-relaxed font-medium bg-[#141925]/60 border border-slate-800/60 p-5 rounded-3xl shadow-inner">
                       {profile.description}
                     </p>
                   </div>
 
                   {/* Metric Card Matrix */}
                   <div className="space-y-3">
-                    <h4 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Market Metrics</h4>
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Market Metrics</h4>
                     <div className="grid grid-cols-2 gap-4">
                       
                       {/* Sector Card */}
-                      <div className="bg-[#141925]/40 border border-slate-800/60 p-4.5 rounded-2xl flex flex-col justify-between h-[90px] shadow-sm hover:border-slate-700/80 transition-colors">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Sector</span>
-                        <div className="flex items-center gap-1.5 text-white font-extrabold text-sm mt-2 truncate">
-                          <Cpu className="h-4 w-4 text-blue-400 shrink-0" />
+                      <div className="bg-[#141925]/80 border border-slate-800/70 p-4 rounded-2xl flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition-colors">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sector</span>
+                        <div className="flex items-center gap-2.5 text-white font-extrabold text-sm truncate">
+                          <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
+                            <Cpu className="h-4 w-4" />
+                          </div>
                           <span className="truncate">{profile.finnhubIndustry || 'N/A'}</span>
                         </div>
                       </div>
 
                       {/* Market Cap Card */}
-                      <div className="bg-[#141925]/40 border border-slate-800/60 p-4.5 rounded-2xl flex flex-col justify-between h-[90px] shadow-sm hover:border-slate-700/80 transition-colors">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Market Cap</span>
-                        <div className="flex items-center gap-1.5 text-white font-extrabold text-sm mt-2">
-                          <TrendingUp className="h-4 w-4 text-teal-400 shrink-0" />
-                          <span>{formatMarketCap(profile.marketCapitalization)}</span>
+                      <div className="bg-[#141925]/80 border border-slate-800/70 p-4 rounded-2xl flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition-colors">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Market Cap</span>
+                        <div className="flex items-center gap-2.5 text-white font-extrabold text-sm truncate">
+                          <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 shrink-0">
+                            <TrendingUp className="h-4 w-4" />
+                          </div>
+                          <span className="truncate">{formatMarketCap(profile.marketCapitalization)}</span>
                         </div>
                       </div>
 
                       {/* Outstanding Shares Card */}
-                      <div className="bg-[#141925]/40 border border-slate-800/60 p-4.5 rounded-2xl flex flex-col justify-between h-[90px] shadow-sm hover:border-slate-700/80 transition-colors">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Outstanding Shares</span>
-                        <div className="flex items-center gap-1.5 text-white font-extrabold text-sm mt-2">
-                          <Coins className="h-4 w-4 text-yellow-500 shrink-0" />
-                          <span>{formatOutstandingShares(profile.shareOutstanding)}</span>
+                      <div className="bg-[#141925]/80 border border-slate-800/70 p-4 rounded-2xl flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition-colors">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Shares</span>
+                        <div className="flex items-center gap-2.5 text-white font-extrabold text-sm truncate">
+                          <div className="p-2 rounded-xl bg-yellow-500/10 text-yellow-400 shrink-0">
+                            <Coins className="h-4 w-4" />
+                          </div>
+                          <span className="truncate">{formatOutstandingShares(profile.shareOutstanding)}</span>
                         </div>
                       </div>
 
-                      {/* Stylized hyperlink Card */}
-                      <div className="bg-[#141925]/40 border border-slate-800/60 p-4.5 rounded-2xl flex flex-col justify-between h-[90px] shadow-sm hover:border-slate-700/80 transition-colors">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Website</span>
-                        <div className="mt-2 min-w-0">
-                          {profile.weburl ? (
-                            <a
-                              href={profile.weburl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors group/link truncate max-w-full"
-                            >
-                              <Globe className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                              <span className="truncate">{profile.weburl.replace(/^https?:\/\/(www\.)?/, '')}</span>
-                              <ExternalLink className="h-3 w-3 shrink-0 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
-                            </a>
-                          ) : (
-                            <span className="text-xs font-bold text-slate-500">N/A</span>
-                          )}
+                      {/* Website Card */}
+                      <div className="bg-[#141925]/80 border border-slate-800/70 p-4 rounded-2xl flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition-colors">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Website</span>
+                        <div className="flex items-center gap-2.5 text-white font-extrabold text-sm truncate">
+                          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 shrink-0">
+                            <Globe className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            {profile.weburl ? (
+                              <a
+                                href={profile.weburl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors group/link truncate max-w-full"
+                              >
+                                <span className="truncate">{profile.weburl.replace(/^https?:\/\/(www\.)?/, '')}</span>
+                                <ExternalLink className="h-3 w-3 shrink-0 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
+                              </a>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-500">N/A</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 

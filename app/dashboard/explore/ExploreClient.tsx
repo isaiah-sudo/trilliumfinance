@@ -1,89 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, TrendingUp, Cpu, Zap, Leaf, Bitcoin, Eye, ShoppingCart, X, Info } from 'lucide-react';
+import { Search, TrendingUp, Zap, Eye, ShoppingCart, X, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { handleTrade, getMarketQuotes, fetchFinnhubQuote } from '@/app/actions/trading';
+import { handleTrade } from '@/app/actions/trading';
 import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
-
-const BASE_STOCKS = [
-  // Technology
-  { ticker: 'AAPL', name: 'Apple Inc.', category: 'Technology' },
-  { ticker: 'MSFT', name: 'Microsoft Corp.', category: 'Technology' },
-  { ticker: 'NVDA', name: 'NVIDIA Corp.', category: 'Technology' },
-  { ticker: 'GOOGL', name: 'Alphabet Inc.', category: 'Technology' },
-  { ticker: 'AMZN', name: 'Amazon.com Inc.', category: 'Technology' },
-  { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology' },
-  { ticker: 'TSM', name: 'Taiwan Semiconductor', category: 'Technology' },
-  { ticker: 'AVGO', name: 'Broadcom Inc.', category: 'Technology' },
-  { ticker: 'ASML', name: 'ASML Holding', category: 'Technology' },
-  { ticker: 'ORCL', name: 'Oracle Corp.', category: 'Technology' },
-  { ticker: 'AMD', name: 'Advanced Micro Devices', category: 'Technology' },
-  { ticker: 'CRM', name: 'Salesforce Inc.', category: 'Technology' },
-  { ticker: 'ADBE', name: 'Adobe Inc.', category: 'Technology' },
-  { ticker: 'NFLX', name: 'Netflix Inc.', category: 'Technology' },
-  { ticker: 'INTC', name: 'Intel Corporation', category: 'Technology' },
-  
-  // Healthcare
-  { ticker: 'UNH', name: 'UnitedHealth Group', category: 'Healthcare' },
-  { ticker: 'LLY', name: 'Eli Lilly & Co.', category: 'Healthcare' },
-  { ticker: 'JNJ', name: 'Johnson & Johnson', category: 'Healthcare' },
-  { ticker: 'MRK', name: 'Merck & Co.', category: 'Healthcare' },
-  { ticker: 'ABBV', name: 'AbbVie Inc.', category: 'Healthcare' },
-  { ticker: 'PFE', name: 'Pfizer Inc.', category: 'Healthcare' },
-  { ticker: 'TMO', name: 'Thermo Fisher', category: 'Healthcare' },
-  { ticker: 'DHR', name: 'Danaher Corp.', category: 'Healthcare' },
-  { ticker: 'ABT', name: 'Abbott Labs', category: 'Healthcare' },
-  { ticker: 'AMGN', name: 'Amgen Inc.', category: 'Healthcare' },
-
-  // Energy
-  { ticker: 'XOM', name: 'Exxon Mobil Corp.', category: 'Energy' },
-  { ticker: 'CVX', name: 'Chevron Corp.', category: 'Energy' },
-  { ticker: 'COP', name: 'ConocoPhillips', category: 'Energy' },
-  { ticker: 'SLB', name: 'Schlumberger N.V.', category: 'Energy' },
-  { ticker: 'EOG', name: 'EOG Resources', category: 'Energy' },
-  { ticker: 'BP', name: 'BP plc', category: 'Energy' },
-  { ticker: 'MPC', name: 'Marathon Petroleum', category: 'Energy' },
-  { ticker: 'PSX', name: 'Phillips 66', category: 'Energy' },
-  { ticker: 'VLO', name: 'Valero Energy', category: 'Energy' },
-  { ticker: 'OXY', name: 'Occidental Petroleum', category: 'Energy' },
-
-  // Finance
-  { ticker: 'JPM', name: 'JPMorgan Chase', category: 'Finance' },
-  { ticker: 'V', name: 'Visa Inc.', category: 'Finance' },
-  { ticker: 'MA', name: 'Mastercard Inc.', category: 'Finance' },
-  { ticker: 'BAC', name: 'Bank of America', category: 'Finance' },
-  { ticker: 'WFC', name: 'Wells Fargo', category: 'Finance' },
-  { ticker: 'GS', name: 'Goldman Sachs', category: 'Finance' },
-  { ticker: 'MS', name: 'Morgan Stanley', category: 'Finance' },
-  { ticker: 'AXP', name: 'American Express', category: 'Finance' },
-  { ticker: 'C', name: 'Citigroup Inc.', category: 'Finance' },
-  { ticker: 'BLK', name: 'BlackRock Inc.', category: 'Finance' },
-
-  // Consumer
-  { ticker: 'WMT', name: 'Walmart Inc.', category: 'Consumer' },
-  { ticker: 'PG', name: 'Procter & Gamble', category: 'Consumer' },
-  { ticker: 'HD', name: 'Home Depot', category: 'Consumer' },
-  { ticker: 'COST', name: 'Costco Wholesale', category: 'Consumer' },
-  { ticker: 'KO', name: 'Coca-Cola Co.', category: 'Consumer' },
-];
+import { useStockMarket, StockQuote } from '@/context/StockMarketContext';
 
 const CATEGORIES = ['All', 'Technology', 'Healthcare', 'Energy', 'Finance', 'Consumer'];
 
 export default function MarketExplorer() {
   const { user } = useAuth();
+  const { stocks, getStock } = useStockMarket();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   
-  // Real-time stock state
-  const [stocks, setStocks] = useState(
-    BASE_STOCKS.map(s => ({ ...s, price: 0, change: 0, loading: true }))
-  );
-  
   // Trade Modal State
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<any>(null);
+  const [selectedStock, setSelectedStock] = useState<StockQuote | null>(null);
   const [tradeQty, setTradeQty] = useState(1);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
@@ -98,95 +34,6 @@ export default function MarketExplorer() {
     setDrawerOpen(true);
   };
 
-  useEffect(() => {
-    let mounted = true;
-    let rotationIndex = 0;
-    const tickers = BASE_STOCKS.map(s => s.ticker);
-
-    const initializeCacheAndSeed = async () => {
-      // 1. First, try to load from session storage cache to prevent $0 prices
-      const cached = sessionStorage.getItem('trillium_stock_seed');
-      if (cached) {
-        try {
-          const parsedCache = JSON.parse(cached);
-          setStocks(prev => prev.map(stock => {
-            const cachedStock = parsedCache.find((c: any) => c.ticker === stock.ticker);
-            if (cachedStock) {
-              return { ...stock, price: cachedStock.price, change: cachedStock.change, loading: false };
-            }
-            return stock;
-          }));
-        } catch (e) {
-          console.error("Failed to parse cache", e);
-        }
-      }
-
-      // 2. Fetch the top 3 high-priority stocks immediately (e.g. AAPL, MSFT, NVDA)
-      try {
-        const top3 = tickers.slice(0, 3);
-        const quotes = await getMarketQuotes(top3);
-        
-        if (mounted && quotes.length > 0) {
-          setStocks(prev => {
-            const updated = prev.map(stock => {
-              const quote = quotes.find(q => q.ticker === stock.ticker);
-              if (quote) {
-                return { ...stock, price: quote.price, change: quote.change, loading: false };
-              }
-              return stock;
-            });
-            sessionStorage.setItem('trillium_stock_seed', JSON.stringify(updated));
-            return updated;
-          });
-        }
-      } catch (err) {
-        console.error('Initial top-3 fetch failed', err);
-      }
-    };
-
-    // Staggered Round-Robin Polling Engine
-    const tickRotation = async () => {
-      if (!mounted) return;
-      
-      const ticker = tickers[rotationIndex];
-      try {
-        const quote = await fetchFinnhubQuote(ticker);
-        if (mounted && quote.c) {
-          setStocks(prev => {
-            const updated = prev.map(stock => {
-              if (stock.ticker === ticker) {
-                const price = quote.c || stock.price;
-                const pc = quote.pc || price;
-                const change = pc > 0 ? ((price - pc) / pc) * 100 : stock.change;
-                return { ...stock, price, change, loading: false };
-              }
-              return stock;
-            });
-            // Update cache silently
-            sessionStorage.setItem('trillium_stock_seed', JSON.stringify(updated));
-            return updated;
-          });
-        }
-      } catch (err) {
-        console.error(`Rotation fetch failed for ${ticker}`, err);
-      }
-      
-      // Increment rotation and wrap around
-      rotationIndex = (rotationIndex + 1) % tickers.length;
-    };
-
-    initializeCacheAndSeed();
-
-    // Fire one request exactly every 4 seconds
-    // 25 stocks * 4 seconds = 100 seconds per full loop (15 reqs/minute, well below 30 req/min limit)
-    const intervalId = setInterval(tickRotation, 4000);
-
-    return () => {
-      mounted = false;
-      clearInterval(intervalId);
-    };
-  }, []);
-
   const filteredStocks = stocks.filter(stock => {
     const matchesSearch = stock.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          stock.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -194,8 +41,10 @@ export default function MarketExplorer() {
     return matchesSearch && matchesCategory;
   });
 
-  const openTradeModal = (stock: any) => {
-    setSelectedStock(stock);
+  const openTradeModal = (stock: StockQuote) => {
+    // Get latest synchronized quote
+    const freshStock = getStock(stock.ticker) || stock;
+    setSelectedStock(freshStock);
     setTradeModalOpen(true);
     setTradeError('');
     setTradeSuccess(false);
@@ -226,7 +75,7 @@ export default function MarketExplorer() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Market Explorer</h1>
-          <p className="text-slate-400 font-medium">Discover and trade your favorite assets instantly. Prices update every 60s.</p>
+          <p className="text-slate-400 font-medium">Discover and trade your favorite assets instantly. Prices update synchronously in real time.</p>
         </div>
         
         <div className="relative w-full md:w-96 group">
@@ -268,72 +117,79 @@ export default function MarketExplorer() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: (idx % 10) * 0.05 }} // modulo so it doesn't take forever to render 50 items
-              className="group rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-xl hover:border-blue-500/30 transition-all hover:shadow-2xl hover:shadow-blue-500/5"
+              transition={{ delay: (idx % 10) * 0.03 }}
+              className="group rounded-3xl bg-[#1a2133]/90 backdrop-blur-md border border-slate-700/50 p-6 shadow-xl hover:border-blue-500/30 transition-all hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col justify-between"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-teal-500/20 border border-white/5 flex items-center justify-center text-xl font-bold text-white shadow-inner">
-                    {stock.ticker[0]}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-white font-bold tracking-tight">{stock.ticker}</h3>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDrawer(stock.ticker);
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-2 flex items-center justify-center shadow-inner shrink-0 overflow-hidden relative">
+                      <img 
+                        src={stock.logo || `https://logo.clearbit.com/${stock.ticker.toLowerCase()}.com`} 
+                        alt={stock.name} 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove('hidden');
                         }}
-                        className="p-1 rounded-lg bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 transition-all hover:bg-slate-750/30"
-                        title="View corporate details and metrics"
-                      >
-                        <Info className="h-3 w-3" />
-                      </button>
+                        className="w-full h-full object-contain filter drop-shadow"
+                      />
+                      <div className="hidden absolute inset-0 flex items-center justify-center text-xl font-black text-white bg-gradient-to-br from-blue-500/30 to-teal-500/30 uppercase">
+                        {stock.ticker[0]}
+                      </div>
                     </div>
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{stock.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-white font-bold tracking-tight truncate">{stock.ticker}</h3>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDrawer(stock.ticker);
+                          }}
+                          className="p-1 rounded-lg bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 transition-all hover:bg-slate-750/30 shrink-0"
+                          title="View corporate details and metrics"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">{stock.name}</p>
+                    </div>
+                  </div>
+                  <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shrink-0 ${
+                    stock.category === 'Technology' ? 'bg-blue-500/10 text-blue-400' :
+                    stock.category === 'Finance' ? 'bg-indigo-500/10 text-indigo-400' :
+                    stock.category === 'Consumer' ? 'bg-orange-500/10 text-orange-400' :
+                    stock.category === 'Energy' ? 'bg-yellow-500/10 text-yellow-400' :
+                    'bg-teal-500/10 text-teal-400'
+                  }`}>
+                    {stock.category}
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                  stock.category === 'Technology' ? 'bg-blue-500/10 text-blue-400' :
-                  stock.category === 'Finance' ? 'bg-indigo-500/10 text-indigo-400' :
-                  stock.category === 'Consumer' ? 'bg-orange-500/10 text-orange-400' :
-                  stock.category === 'Energy' ? 'bg-yellow-500/10 text-yellow-400' :
-                  'bg-teal-500/10 text-teal-400'
-                }`}>
-                  {stock.category}
-                </div>
-              </div>
 
-              <div className="mb-6">
-                <div className="text-2xl font-black text-white mb-1">
-                  {stock.loading ? (
-                    <div className="h-8 w-24 bg-slate-800 animate-pulse rounded"></div>
-                  ) : (
-                    `$${stock.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  )}
-                </div>
-                <div className={`text-xs font-bold flex items-center gap-1 ${stock.change >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
-                  {stock.loading ? (
-                    <div className="h-4 w-16 bg-slate-800 animate-pulse rounded"></div>
-                  ) : (
-                    <>
-                      {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}% 
-                      <TrendingUp className={`h-3 w-3 ${stock.change < 0 ? 'rotate-180' : ''}`} />
-                      <span className="text-slate-500 text-[10px] ml-1 font-semibold">PAST 24H</span>
-                    </>
-                  )}
+                <div className="mb-6">
+                  <div className="text-2xl font-black text-white mb-1">
+                    ${stock.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className={`text-xs font-bold flex items-center gap-1 ${stock.change >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
+                    {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}% 
+                    <TrendingUp className={`h-3 w-3 ${stock.change < 0 ? 'rotate-180' : ''}`} />
+                    <span className="text-slate-400 text-[10px] ml-1 font-semibold">PAST 24H</span>
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <button 
                   onClick={() => openTradeModal(stock)}
-                  disabled={stock.loading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2 active:scale-95"
                 >
-                  <ShoppingCart className="h-3.5 w-3.5" /> Buy
+                  <ShoppingCart className="h-3.5 w-3.5" /> Buy / Trade
                 </button>
-                <button className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white transition-all hover:bg-slate-700/50">
+                <button 
+                  onClick={() => openDrawer(stock.ticker)}
+                  className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white transition-all hover:bg-slate-700/50"
+                  title="View Details"
+                >
                   <Eye className="h-4 w-4" />
                 </button>
               </div>
@@ -352,7 +208,7 @@ export default function MarketExplorer() {
 
       {/* Trade Modal */}
       <AnimatePresence>
-        {tradeModalOpen && (
+        {tradeModalOpen && selectedStock && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -362,12 +218,32 @@ export default function MarketExplorer() {
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-[60px] pointer-events-none" />
               
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h3 className="text-white font-black text-2xl tracking-tight">Trade {selectedStock?.ticker}</h3>
-                  <p className="text-slate-400 text-sm font-medium">{selectedStock?.name}</p>
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 p-2 flex items-center justify-center overflow-hidden shrink-0 relative">
+                    <img 
+                      src={selectedStock.logo || `https://logo.clearbit.com/${selectedStock.ticker.toLowerCase()}.com`} 
+                      alt={selectedStock.name} 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) fallback.classList.remove('hidden');
+                      }}
+                      className="w-full h-full object-contain filter drop-shadow"
+                    />
+                    <div className="hidden absolute inset-0 flex items-center justify-center text-lg font-black text-white bg-gradient-to-br from-blue-500/30 to-teal-500/30 uppercase">
+                      {selectedStock.ticker[0]}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-white font-black text-2xl tracking-tight truncate">Trade {selectedStock.ticker}</h3>
+                    <p className="text-slate-400 text-xs font-semibold truncate">{selectedStock.name}</p>
+                  </div>
                 </div>
-                <button onClick={() => setTradeModalOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-800/50 text-slate-400 hover:text-white transition-colors">
+                <button 
+                  onClick={() => setTradeModalOpen(false)} 
+                  className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-800/50 text-slate-400 hover:text-white transition-colors shrink-0"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -381,19 +257,35 @@ export default function MarketExplorer() {
                   <p className="text-slate-400">Your portfolio has been updated.</p>
                 </div>
               ) : (
-                <div className="space-y-8">
-                  <div className="p-6 rounded-3xl bg-[#0f111a] border border-slate-700/50">
-                    <div className="flex justify-between items-center mb-6">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Market Price</span>
-                      <span className="text-xl font-black text-white">${selectedStock?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <div className="space-y-6">
+                  <div className="p-6 rounded-3xl bg-[#0f111a] border border-slate-700/60 shadow-inner space-y-6">
+                    <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+                      <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Market Price</span>
+                      <span className="text-2xl font-black text-white">${(getStock(selectedStock.ticker)?.price || selectedStock.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     
-                    <div className="space-y-4">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Number of Shares</label>
-                      <div className="flex items-center gap-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">Shares Quantity</label>
+                        <div className="flex gap-1.5">
+                          {[1, 5, 10, 50].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setTradeQty(preset)}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-700 transition-all"
+                            >
+                              +{preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 bg-[#151926] border border-slate-700/70 rounded-2xl p-2">
                         <button 
+                          type="button"
                           onClick={() => setTradeQty(Math.max(1, tradeQty - 1))}
-                          className="h-12 w-12 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-xl hover:bg-slate-700 transition-colors"
+                          className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-white font-black text-xl flex items-center justify-center transition-all shadow"
                         >
                           -
                         </button>
@@ -401,26 +293,27 @@ export default function MarketExplorer() {
                           type="number" 
                           min="1"
                           value={tradeQty}
-                          onChange={(e) => setTradeQty(Number(e.target.value))}
-                          className="flex-1 bg-transparent border-b-2 border-slate-700 focus:border-blue-500 text-center text-3xl font-black text-white py-2 focus:outline-none transition-colors"
+                          onChange={(e) => setTradeQty(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full bg-transparent text-center text-3xl font-black text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <button 
+                          type="button"
                           onClick={() => setTradeQty(tradeQty + 1)}
-                          className="h-12 w-12 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-xl hover:bg-slate-700 transition-colors"
+                          className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-white font-black text-xl flex items-center justify-center transition-all shadow"
                         >
                           +
                         </button>
                       </div>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-slate-800 flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Cost</span>
-                      <span className="text-2xl font-black text-blue-400">${(selectedStock?.price * tradeQty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+                      <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Total Cost</span>
+                      <span className="text-2xl font-black text-blue-400">${(((getStock(selectedStock.ticker)?.price || selectedStock.price)) * tradeQty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                   
                   {tradeError && (
-                    <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold text-center">
+                    <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold text-center">
                       {tradeError}
                     </div>
                   )}
@@ -429,14 +322,14 @@ export default function MarketExplorer() {
                     <button 
                       onClick={() => executeTradeSubmit('BUY')}
                       disabled={tradeLoading}
-                      className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 active:scale-95"
+                      className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 active:scale-95 text-sm uppercase tracking-wider"
                     >
                       {tradeLoading ? 'Confirming...' : 'Confirm Buy'}
                     </button>
                     <button 
                       onClick={() => executeTradeSubmit('SELL')}
                       disabled={tradeLoading}
-                      className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(244,63,94,0.3)] disabled:opacity-50 active:scale-95"
+                      className="flex-1 bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(244,63,94,0.3)] disabled:opacity-50 active:scale-95 text-sm uppercase tracking-wider"
                     >
                       {tradeLoading ? 'Confirming...' : 'Confirm Sell'}
                     </button>
