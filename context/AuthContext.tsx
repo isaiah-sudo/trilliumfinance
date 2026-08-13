@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, PropsWithChildren } from 'react';
 import { onIdTokenChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { syncAuthCookie, removeAuthCookie } from '@/lib/auth';
 
 interface AuthContextValue {
   user: User | null;
@@ -39,21 +40,15 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
           previousUser = firebaseUser;
           isFirstCall = false;
           const idToken = await firebaseUser.getIdToken();
-          // Fire off cookie synchronization in the background
-          fetch('/api/auth/cookie', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          }).catch((error) => {
+          // Fire off cookie synchronization in the background with retry & deduplication
+          syncAuthCookie(idToken).catch((error) => {
             console.error('Background auth cookie synchronization failed:', error);
           });
         } else {
           // Only clear the cookie if this is NOT the initial initialization check,
           // or if we had a logged-in user previously (which indicates a real logout).
           if (!isFirstCall || previousUser !== null) {
-            fetch('/api/auth/cookie', {
-              method: 'DELETE',
-            }).catch((error) => {
+            removeAuthCookie().catch((error) => {
               console.error('Background auth cookie removal failed:', error);
             });
           }

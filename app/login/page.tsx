@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmail, signInWithGoogle, resetPassword } from '@/lib/auth';
+import { signInWithEmail, signInWithGoogle, resetPassword, syncAuthCookie } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
 import { X, ShieldCheck, Sparkles, Activity, GraduationCap } from 'lucide-react';
@@ -34,15 +34,10 @@ export default function LoginPage() {
       const userCredential = await signInWithEmail(email, password);
       const idToken = await userCredential.user.getIdToken();
       
-      // Sync cookie synchronously to avoid middleware redirect race conditions
-      const res = await fetch('/api/auth/cookie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to synchronize auth cookie.');
+      // Sync cookie with retries & rate-limit resilience
+      const syncSuccess = await syncAuthCookie(idToken);
+      if (!syncSuccess) {
+        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -63,15 +58,10 @@ export default function LoginPage() {
       const userCredential = await signInWithGoogle();
       const idToken = await userCredential.user.getIdToken();
 
-      // Sync cookie synchronously to avoid middleware redirect race conditions
-      const res = await fetch('/api/auth/cookie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to synchronize auth cookie.');
+      // Sync cookie with retries & rate-limit resilience
+      const syncSuccess = await syncAuthCookie(idToken);
+      if (!syncSuccess) {
+        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
 
       const params = new URLSearchParams(window.location.search);

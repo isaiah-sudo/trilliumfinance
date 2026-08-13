@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signUpWithEmail, signInWithGoogle, signOut } from '@/lib/auth';
+import { signUpWithEmail, signInWithGoogle, signOut, syncAuthCookie } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
 import { X, ShieldCheck, Sparkles, Activity } from 'lucide-react';
@@ -19,32 +19,31 @@ export default function SignupPage() {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const router = useRouter();
 
-  // Prefetch login early to optimize redirect routing
   useEffect(() => {
+    // Prefetch login early to optimize redirect routing
     router.prefetch('/login');
   }, [router]);
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!termsAgreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy.');
       return;
     }
-    if (!termsAgreed) {
-      setError('Please agree to the Terms of Service & Privacy Policy.');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     setLoading(true);
     setError('');
     try {
       const userCredential = await signUpWithEmail(email, password);
+      // Set display name if provided
+      if (username && userCredential.user) {
+        await updateProfile(userCredential.user, { displayName: username });
+      }
       
-      // Update the user profile with the chosen username
-      await updateProfile(userCredential.user, {
-        displayName: username,
-      });
-
-      // Sign out immediately so they have to log in on the login page
+      // Automatically sign out so they can log in via login page cleanly
       await signOut();
 
       // Redirect to login page with success state
@@ -64,15 +63,10 @@ export default function SignupPage() {
       const userCredential = await signInWithGoogle();
       const idToken = await userCredential.user.getIdToken();
 
-      // Sync cookie synchronously to avoid middleware redirect race conditions
-      const res = await fetch('/api/auth/cookie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to synchronize auth cookie.');
+      // Sync cookie with retries & rate-limit resilience
+      const syncSuccess = await syncAuthCookie(idToken);
+      if (!syncSuccess) {
+        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
 
       const params = new URLSearchParams(window.location.search);
