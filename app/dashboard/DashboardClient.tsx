@@ -11,7 +11,6 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
 import { AnimatedNumber } from '@/components/ui';
-import DashboardPet from '@/components/DashboardPet';
 import { useDashboardSettings } from '@/context/DashboardSettingsContext';
 import { joinClassroom } from '@/app/actions/edu';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -55,26 +54,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
   const [isClicked, setIsClicked] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
 
-    const handlePetGaze = (e: Event) => {
-      const customE = e as CustomEvent;
-      if (customE.detail?.tilting) {
-        setIsHovered(true);
-        setCoords({ x: 14, y: -14 });
-      } else {
-        setIsHovered(false);
-        setCoords({ x: 0, y: 0 });
-      }
-    };
-
-    el.addEventListener('pet-gaze', handlePetGaze);
-    return () => {
-      el.removeEventListener('pet-gaze', handlePetGaze);
-    };
-  }, []);
 
   const getDifficulty = (tid: string): 'gem' | 'gold' | 'silver' | 'copper' => {
     if (difficulty) return difficulty;
@@ -231,7 +211,7 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { numberFont, showPets } = useSettings();
+  const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
   const { width, containerRef } = useContainerWidth();
