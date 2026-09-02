@@ -5,7 +5,25 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { Settings, LogOut, TreePine, X, ChevronLeft, ShoppingBag, Menu } from 'lucide-react';
+import {
+  Settings,
+  LogOut,
+  TreePine,
+  X,
+  ChevronLeft,
+  ShoppingBag,
+  Menu,
+  LayoutDashboard,
+  Compass,
+  Newspaper,
+  MessageSquare,
+  Trophy,
+  BookOpen,
+  Sparkles,
+  Flame,
+  User,
+  ArrowRight
+} from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -261,85 +279,94 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
       <div className="relative z-10 w-full min-h-screen px-4 md:px-8 lg:px-12 pt-4 sm:pt-6 flex flex-col flex-1">
-        <header className="relative z-50 w-full flex h-auto min-h-[60px] sm:min-h-[64px] items-center justify-between rounded-2xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md px-3 sm:px-5 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-800/60 shadow-[0_4px_0_0_#cbd5e1] dark:shadow-[0_4px_0_0_#121622] transition-all duration-300 pet-container-target gap-2">
+        <header className="relative z-50 w-full flex h-auto min-h-[62px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-2">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
-              <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5">
-                <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-blue-600 shrink-0">
+              <Link href="/dashboard" className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_15px_rgba(16,185,129,0.35)] shrink-0 p-0.5">
                   <TrilliumLogoMark />
                 </div>
-                <span className="text-sm sm:text-base md:text-[17px] font-bold text-slate-900 dark:text-white tracking-wide whitespace-nowrap">
-                  Trillium <span className="text-blue-500 hidden min-[360px]:inline">Finance</span>
+                <span className="text-base sm:text-lg font-black text-white tracking-wide whitespace-nowrap">
+                  Trillium <span className="text-emerald-400 hidden min-[360px]:inline">Finance</span>
                 </span>
               </Link>
             </div>
 
             {/* Navigation Center Section */}
             <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-3">
-              <div className="flex items-center justify-center gap-2.5 xl:gap-4 px-1 transition-all duration-500 ease-out">
+              <div className="flex items-center justify-center gap-2 xl:gap-3 px-1">
                 {navLinks.map((link) => {
-                  const details: Record<string, { title: string; desc: string; icon: string }> = {
+                  const details: Record<string, { title: string; desc: string; icon: any; color: string }> = {
                     Dashboard: {
                       title: 'My Dashboard',
                       desc: 'See how much money you have, what stocks you own, and watch your progress grow on simple charts.',
-                      icon: '💼',
+                      icon: LayoutDashboard,
+                      color: 'text-emerald-400',
                     },
                     Explore: {
                       title: 'Market Explorer',
                       desc: 'Look for fun companies to invest in, search for stocks, and see what different businesses do.',
-                      icon: '🔍',
+                      icon: Compass,
+                      color: 'text-blue-400',
                     },
                     News: {
                       title: 'Daily News Feed',
                       desc: 'Read quick updates about what is happening in the world and how it changes the stock market.',
-                      icon: '📰',
+                      icon: Newspaper,
+                      color: 'text-amber-400',
                     },
                     Chat: {
                       title: 'Community Chat',
-                      desc: 'Talk with other kids, share your trading ideas, and learn new tips together.',
-                      icon: '💬',
+                      desc: 'Talk with other traders, share ideas, and learn new market strategies.',
+                      icon: MessageSquare,
+                      color: 'text-purple-400',
                     },
                     Rankings: {
                       title: 'Global Leaderboard',
-                      desc: 'See your place on the leaderboard, compete with friends, and see who is the top trader.',
-                      icon: '🏆',
+                      desc: 'See your place on the leaderboard, compete with peers, and level up your rank.',
+                      icon: Trophy,
+                      color: 'text-yellow-400',
                     },
                     Lesson: {
                       title: 'Loaning Lesson',
                       desc: 'Learn the basics of loaning, principal, and interest rates by interactively borrowing funds.',
-                      icon: '📖',
+                      icon: BookOpen,
+                      color: 'text-teal-400',
                     },
                   };
 
-                  const linkDetail = details[link.name] || { title: link.name, desc: '', icon: '✨' };
+                  const linkDetail = details[link.name] || { title: link.name, desc: '', icon: Sparkles, color: 'text-emerald-400' };
+                  const NavIcon = linkDetail.icon;
+                  const isActive = pathname === link.href;
 
                   return (
                     <div key={link.name} className="relative group py-1">
                       <Link
                         href={link.href}
                         onMouseDown={handleNavClick}
-                        style={{ '--pulse-ring-color': 'rgba(59, 130, 246, 0.4)' } as React.CSSProperties}
-                        className={`text-[11px] xl:text-xs font-bold transition-all duration-300 px-2 xl:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] ${
-                          pathname === link.href
-                            ? 'text-blue-600 dark:text-blue-400 bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-t-blue-400/40 border-x-blue-500/20 border-b-2 border-b-blue-600/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_4px_12px_rgba(59,130,246,0.15)]'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-gradient-to-b hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/50 dark:hover:to-slate-800/20 border-t-transparent border-x-transparent border-b-2 border-b-transparent hover:border-t-white/30 dark:hover:border-t-slate-700/50 hover:border-x-slate-200/40 dark:hover:border-x-slate-800/50 hover:border-b-slate-300 dark:hover:border-b-slate-900 shadow-sm'
+                        style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                        className={`text-xs font-bold transition-all duration-200 px-3 py-2 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 ${
+                          isActive
+                            ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/35 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent hover:border-white/10'
                         }`}
                       >
-                        {link.name}
+                        <NavIcon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                        <span>{link.name}</span>
                       </Link>
 
-                      {/* Dropdown Container */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-60 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50 rounded-2xl bg-white/95 dark:bg-[#1e293b]/95 border border-slate-200 dark:border-slate-700/60 p-4 shadow-2xl backdrop-blur-md">
+                      {/* Dropdown Tooltip Card */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 ease-out z-50 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">{linkDetail.icon}</span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-white tracking-wide">{linkDetail.title}</span>
+                          <NavIcon className={`h-4 w-4 ${linkDetail.color}`} />
+                          <span className="text-xs font-bold text-white tracking-wide">{linkDetail.title}</span>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                        <p className="text-[11px] leading-relaxed text-slate-400 font-medium">
                           {linkDetail.desc}
                         </p>
-                        <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-700/50 flex justify-between items-center">
-                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-500">Go to tab</span>
-                          <span className="text-[10px] text-blue-400">→</span>
+                        <div className="mt-2.5 pt-2 border-t border-white/10 flex justify-between items-center">
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-400">Go to tab</span>
+                          <ArrowRight className="h-3 w-3 text-emerald-400" />
                         </div>
                       </div>
                     </div>
@@ -349,114 +376,89 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line separating nav links and profile/shop controls */}
-            <div className="h-7 w-[1px] bg-slate-200 dark:bg-slate-700/60 transition-all duration-500 ease-out hidden lg:block mx-1 xl:mx-2 shrink-0" />
+            <div className="h-6 w-[1px] bg-white/10 hidden lg:block mx-1 shrink-0" />
 
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0 ml-auto lg:ml-0">
+            <div className="flex items-center justify-end gap-2 sm:gap-2.5 shrink-0 ml-auto lg:ml-0">
               {/* Shop Button */}
               <button
                 onClick={() => setIsShopOpen(true)}
                 onMouseDown={handleNavClick}
-                style={{ '--pulse-ring-color': 'rgba(6, 182, 212, 0.4)' } as React.CSSProperties}
-                className="flex h-[36px] sm:h-[38px] items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-2.5 sm:px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105"
+                style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                className="flex h-[38px] items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer"
               >
-                <ShoppingBag className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+                <ShoppingBag className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span className="hidden sm:inline">Shop</span>
               </button>
 
-              {/* Level Badge with Popover Overlay */}
+              {/* Remodeled Expanding Experience/Level Bar */}
               <div 
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
-                className="relative hidden md:block"
+                onClick={() => setIsBadgeHovered(!isBadgeHovered)}
+                className={`relative hidden md:flex h-[38px] items-center gap-2.5 rounded-xl border transition-all duration-300 ease-out cursor-pointer select-none overflow-hidden px-3 ${
+                  isBadgeHovered
+                    ? 'bg-slate-900/90 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 shadow-sm'
+                }`}
               >
-                <div 
-                  onClick={() => setIsBadgeHovered(!isBadgeHovered)}
-                  className="flex h-[36px] sm:h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 px-2.5 sm:px-3 shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] cursor-pointer transition-all"
-                >
-                  <TreePine className="h-4 w-4 text-green-500 shrink-0" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                {/* Level Rank Icon & Name */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${isBadgeHovered ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-emerald-400'}`}>
+                    <TreePine className="h-3.5 w-3.5 shrink-0" />
+                  </div>
+                  <span className="text-xs font-black text-slate-200 tracking-wide whitespace-nowrap">
                     {levelInfo?.name || 'Novice'}
                   </span>
-                  <div className="w-12 xl:w-20 h-2 rounded-full bg-slate-200 dark:bg-[#0f111a] overflow-hidden shrink-0 hidden sm:block">
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-600 to-cyan-400"
-                      style={{ width: `${levelInfo?.progress || 0}%` }}
-                    />
-                  </div>
                 </div>
 
-                {/* Popover Card for Streak & XP Info */}
-                {isBadgeHovered && (
-                  <div className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] p-4 bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md z-[100] transition-all duration-200 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">
-                      <div className="flex items-center gap-2">
-                        <TreePine className="h-4 w-4 text-emerald-500" />
-                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">{levelInfo?.name || 'Novice'}</span>
-                      </div>
-                      <span className="text-[11px] font-extrabold text-blue-500">
-                        {levelInfo?.accumulated || 0} / {levelInfo?.maxXp || 100} XP
-                      </span>
-                    </div>
-
-                    <div className="mb-2">
-                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                        <span>Level Progress</span>
-                        <span>{Math.round(levelInfo?.progress || 0)}%</span>
-                      </div>
-                      <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 transition-all duration-500"
-                          style={{ width: `${levelInfo?.progress || 0}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Streak Map */}
-                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">7-Day Streak Map</span>
-                        <span className="text-[11px] font-extrabold text-emerald-500">{streakCount} Day Streak 🔥</span>
-                      </div>
-                      <div className="relative flex items-center justify-between h-10 px-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
-                        <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-slate-300 dark:border-slate-700 h-0" />
-                        {streakCount > 1 && (
-                          <div 
-                            className="absolute left-3 top-1/2 -translate-y-1/2 h-0.5 bg-emerald-500 transition-all duration-500"
-                            style={{ 
-                              width: `${((Math.min(streakCount, 7) - 1) / 6) * 100}%`,
-                              maxWidth: 'calc(100% - 24px)' 
-                            }} 
-                          />
-                        )}
-                        {Array.from({ length: 7 }).map((_, index) => {
-                          const day = index + 1;
-                          const isDone = day <= streakCount;
-                          const isMilestone = day === 7;
-                          return (
-                            <div key={day} className="relative z-10 flex flex-col items-center">
-                              <div 
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2 ${
-                                  isDone 
-                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
-                                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500'
-                                }`}
-                              >
-                                {isMilestone ? '👑' : day}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                {/* Dynamic Expanding Experience Bar & Values */}
+                <div className="flex items-center gap-2.5 transition-all duration-300">
+                  {/* Illuminated Neon XP Progress Bar */}
+                  <div className={`h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative transition-all duration-300 ${isBadgeHovered ? 'w-24 lg:w-36 ring-1 ring-emerald-400/50' : 'w-14 lg:w-20'}`}>
+                    <div 
+                      className={`h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-500 relative overflow-hidden ${
+                        isBadgeHovered
+                          ? 'shadow-[0_0_16px_rgba(16,185,129,0.9),0_0_24px_rgba(52,211,153,0.7)] brightness-110'
+                          : 'shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                      }`}
+                      style={{ width: `${levelInfo?.progress || 0}%` }}
+                    >
+                      {/* Shimmer light reflection when hovered */}
+                      {isBadgeHovered && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[shimmer_1.2s_infinite]" />
+                      )}
                     </div>
                   </div>
-                )}
+
+                  {/* Side-Expanded Details: Total Experience & Streak */}
+                  {isBadgeHovered ? (
+                    <div className="flex items-center gap-2 text-xs font-mono animate-in fade-in slide-in-from-left-2 duration-200 shrink-0">
+                      <span className="font-extrabold text-emerald-400 whitespace-nowrap">
+                        {levelInfo?.accumulated || 0} <span className="text-slate-500 font-normal">/</span> {levelInfo?.maxXp || 100} XP
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 whitespace-nowrap">
+                        {Math.round(levelInfo?.progress || 0)}%
+                      </span>
+                      {streakCount > 0 && (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 whitespace-nowrap">
+                          <Flame className="h-3 w-3 text-amber-400" />
+                          {streakCount}d
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] font-mono font-bold text-slate-400 hidden xl:inline shrink-0">
+                      {Math.round(levelInfo?.progress || 0)}%
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Settings */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105 shrink-0"
+                className="flex h-[38px] w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
                 aria-label="Settings"
               >
                 <Settings className="h-4 w-4 shrink-0" />
@@ -465,15 +467,16 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Logout */}
               <button
                 onClick={() => signOut()}
-                className="hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 px-3 sm:px-3.5 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none hover:brightness-105 shrink-0"
+                className="hidden md:flex h-[38px] items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 border border-white/10 text-xs font-bold text-slate-300 hover:text-rose-400 transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
               >
-                Logout
+                <LogOut className="h-3.5 w-3.5 shrink-0" />
+                <span>Logout</span>
               </button>
 
               {/* Mobile Navigation Toggle Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex lg:hidden h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-all shadow-[0_3px_0_0_#cbd5e1] dark:shadow-[0_3px_0_0_#0f111a] shrink-0"
+                className="flex lg:hidden h-[38px] w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm shrink-0"
                 aria-label="Toggle Navigation Menu"
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -483,24 +486,21 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
           {/* Mobile Navigation Drawer */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden mt-3 rounded-2xl bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/80 p-4 shadow-2xl backdrop-blur-md space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
+            <div className="lg:hidden mt-3 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
               <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((link) => {
-                  const navIcons: Record<string, string> = {
-                    Dashboard: '💼', Explore: '🔍', News: '📰', Chat: '💬', Rankings: '🏆', Lesson: '📖', 'Educator Portal': '🛠️'
-                  };
+                  const isMobileActive = pathname === link.href;
                   return (
                     <Link
                       key={link.name}
                       href={link.href}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-bold transition-all ${
-                        pathname === link.href
-                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 shadow-sm'
-                          : 'text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`p-3 rounded-xl border flex items-center justify-center text-xs font-bold transition-all ${
+                        isMobileActive
+                          ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400 shadow-sm'
+                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
                       }`}
                     >
-                      <span className="text-base">{navIcons[link.name] || '✨'}</span>
                       <span className="truncate">{link.name}</span>
                     </Link>
                   );

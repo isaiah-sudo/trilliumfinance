@@ -30,6 +30,8 @@ import {
   Menu
 } from 'lucide-react';
 import { getMarketQuotes } from '@/app/actions/trading';
+import LandingSimulatorSuite from '@/components/landing/LandingSimulatorSuite';
+import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 
 function TrilliumLogoMark() {
   return (
@@ -192,6 +194,7 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNavigatingToDashboard, setIsNavigatingToDashboard] = useState(false);
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
     const target = e.currentTarget;
@@ -200,69 +203,12 @@ export default function LandingPage() {
     target.classList.add('ring-pulse-active');
   };
 
-  // Fidget 1: Trading Simulator State
-  const [stockAssets, setStockAssets] = useState([
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 189.45, change: 3.8 },
-    { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 124.50, change: 5.2 },
-    { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.20, change: -1.4 }
-  ]);
-
-  const [selectedSymbol, setSelectedSymbol] = useState<'AAPL' | 'NVDA' | 'TSLA'>('AAPL');
-  const [virtualCash, setVirtualCash] = useState(10000);
-  const [shareCount, setShareCount] = useState(10);
-  const [orderToast, setOrderToast] = useState<string | null>(null);
-
-  // Interactive Sample Quiz State
-  const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
-
-  // Fidget 3: Customizability Showcase State
-  const [selectedWidgetToAdd, setSelectedWidgetToAdd] = useState<string>('graph');
-  const [addedWidgets, setAddedWidgets] = useState<Array<{ id: string; type: string; title: string; icon: string; size: 'S' | 'M' | 'L' }>>([
-    { id: 'w-1', type: 'graph', title: 'Portfolio Chart', icon: '📈', size: 'M' },
-    { id: 'w-2', type: 'networth', title: 'Net Equity', icon: '💰', size: 'S' },
-    { id: 'w-3', type: 'positions', title: 'Holdings', icon: '📊', size: 'S' }
-  ]);
-  const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
-  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
-  const [customColorScheme, setCustomColorScheme] = useState<'emerald' | 'blue' | 'purple'>('emerald');
-  const [customLanguage, setCustomLanguage] = useState<'en' | 'es' | 'fr'>('en');
-
-  const AVAILABLE_WIDGET_OPTIONS = [
-    { type: 'graph', title: 'Portfolio Chart', icon: '📈' },
-    { type: 'networth', title: 'Net Equity Breakdown', icon: '💰' },
-    { type: 'positions', title: 'Watchlist & Holdings', icon: '📊' },
-    { type: 'leaderboard', title: 'Class Leaderboard', icon: '🏆' },
-    { type: 'achievements', title: 'Badges & Quests', icon: '🏅' },
-    { type: 'news', title: 'Market News Feed', icon: '📰' },
-  ];
-
-  const currentAsset = stockAssets.find(a => a.symbol === selectedSymbol) || stockAssets[0];
-  const maxShares = Math.max(1, Math.floor(virtualCash / currentAsset.price));
-  const totalCost = shareCount * currentAsset.price;
-  const remainingCash = virtualCash - totalCost;
-
-  // Fidget 2: Trophy Showcase Carousel State
-  const trophiesList = [
-    { id: 1, title: 'Paper Pioneer', desc: 'Executed 1st virtual trade', icon: '🌱', xp: 100, unlocked: true },
-    { id: 2, title: 'Market Wizard', desc: 'Hit $12,000 Portfolio Equity', icon: '🏆', xp: 250, unlocked: true },
-    { id: 3, title: 'Streak Titan', desc: 'Maintained 7-Day Active Streak', icon: '🔥', xp: 150, unlocked: true },
-    { id: 4, title: 'Diamond Hands', desc: 'Held Position Through Volatility', icon: '💎', xp: 300, unlocked: false },
-    { id: 5, title: 'Bull Champ', desc: 'Reached 1,500 Total Account XP', icon: '👑', xp: 500, unlocked: false }
-  ];
-
-  const [activeTrophyIdx, setActiveTrophyIdx] = useState(1); // Default center highlighted trophy (Market Wizard)
-  const [claimedTrophies, setClaimedTrophies] = useState<number[]>([1]);
-  const [xp, setXp] = useState(1250);
-  const [xpNotes, setXpNotes] = useState<string[]>([]);
-
-  const handleClaimTrophy = (trophyId: number, trophyXp: number) => {
-    if (claimedTrophies.includes(trophyId)) return;
-    setClaimedTrophies(prev => [...prev, trophyId]);
-    setXp(prev => prev + trophyXp);
-    setXpNotes(prev => [...prev, `+${trophyXp} XP Unlocked! 🏆`]);
+  const handleGoToDashboard = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setIsNavigatingToDashboard(true);
     setTimeout(() => {
-      setXpNotes(prev => prev.slice(1));
-    }, 2500);
+      router.push('/dashboard');
+    }, 250);
   };
 
   // Interactive FAQ Accordion State
@@ -482,10 +428,6 @@ export default function LandingPage() {
           const validQuotes = quotes.filter(q => q.price > 0);
           if (validQuotes.length > 0) {
             setTickerQuotes(validQuotes);
-            setStockAssets(prev => prev.map(asset => {
-              const match = validQuotes.find(q => q.ticker === asset.symbol);
-              return match ? { ...asset, price: match.price, change: match.change } : asset;
-            }));
           }
         }
       } catch (err) {
@@ -501,17 +443,11 @@ export default function LandingPage() {
     };
   }, []);
 
-  const handleExecuteOrder = () => {
-    if (totalCost > virtualCash || shareCount <= 0) return;
-    setVirtualCash((prev) => prev - totalCost);
-    setOrderToast(`Bought ${shareCount} shares of ${selectedSymbol}!`);
-    setTimeout(() => {
-      setOrderToast(null);
-    }, 3000);
-  };
-
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 font-sans text-slate-100 select-none">
+      <AnimatePresence>
+        {isNavigatingToDashboard && <GameDashboardLoader minDurationMs={850} />}
+      </AnimatePresence>
 
       {/* Dynamic Glassmorphic Ambient Glows */}
       <div className="absolute top-[-10%] left-[-15%] w-[55%] h-[55%] rounded-full bg-emerald-500/10 blur-[130px] pointer-events-none" />
@@ -748,16 +684,15 @@ export default function LandingPage() {
               className="pt-4 flex justify-center w-full"
             >
               {user ? (
-                <Link href="/dashboard">
-                  <button
-                    onMouseDown={handlePulse}
-                    style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                    className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-9 py-4 rounded-2xl text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
-                  >
-                    <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Go to Dashboard</span>
-                    <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </Link>
+                <button
+                  onClick={handleGoToDashboard}
+                  onMouseDown={handlePulse}
+                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                  className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-9 py-4 rounded-2xl text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
+                >
+                  <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Go to Dashboard</span>
+                  <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
+                </button>
               ) : (
                 <Link href="/signup">
                   <button
@@ -780,511 +715,9 @@ export default function LandingPage() {
           <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
         </div>
 
-        {/* Interactive Feature Showcase Section (Streamlined 3-Card System: Sandbox, Lesson, Customizability) */}
+        {/* Overhauled Glassmorphic Interactive Simulator Suite */}
         <section id="simulator" className="relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-16 py-16">
-          <div className="w-full max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10 items-stretch">
-
-            {/* Card 1: Interactive Trading Demo */}
-            <div className="p-6 sm:p-8 rounded-[28px] bg-slate-900/70 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.15)] flex flex-col justify-between overflow-hidden relative group">
-              {/* Ambient Background Glow */}
-              <div className="absolute -inset-px bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent rounded-[28px] pointer-events-none" />
-
-              {/* Card Header */}
-              <div className="flex flex-col items-start space-y-2.5 pb-4 border-b border-white/10 relative z-10">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold">
-                  <span>✨</span> Paper Trading Sandbox
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">
-                  Live Market Simulator
-                </h2>
-                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                  Practice trading stocks with live prices and virtual capital—100% risk-free.
-                </p>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="space-y-4 my-4 relative z-10 flex-1 flex flex-col justify-between">
-                <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md space-y-4 flex-1 flex flex-col justify-between">
-
-                  {/* Ticker Selector Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/10">
-                    <div className="flex items-center gap-1.5">
-                      {stockAssets.map((asset) => {
-                        const isActive = selectedSymbol === asset.symbol;
-                        return (
-                          <button
-                            key={asset.symbol}
-                            onClick={() => {
-                              setSelectedSymbol(asset.symbol as any);
-                              setShareCount((prev) => Math.min(prev, Math.max(1, Math.floor(virtualCash / asset.price))));
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isActive
-                                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)] font-black'
-                                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-white/5'
-                              }`}
-                          >
-                            {asset.symbol}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Clean compact price badge */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-extrabold text-white">${currentAsset.price.toFixed(2)}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentAsset.change >= 0 ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30' : 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
-                        }`}>
-                        {currentAsset.change >= 0 ? '+' : ''}{currentAsset.change.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Portfolio Stats Grid */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="p-3 bg-slate-950/60 border border-white/5 rounded-xl">
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Order Value</div>
-                      <div className="text-base font-extrabold text-white mt-0.5">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </div>
-                    <div className="p-3 bg-slate-950/60 border border-white/5 rounded-xl">
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Virtual Balance</div>
-                      <div className="text-base font-extrabold text-emerald-400 mt-0.5">${virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </div>
-                  </div>
-
-                  {/* Share Range Slider */}
-                  <div className="space-y-2 bg-slate-950/40 p-3 border border-white/5 rounded-xl">
-                    <div className="flex justify-between text-xs font-bold text-slate-300">
-                      <span>Shares: <strong className="text-emerald-400 font-extrabold">{shareCount}</strong></span>
-                      <span className="text-slate-400">Max: {maxShares}</span>
-                    </div>
-
-                    <input
-                      type="range"
-                      min="1"
-                      max={maxShares}
-                      value={shareCount}
-                      onChange={(e) => setShareCount(parseInt(e.target.value))}
-                      className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-800 accent-emerald-400 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Execute Button */}
-                  <div className="relative pt-1">
-                    <button
-                      onClick={handleExecuteOrder}
-                      disabled={virtualCash < totalCost}
-                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer ${virtualCash >= totalCost
-                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.01]'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
-                        }`}
-                    >
-                      Execute Virtual Trade
-                    </button>
-
-                    {/* Toast Notification */}
-                    <AnimatePresence>
-                      {orderToast && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          className="absolute -top-12 left-1/2 -translate-x-1/2 bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl shadow-2xl border border-white/20 whitespace-nowrap z-30 flex items-center gap-1.5"
-                        >
-                          <span>✅</span> {orderToast}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Interactive Financial Literacy Module */}
-            <div className="p-6 sm:p-8 rounded-[28px] bg-slate-900/70 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.15)] flex flex-col justify-between overflow-hidden relative group">
-              {/* Ambient Background Glow */}
-              <div className="absolute -inset-px bg-gradient-to-br from-blue-500/10 via-teal-500/5 to-transparent rounded-[28px] pointer-events-none" />
-
-              {/* Card Header */}
-              <div className="flex flex-col items-start space-y-2.5 pb-4 border-b border-white/10 relative z-10">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-semibold">
-                  <span>📚</span> Gamified Learning
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">
-                  Risk & Asset Allocation
-                </h2>
-                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                  Understand how diversification minimizes portfolio drawdown & volatility over time.
-                </p>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="space-y-4 my-4 relative z-10 flex-1 flex flex-col justify-between">
-                {/* 10-Year Performance Graph */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-white">
-                    <span>10-Year Return Trajectory</span>
-                    <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">Interactive Model</span>
-                  </div>
-
-                  {/* SVG Chart Graphic */}
-                  <div className="relative h-32 w-full bg-slate-950/80 rounded-xl p-2.5 border border-white/5 overflow-hidden flex flex-col justify-between">
-                    <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 400 120" preserveAspectRatio="none">
-                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
-                      <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
-                      <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
-
-                      {/* Safe Curve */}
-                      <path d="M 10 105 Q 120 90, 230 55 T 390 15" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
-                      {/* Risky Line */}
-                      <path d="M 10 105 L 55 30 L 95 110 L 145 15 L 195 115 L 255 25 L 315 100 L 390 50" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 3" />
-                    </svg>
-
-                    {/* Chart Legend Pills */}
-                    <div className="relative z-10 flex items-center justify-between text-[10px] font-bold mt-auto pt-1">
-                      <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-md border border-emerald-500/30 text-emerald-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" /> Balanced (+8%/yr)
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-md border border-rose-500/30 text-rose-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-400 shrink-0" /> High Volatility (+45%/-60%)
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Knowledge Check Quiz */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
-                      <span>🧠</span> Module Quiz
-                    </span>
-                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">+50 XP</span>
-                  </div>
-
-                  <p className="text-xs font-bold text-slate-200 leading-snug">
-                    Which strategy minimizes volatility while achieving steady long-term growth?
-                  </p>
-
-                  <div className="space-y-1.5">
-                    {[
-                      { id: 0, text: 'A) 100% Single stock options', isCorrect: false },
-                      { id: 1, text: 'B) Diversified index funds & bonds', isCorrect: true },
-                      { id: 2, text: 'C) Uninvested cash in savings', isCorrect: false }
-                    ].map((opt) => {
-                      const isSelected = quizAnswer === opt.id;
-                      let btnStyle = 'bg-slate-950/50 text-slate-300 border-white/10 hover:border-emerald-500/40';
-                      if (isSelected) {
-                        if (opt.isCorrect) {
-                          btnStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]';
-                        } else {
-                          btnStyle = 'bg-rose-500/20 text-rose-300 border-rose-400';
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => setQuizAnswer(opt.id)}
-                          className={`w-full text-left p-2.5 rounded-xl border text-xs font-medium transition-all duration-200 cursor-pointer flex items-center justify-between ${btnStyle}`}
-                        >
-                          <span className="text-white font-semibold text-xs">{opt.text}</span>
-                          {isSelected && (
-                            <span className="font-extrabold text-[11px] shrink-0 ml-2">
-                              {opt.isCorrect ? '✓ Correct!' : '✕ Try again'}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Dashboard Customizability Preview */}
-            <div className="p-6 sm:p-8 rounded-[28px] bg-slate-900/70 border border-emerald-500/30 backdrop-blur-xl shadow-[0_0_50px_rgba(16,185,129,0.15)] flex flex-col justify-between overflow-hidden relative group">
-              {/* Ambient Background Glow */}
-              <div className="absolute -inset-px bg-gradient-to-br from-purple-500/10 via-cyan-500/5 to-transparent rounded-[28px] pointer-events-none" />
-
-              {/* Card Header */}
-              <div className="flex flex-col items-start space-y-2.5 pb-4 border-b border-white/10 relative z-10">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-400 text-xs font-semibold">
-                  <span>🎨</span> Interactive Canvas
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">
-                  Customizable Dashboard
-                </h2>
-                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                  Add widgets via the dropdown, drag panels anywhere within the canvas, and resize them on the fly.
-                </p>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="space-y-3.5 my-4 relative z-10 flex-1 flex flex-col justify-between">
-                
-                {/* Control 1: Dropdown + Plus Button to Add Widget */}
-                <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    1. Select & Add Widget
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={selectedWidgetToAdd}
-                      onChange={(e) => setSelectedWidgetToAdd(e.target.value)}
-                      className="flex-1 bg-slate-950/80 border border-white/15 text-white text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                    >
-                      {AVAILABLE_WIDGET_OPTIONS.map((w) => {
-                        const isAlreadyAdded = addedWidgets.some(item => item.type === w.type);
-                        return (
-                          <option key={w.type} value={w.type} className="bg-slate-900 text-white">
-                            {w.icon} {w.title} {isAlreadyAdded ? '(Added ✓)' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-
-                    {(() => {
-                      const isSelectedAlreadyAdded = addedWidgets.some(item => item.type === selectedWidgetToAdd);
-                      return (
-                        <button
-                          disabled={isSelectedAlreadyAdded}
-                          onClick={() => {
-                            if (isSelectedAlreadyAdded) return;
-                            const targetOption = AVAILABLE_WIDGET_OPTIONS.find(w => w.type === selectedWidgetToAdd) || AVAILABLE_WIDGET_OPTIONS[0];
-                            
-                            // Calculate currently filled column units modulo 3 (3 units per row grid)
-                            const currentTotalUnits = addedWidgets.reduce((acc, w) => {
-                              const units = w.size === 'L' ? 3 : w.size === 'M' ? 2 : 1;
-                              return acc + units;
-                            }, 0);
-                            const remainderInRow = currentTotalUnits % 3;
-                            const emptyUnitsLeftInRow = remainderInRow === 0 ? 3 : 3 - remainderInRow;
-
-                            // Auto-assign size to fill exact remaining row gap perfectly!
-                            const defaultSize: 'S' | 'M' | 'L' =
-                              emptyUnitsLeftInRow === 1 ? 'S' : emptyUnitsLeftInRow === 2 ? 'M' : 'M';
-
-                            const newWidget = {
-                              id: `w-${Date.now()}`,
-                              type: targetOption.type,
-                              title: targetOption.title,
-                              icon: targetOption.icon,
-                              size: defaultSize
-                            };
-                            setAddedWidgets(prev => [...prev, newWidget]);
-                          }}
-                          className={`px-3.5 py-2 rounded-xl text-sm font-black transition-all duration-200 shrink-0 flex items-center justify-center gap-1 ${
-                            isSelectedAlreadyAdded
-                              ? 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
-                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 cursor-pointer'
-                          }`}
-                          title={isSelectedAlreadyAdded ? 'Widget already added to canvas' : 'Add Widget to Canvas'}
-                        >
-                          {isSelectedAlreadyAdded ? (
-                            <span>Added ✓</span>
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4 stroke-[3]" />
-                              <span>Add</span>
-                            </>
-                          )}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Control 2: Color Theme & Multi-Language */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">2. Accent Theme</span>
-                    <div className="flex gap-1.5">
-                      {[
-                        { id: 'emerald', bg: 'bg-emerald-500' },
-                        { id: 'blue', bg: 'bg-blue-500' },
-                        { id: 'purple', bg: 'bg-purple-500' }
-                      ].map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => setCustomColorScheme(t.id as any)}
-                          className={`h-5 w-full rounded-lg ${t.bg} transition-transform cursor-pointer ${
-                            customColorScheme === t.id ? 'ring-2 ring-white scale-105' : 'opacity-60 hover:opacity-100'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">3. Multi-Language</span>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[
-                        { id: 'en', label: '🇺🇸' },
-                        { id: 'es', label: '🇪🇸' },
-                        { id: 'fr', label: '🇫🇷' }
-                      ].map((lang) => (
-                        <button
-                          key={lang.id}
-                          onClick={() => setCustomLanguage(lang.id as any)}
-                          className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
-                            customLanguage === lang.id
-                              ? 'bg-emerald-500 text-slate-950 font-black'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          {lang.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Clean Flexible Drag-Reorder Workspace Container Box */}
-                <div className={`p-3.5 rounded-2xl border transition-all duration-300 relative overflow-hidden bg-slate-950/90 flex flex-col justify-between ${
-                  customColorScheme === 'emerald'
-                    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-                    : customColorScheme === 'blue'
-                    ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.2)]'
-                    : 'border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
-                }`}>
-                  <div className="flex items-center justify-between text-xs font-bold pb-2 border-b border-white/10">
-                    <span className="text-white flex items-center gap-1.5">
-                      <span>📌</span> {customLanguage === 'en' ? 'Live Workspace Canvas' : customLanguage === 'es' ? 'Lienzo de Trabajo' : 'Espace de Travail'}
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      {addedWidgets.length} Widget{addedWidgets.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  {/* Flowing Flexible Layout with Dot Grid Background & Placement Outline */}
-                  <div className="relative w-full min-h-[200px] max-h-[270px] overflow-y-auto rounded-xl bg-slate-900/70 p-3 border border-white/5 flex flex-wrap gap-2.5 align-start bg-[radial-gradient(circle_rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:16px_16px]">
-                    {addedWidgets.length === 0 ? (
-                      <div className="h-full min-h-[140px] w-full flex items-center justify-center text-xs font-semibold text-slate-500 italic">
-                        No widgets added yet. Select a widget above & click + Add!
-                      </div>
-                    ) : (
-                      addedWidgets.map((w, index) => {
-                        const widthClass =
-                          w.size === 'L'
-                            ? 'w-full' // 100% full row
-                            : w.size === 'M'
-                            ? 'w-full sm:w-[calc(66.666%-0.45rem)]' // 2/3 row width
-                            : 'w-full sm:w-[calc(33.333%-0.45rem)]'; // 1/3 row width
-
-                        const isDraggingThis = draggingWidgetId === w.id;
-                        const isDropTarget = dropTargetIndex === index && draggingWidgetId !== null && draggingWidgetId !== w.id;
-
-                        return (
-                          <motion.div
-                            key={w.id}
-                            layout
-                            drag
-                            dragSnapToOrigin
-                            onDragStart={() => {
-                              setDraggingWidgetId(w.id);
-                              setDropTargetIndex(index);
-                            }}
-                            onDrag={(_, info) => {
-                              const offset = info.offset.y + info.offset.x;
-                              if (Math.abs(offset) > 25) {
-                                const calculatedTarget = offset > 0 ? Math.min(addedWidgets.length - 1, index + 1) : Math.max(0, index - 1);
-                                setDropTargetIndex(calculatedTarget);
-                              } else {
-                                setDropTargetIndex(index);
-                              }
-                            }}
-                            onDragEnd={(_, info) => {
-                              const offset = info.offset.y + info.offset.x;
-                              if (Math.abs(offset) > 25) {
-                                const targetIndex = offset > 0 ? Math.min(addedWidgets.length - 1, index + 1) : Math.max(0, index - 1);
-                                if (targetIndex !== index) {
-                                  setAddedWidgets(prev => {
-                                    const next = [...prev];
-                                    const [removed] = next.splice(index, 1);
-                                    next.splice(targetIndex, 0, removed);
-                                    return next;
-                                  });
-                                }
-                              }
-                              setDraggingWidgetId(null);
-                              setDropTargetIndex(null);
-                            }}
-                            whileDrag={{
-                              scale: 1.06,
-                              rotate: -1.5,
-                              zIndex: 100,
-                              boxShadow: customColorScheme === 'emerald'
-                                ? '0 20px 40px rgba(16,185,129,0.5)'
-                                : customColorScheme === 'blue'
-                                ? '0 20px 40px rgba(59,130,246,0.5)'
-                                : '0 20px 40px rgba(168,85,247,0.5)'
-                            }}
-                            className={`${widthClass} shrink-0 grow-0 p-3 rounded-xl border backdrop-blur-md cursor-grab active:cursor-grabbing transition-all flex items-center justify-between gap-2.5 relative ${
-                              isDraggingThis
-                                ? 'ring-2 ring-emerald-400 opacity-90'
-                                : isDropTarget
-                                ? 'ring-2 ring-dashed ring-emerald-400/80 bg-emerald-500/10 scale-[0.98]'
-                                : customColorScheme === 'emerald'
-                                ? 'bg-slate-900/95 border-emerald-500/40 shadow-md hover:border-emerald-400'
-                                : customColorScheme === 'blue'
-                                ? 'bg-slate-900/95 border-blue-500/40 shadow-md hover:border-blue-400'
-                                : 'bg-slate-900/95 border-purple-500/40 shadow-md hover:border-purple-400'
-                            }`}
-                          >
-                            {/* Drop Placement Outline Overlay when another widget is dragged over */}
-                            {isDropTarget && (
-                              <div className="absolute inset-0 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-500/20 backdrop-blur-sm flex items-center justify-center text-[10px] font-black uppercase tracking-wider text-emerald-300 pointer-events-none z-20">
-                                <span>📍 Drop Target Slot</span>
-                              </div>
-                            )}
-
-                            {/* Left: Icon & Clean Widget Name */}
-                            <div className="flex items-center gap-2 min-w-0 pointer-events-none select-none">
-                              <span className="text-base shrink-0">{w.icon}</span>
-                              <span className="text-xs font-black text-white truncate">{w.title}</span>
-                            </div>
-
-                            {/* Right: Clean 3-Button Size Switcher + Close Button */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-white/10">
-                                {(['S', 'M', 'L'] as const).map((sz) => (
-                                  <button
-                                    key={sz}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAddedWidgets(prev => prev.map(item => item.id === w.id ? { ...item, size: sz } : item));
-                                    }}
-                                    className={`px-1.5 py-0.5 rounded text-[9px] font-black cursor-pointer transition-all ${
-                                      w.size === sz
-                                        ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                                        : 'text-slate-400 hover:text-white'
-                                    }`}
-                                  >
-                                    {sz}
-                                  </button>
-                                ))}
-                              </div>
-
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setAddedWidgets(prev => prev.filter(item => item.id !== w.id));
-                                }}
-                                className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                title="Remove Widget"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </motion.div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <LandingSimulatorSuite />
         </section>
       </div>
 

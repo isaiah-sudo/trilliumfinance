@@ -20,6 +20,7 @@ import { Responsive, useContainerWidth, Layout } from 'react-grid-layout';
 import { DEFAULT_WIDGET_LAYOUTS, WidgetLayoutItem, ResponsiveDashboardLayouts } from '@/lib/defaultDashboardLayout';
 import DashboardWidgetCard from '@/components/dashboard/DashboardWidgetCard';
 import { WIDGET_REGISTRY } from '@/components/dashboard/WidgetRegistry';
+import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 
 
 const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v2';
@@ -214,6 +215,15 @@ export default function DashboardPage() {
   const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
+  const [isGameLoading, setIsGameLoading] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const shouldShow = sessionStorage.getItem('trillium_show_loader') === 'true';
+    if (shouldShow) {
+      sessionStorage.removeItem('trillium_show_loader');
+      return true;
+    }
+    return false;
+  });
   const { width, containerRef } = useContainerWidth();
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -654,11 +664,10 @@ export default function DashboardPage() {
   const formatPercent = (val: number) => val.toFixed(2) + '%';
 
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    if (isGameLoading) {
+      return <GameDashboardLoader minDurationMs={850} onLoaded={() => setIsGameLoading(false)} />;
+    }
+    return null;
   }
 
   if (!user) {
@@ -675,12 +684,10 @@ export default function DashboardPage() {
   }
 
   if (storeLoading && !portfolio) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
-        <p className="font-medium animate-pulse">Syncing with markets...</p>
-      </div>
-    );
+    if (isGameLoading) {
+      return <GameDashboardLoader minDurationMs={850} onLoaded={() => setIsGameLoading(false)} />;
+    }
+    return null;
   }
 
   if (storeError) {
@@ -718,7 +725,28 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-3 sm:space-y-4 relative w-full min-h-screen flex flex-col flex-1" ref={containerRef}>
+    <>
+      <AnimatePresence>
+        {isGameLoading && (
+          <motion.div
+            key="game-loader-overlay"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="fixed inset-0 z-[9999]"
+          >
+            <GameDashboardLoader minDurationMs={850} onLoaded={() => setIsGameLoading(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isGameLoading ? 0 : 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="space-y-3 sm:space-y-4 relative w-full min-h-screen flex flex-col flex-1"
+        ref={containerRef}
+      >
 
 
       {role === 'student' && className && (
@@ -1482,6 +1510,7 @@ export default function DashboardPage() {
           </div>
         )}
       </AnimatePresence>
-    </div>
-  );
+    </motion.div>
+  </>
+);
 }

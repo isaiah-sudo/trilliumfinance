@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, PropsWithChildren } from 'react';
-import { Spinner } from '@/components/ui/Spinner';
+import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 
 /**
  * A component to wrap protected routes.
@@ -20,11 +20,10 @@ export const ProtectedRoute = ({ children }: PropsWithChildren) => {
   }, [user, loading, router]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Spinner />
-      </div>
-    );
+    if (typeof window !== 'undefined' && sessionStorage.getItem('trillium_show_loader') === 'true') {
+      return <GameDashboardLoader minDurationMs={850} />;
+    }
+    return null;
   }
 
   if (!user) {
