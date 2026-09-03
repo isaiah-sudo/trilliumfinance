@@ -16,6 +16,7 @@ import {
   calculateGlobalTotalPerformancePercent,
   calculateGlobalDayPLPercent
 } from '@/lib/portfolioMath';
+import { getStockLogo, getStockMetadata } from '@/lib/stockUtils';
 
 // ----- Premade portfolio definitions -----
 const PREMADE_PORTFOLIOS: Record<string, { ticker: string; qty: number }[]> = {
@@ -60,34 +61,63 @@ const getFinnhubToken = () => {
   return process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
 };
 
+/**
+ * Fallback realistic stock pricing with gentle real-time micro-fluctuations
+ */
 export function getMockStockPrice(symbol: string) {
   const sym = symbol.toUpperCase();
+  const meta = getStockMetadata(sym);
+  const basePrice = meta.basePrice;
+  const changePercent = meta.baseChange;
+  const pc = basePrice;
+  
+  // Smooth time-based micro-fluctuation (+/- 0.25%)
+  const now = Date.now();
+  const step = Math.floor(now / 15000);
   let hash = 0;
   for (let i = 0; i < sym.length; i++) {
     hash = sym.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
-  // Base price between $30 and $450
-  const basePrice = 30 + (Math.abs(hash) % 420);
-  
-  // Deterministic daily change percent between -4% and +4%
-  const changePercent = ((hash % 80) / 100) * 5;
-  const pc = basePrice;
-  // Add a tiny random walk (e.g. -0.2% to +0.2%) to simulate real-time updates
-  const randomWalk = (Math.random() - 0.5) * 0.004; 
-  const c = basePrice * (1 + (changePercent + randomWalk) / 100);
-  
+  const microWalk = (((Math.abs(hash + step) % 100) - 50) / 100) * 0.5;
+  const totalChange = changePercent + microWalk;
+  const c = basePrice * (1 + totalChange / 100);
+
   return {
     c: Number(c.toFixed(2)),
     pc: Number(pc.toFixed(2))
   };
 }
 
-// --- Global In-Memory Cache for Finnhub Quotes ---
-const quoteCache = new Map<string, { promise: Promise<any>, timestamp: number }>();
-const CACHE_TTL = 60000; // 60 seconds
+/**
+ * Fetch real-time market quote from Yahoo Finance v8 API
+ */
+async function fetchYahooQuote(symbol: string): Promise<{ c: number; pc: number } | null> {
+  try {
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (meta && typeof meta.regularMarketPrice === 'number' && meta.regularMarketPrice > 0) {
+      const c = meta.regularMarketPrice;
+      const pc = typeof meta.chartPreviousClose === 'number' && meta.chartPreviousClose > 0
+        ? meta.chartPreviousClose
+        : (typeof meta.previousClose === 'number' && meta.previousClose > 0 ? meta.previousClose : c);
+      return {
+        c: Number(c.toFixed(2)),
+        pc: Number(pc.toFixed(2))
+      };
+    }
+  } catch (err) {
+    // Network or parse issue, proceed to next fallback
+  }
+  return null;
+}
 
-export async function fetchFinnhubQuote(symbol: string) {
+// --- Global In-Memory Cache for Stock Quotes ---
+const quoteCache = new Map<string, { promise: Promise<{ c: number; pc: number }>, timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
+export async function fetchFinnhubQuote(symbol: string): Promise<{ c: number; pc: number }> {
   const symbolKey = symbol.toUpperCase();
   const now = Date.now();
   
@@ -97,52 +127,74 @@ export async function fetchFinnhubQuote(symbol: string) {
     try {
       return await cached.promise;
     } catch (e) {
-      // If the promise failed, we'll try fetching again below
+      // Retry if failed
     }
   }
 
-  // 2. Create the fetch operation
-  // Introduce a small delay to respect rate limits when not using cached data
+  // 2. Multi-tier quote fetcher:
+  // Tier 1: Finnhub API (if API key is configured)
+  // Tier 2: Yahoo Finance real-time quote API
+  // Tier 3: Realistic metadata baseline + micro-walk
   const fetchPromise = (async () => {
     const token = getFinnhubToken();
-    if (!token) {
-      return getMockStockPrice(symbolKey); 
+    if (token) {
+      try {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbolKey}&token=${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data.c === 'number' && data.c > 0) {
+            return {
+              c: Number(data.c.toFixed(2)),
+              pc: Number((data.pc || data.c).toFixed(2))
+            };
+          }
+        }
+      } catch (err) {
+        // Fallback to Tier 2
+      }
     }
 
-    // Delay 200ms before each network request
-    await new Promise(resolve => setTimeout(resolve, 200));
-    try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbolKey}&token=${token}`);
-      if (!res.ok) {
-        return getMockStockPrice(symbolKey);
-      }
-      const data = await res.json();
-      if (!data || !data.c) {
-        return getMockStockPrice(symbolKey);
-      }
-      return data;
-    } catch (err: any) {
-      return getMockStockPrice(symbolKey);
+    // Tier 2: Yahoo Finance Real-Time API
+    const yahooQuote = await fetchYahooQuote(symbolKey);
+    if (yahooQuote && yahooQuote.c > 0) {
+      return yahooQuote;
     }
+
+    // Tier 3: Accurate baseline metadata
+    return getMockStockPrice(symbolKey);
   })();
 
-  // 3. Store the promise in the cache immediately so concurrent requests await the SAME promise
   quoteCache.set(symbolKey, { promise: fetchPromise, timestamp: now });
-  
   return fetchPromise;
 }
 
 async function fetchFinnhubProfile(symbol: string) {
+  const sym = symbol.toUpperCase();
+  const meta = getStockMetadata(sym);
+  const reliableLogo = getStockLogo(sym, meta.domain);
+
   try {
     const token = getFinnhubToken();
-    if (!token) return { name: symbol, logo: null };
-    const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol.toUpperCase()}&token=${token}`);
-    if (!res.ok) return { name: symbol, logo: null };
-    const data = await res.json();
-    return { name: data.name || symbol, logo: data.logo || null };
+    if (token) {
+      const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${token}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.name) {
+          return {
+            name: data.name || meta.name,
+            logo: data.logo || reliableLogo
+          };
+        }
+      }
+    }
   } catch (err) {
-    return { name: symbol, logo: null };
+    // Continue with metadata fallback
   }
+
+  return {
+    name: meta.name,
+    logo: reliableLogo
+  };
 }
 
 export interface PortfolioSummary {
@@ -272,8 +324,8 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
 
         holdingsList.push({
           symbol: ticker,
-          name: profileData.name,
-          logo: profileData.logo,
+          name: profileData?.name || getStockMetadata(ticker).name,
+          logo: profileData?.logo || getStockLogo(ticker),
           qty: holdingData.qty,
           avgPrice: holdingData.avgPrice || 0,
           currentPrice,

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, Cpu, Coins, Globe, Landmark, TrendingUp } from 'lucide-react';
 import { getCompanyProfile, CompanyProfile } from '@/app/actions/stockDetails';
+import { getStockLogo } from '@/lib/stockUtils';
 import { Spinner } from './Spinner';
 
 interface StockInfoDrawerProps {
@@ -143,7 +144,7 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                     
                     <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 p-2.5 flex items-center justify-center shadow-inner shrink-0 overflow-hidden relative">
                       <img 
-                        src={profile.logo || `https://www.google.com/s2/favicons?sz=128&domain=${(profile.weburl || symbol).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}`} 
+                        src={profile.logo || getStockLogo(symbol, (profile.weburl || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0])} 
                         alt={profile.name} 
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';

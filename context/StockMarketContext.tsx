@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, PropsWithChildren } from 'react';
 import { fetchFinnhubQuote } from '@/app/actions/trading';
+import { KNOWN_STOCKS_DATA, getStockLogo, getStockMetadata } from '@/lib/stockUtils';
 
 export interface StockQuote {
   ticker: string;
@@ -13,67 +14,14 @@ export interface StockQuote {
   loading?: boolean;
 }
 
-export const BASE_STOCKS: StockQuote[] = [
-  // Technology
-  { ticker: 'AAPL', name: 'Apple Inc.', category: 'Technology', price: 224.23, change: 1.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=apple.com' },
-  { ticker: 'MSFT', name: 'Microsoft Corp.', category: 'Technology', price: 448.37, change: 0.82, logo: 'https://www.google.com/s2/favicons?sz=128&domain=microsoft.com' },
-  { ticker: 'NVDA', name: 'NVIDIA Corp.', category: 'Technology', price: 128.54, change: 3.12, logo: 'https://www.google.com/s2/favicons?sz=128&domain=nvidia.com' },
-  { ticker: 'GOOGL', name: 'Alphabet Inc.', category: 'Technology', price: 178.20, change: -0.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=google.com' },
-  { ticker: 'AMZN', name: 'Amazon.com Inc.', category: 'Technology', price: 186.40, change: 1.15, logo: 'https://www.google.com/s2/favicons?sz=128&domain=amazon.com' },
-  { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology', price: 512.90, change: 2.05, logo: 'https://www.google.com/s2/favicons?sz=128&domain=meta.com' },
-  { ticker: 'TSM', name: 'Taiwan Semiconductor', category: 'Technology', price: 172.80, change: 1.88, logo: 'https://www.google.com/s2/favicons?sz=128&domain=tsmc.com' },
-  { ticker: 'AVGO', name: 'Broadcom Inc.', category: 'Technology', price: 168.30, change: -0.32, logo: 'https://www.google.com/s2/favicons?sz=128&domain=broadcom.com' },
-  { ticker: 'ASML', name: 'ASML Holding', category: 'Technology', price: 924.10, change: 0.95, logo: 'https://www.google.com/s2/favicons?sz=128&domain=asml.com' },
-  { ticker: 'ORCL', name: 'Oracle Corp.', category: 'Technology', price: 142.50, change: 1.12, logo: 'https://www.google.com/s2/favicons?sz=128&domain=oracle.com' },
-  { ticker: 'AMD', name: 'Advanced Micro Devices', category: 'Technology', price: 156.40, change: -1.20, logo: 'https://www.google.com/s2/favicons?sz=128&domain=amd.com' },
-  { ticker: 'CRM', name: 'Salesforce Inc.', category: 'Technology', price: 254.60, change: 0.64, logo: 'https://www.google.com/s2/favicons?sz=128&domain=salesforce.com' },
-  { ticker: 'ADBE', name: 'Adobe Inc.', category: 'Technology', price: 542.10, change: -0.15, logo: 'https://www.google.com/s2/favicons?sz=128&domain=adobe.com' },
-  { ticker: 'NFLX', name: 'Netflix Inc.', category: 'Technology', price: 684.30, change: 2.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=netflix.com' },
-  { ticker: 'INTC', name: 'Intel Corporation', category: 'Technology', price: 21.40, change: -2.10, logo: 'https://www.google.com/s2/favicons?sz=128&domain=intel.com' },
-
-  // Healthcare
-  { ticker: 'UNH', name: 'UnitedHealth Group', category: 'Healthcare', price: 564.20, change: 0.42, logo: 'https://www.google.com/s2/favicons?sz=128&domain=unitedhealthgroup.com' },
-  { ticker: 'LLY', name: 'Eli Lilly & Co.', category: 'Healthcare', price: 942.80, change: 1.85, logo: 'https://www.google.com/s2/favicons?sz=128&domain=lilly.com' },
-  { ticker: 'JNJ', name: 'Johnson & Johnson', category: 'Healthcare', price: 162.30, change: -0.25, logo: 'https://www.google.com/s2/favicons?sz=128&domain=jnj.com' },
-  { ticker: 'MRK', name: 'Merck & Co.', category: 'Healthcare', price: 114.70, change: 0.55, logo: 'https://www.google.com/s2/favicons?sz=128&domain=merck.com' },
-  { ticker: 'ABBV', name: 'AbbVie Inc.', category: 'Healthcare', price: 192.50, change: 1.05, logo: 'https://www.google.com/s2/favicons?sz=128&domain=abbvie.com' },
-  { ticker: 'PFE', name: 'Pfizer Inc.', category: 'Healthcare', price: 28.90, change: -0.40, logo: 'https://www.google.com/s2/favicons?sz=128&domain=pfizer.com' },
-  { ticker: 'TMO', name: 'Thermo Fisher', category: 'Healthcare', price: 578.40, change: 0.72, logo: 'https://www.google.com/s2/favicons?sz=128&domain=thermofisher.com' },
-  { ticker: 'DHR', name: 'Danaher Corp.', category: 'Healthcare', price: 264.10, change: 0.38, logo: 'https://www.google.com/s2/favicons?sz=128&domain=danaher.com' },
-  { ticker: 'ABT', name: 'Abbott Labs', category: 'Healthcare', price: 112.60, change: 0.18, logo: 'https://www.google.com/s2/favicons?sz=128&domain=abbott.com' },
-  { ticker: 'AMGN', name: 'Amgen Inc.', category: 'Healthcare', price: 324.50, change: -0.85, logo: 'https://www.google.com/s2/favicons?sz=128&domain=amgen.com' },
-
-  // Energy
-  { ticker: 'XOM', name: 'Exxon Mobil Corp.', category: 'Energy', price: 118.40, change: 1.25, logo: 'https://www.google.com/s2/favicons?sz=128&domain=exxonmobil.com' },
-  { ticker: 'CVX', name: 'Chevron Corp.', category: 'Energy', price: 146.20, change: 0.92, logo: 'https://www.google.com/s2/favicons?sz=128&domain=chevron.com' },
-  { ticker: 'COP', name: 'ConocoPhillips', category: 'Energy', price: 112.30, change: 1.40, logo: 'https://www.google.com/s2/favicons?sz=128&domain=conocophillips.com' },
-  { ticker: 'SLB', name: 'Schlumberger N.V.', category: 'Energy', price: 44.80, change: -0.60, logo: 'https://www.google.com/s2/favicons?sz=128&domain=slb.com' },
-  { ticker: 'EOG', name: 'EOG Resources', category: 'Energy', price: 124.50, change: 0.85, logo: 'https://www.google.com/s2/favicons?sz=128&domain=eogresources.com' },
-  { ticker: 'BP', name: 'BP plc', category: 'Energy', price: 34.20, change: 0.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=bp.com' },
-  { ticker: 'MPC', name: 'Marathon Petroleum', category: 'Energy', price: 168.90, change: 1.10, logo: 'https://www.google.com/s2/favicons?sz=128&domain=marathonpetroleum.com' },
-  { ticker: 'PSX', name: 'Phillips 66', category: 'Energy', price: 138.40, change: 0.70, logo: 'https://www.google.com/s2/favicons?sz=128&domain=phillips66.com' },
-  { ticker: 'VLO', name: 'Valero Energy', category: 'Energy', price: 148.60, change: 1.35, logo: 'https://www.google.com/s2/favicons?sz=128&domain=valero.com' },
-  { ticker: 'OXY', name: 'Occidental Petroleum', category: 'Energy', price: 58.20, change: 0.22, logo: 'https://www.google.com/s2/favicons?sz=128&domain=oxy.com' },
-
-  // Finance
-  { ticker: 'JPM', name: 'JPMorgan Chase', category: 'Finance', price: 214.80, change: 1.12, logo: 'https://www.google.com/s2/favicons?sz=128&domain=jpmorganchase.com' },
-  { ticker: 'V', name: 'Visa Inc.', category: 'Finance', price: 272.40, change: 0.65, logo: 'https://www.google.com/s2/favicons?sz=128&domain=visa.com' },
-  { ticker: 'MA', name: 'Mastercard Inc.', category: 'Finance', price: 462.10, change: 0.88, logo: 'https://www.google.com/s2/favicons?sz=128&domain=mastercard.com' },
-  { ticker: 'BAC', name: 'Bank of America', category: 'Finance', price: 39.50, change: 0.40, logo: 'https://www.google.com/s2/favicons?sz=128&domain=bankofamerica.com' },
-  { ticker: 'WFC', name: 'Wells Fargo', category: 'Finance', price: 56.40, change: -0.15, logo: 'https://www.google.com/s2/favicons?sz=128&domain=wellsfargo.com' },
-  { ticker: 'GS', name: 'Goldman Sachs', category: 'Finance', price: 488.30, change: 1.60, logo: 'https://www.google.com/s2/favicons?sz=128&domain=goldmansachs.com' },
-  { ticker: 'MS', name: 'Morgan Stanley', category: 'Finance', price: 102.50, change: 0.95, logo: 'https://www.google.com/s2/favicons?sz=128&domain=morganstanley.com' },
-  { ticker: 'AXP', name: 'American Express', category: 'Finance', price: 248.90, change: 1.20, logo: 'https://www.google.com/s2/favicons?sz=128&domain=americanexpress.com' },
-  { ticker: 'C', name: 'Citigroup Inc.', category: 'Finance', price: 62.10, change: 0.35, logo: 'https://www.google.com/s2/favicons?sz=128&domain=citigroup.com' },
-  { ticker: 'BLK', name: 'BlackRock Inc.', category: 'Finance', price: 884.20, change: 1.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=blackrock.com' },
-
-  // Consumer
-  { ticker: 'WMT', name: 'Walmart Inc.', category: 'Consumer', price: 74.30, change: 0.50, logo: 'https://www.google.com/s2/favicons?sz=128&domain=walmart.com' },
-  { ticker: 'PG', name: 'Procter & Gamble', category: 'Consumer', price: 168.20, change: 0.15, logo: 'https://www.google.com/s2/favicons?sz=128&domain=pg.com' },
-  { ticker: 'HD', name: 'Home Depot', category: 'Consumer', price: 364.50, change: -0.45, logo: 'https://www.google.com/s2/favicons?sz=128&domain=homedepot.com' },
-  { ticker: 'COST', name: 'Costco Wholesale', category: 'Consumer', price: 852.40, change: 1.80, logo: 'https://www.google.com/s2/favicons?sz=128&domain=costco.com' },
-  { ticker: 'KO', name: 'Coca-Cola Co.', category: 'Consumer', price: 68.90, change: 0.25, logo: 'https://www.google.com/s2/favicons?sz=128&domain=coca-colacompany.com' },
-];
+export const BASE_STOCKS: StockQuote[] = Object.values(KNOWN_STOCKS_DATA).map(meta => ({
+  ticker: meta.ticker,
+  name: meta.name,
+  category: meta.category,
+  price: meta.basePrice,
+  change: meta.baseChange,
+  logo: getStockLogo(meta.ticker, meta.domain)
+}));
 
 interface StockMarketContextValue {
   stocks: StockQuote[];
@@ -87,9 +35,9 @@ const StockMarketContext = createContext<StockMarketContextValue>({
   lastUpdated: Date.now(),
 });
 
-const CACHE_KEY = 'trillium_global_stock_market_v1';
-const TIMESTAMP_KEY = 'trillium_global_stock_market_time_v1';
-const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours threshold for full daily sync
+const CACHE_KEY = 'trillium_global_stock_market_v2';
+const TIMESTAMP_KEY = 'trillium_global_stock_market_time_v2';
+const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds fresh cache sync
 
 export function StockMarketProvider({ children }: PropsWithChildren) {
   const [stocks, setStocks] = useState<StockQuote[]>(() => {
@@ -99,14 +47,16 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
         if (cached) {
           const parsed: StockQuote[] = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Merge cached data with BASE_STOCKS to ensure logo & category exist and price is non-zero
+            // Merge cached data with BASE_STOCKS and ensure realistic prices
             return BASE_STOCKS.map(base => {
               const item = parsed.find((p: any) => p.ticker === base.ticker);
-              if (item && item.price > 0) {
+              // Reject corrupted legacy cache prices that deviate wildly (> 4x or < 0.2x) from basePrice
+              if (item && item.price > 0 && item.price > base.price * 0.2 && item.price < base.price * 5) {
                 return {
                   ...base,
                   price: item.price,
                   change: item.change ?? base.change,
+                  logo: base.logo || item.logo,
                   loading: false
                 };
               }
@@ -138,7 +88,7 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
     }
   };
 
-  // Background EOD / Daily sweep to fetch fresh quotes for all stocks if cache is stale (>6 hrs)
+  // Sweep to fetch fresh quotes for stocks if cache is stale or on initial launch
   const refreshCacheIfStale = async () => {
     if (typeof window === 'undefined') return;
     try {
@@ -147,8 +97,8 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
       const isStale = Date.now() - lastTime > REFRESH_INTERVAL_MS;
 
       if (isStale || lastTime === 0) {
-        // Fetch top stocks in batch to update daily closing prices
-        const topTickers = BASE_STOCKS.map(s => s.ticker).slice(0, 15);
+        // Fetch quotes in batch
+        const topTickers = BASE_STOCKS.map(s => s.ticker);
         const { getMarketQuotes } = await import('@/app/actions/trading');
         const quotes = await getMarketQuotes(topTickers);
         
@@ -157,13 +107,19 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
             const updated = prev.map(stock => {
               const quote = quotes.find(q => q.ticker === stock.ticker);
               if (quote && quote.price > 0) {
-                return { ...stock, price: quote.price, change: quote.change, loading: false };
+                return {
+                  ...stock,
+                  price: quote.price,
+                  change: quote.change,
+                  loading: false
+                };
               }
               return stock;
             });
             saveToCache(updated);
             return updated;
           });
+          setLastUpdated(Date.now());
         }
       }
     } catch (err) {
@@ -174,49 +130,55 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let mounted = true;
 
-    // Check and refresh cache on mount if stale
+    // Check and refresh cache on mount
     refreshCacheIfStale();
 
-    // Staggered global tick synchronized by timestamp
+    // Staggered ticker loop updating batches of stocks
+    let tickCounter = 0;
     const tickGlobalMarket = async () => {
       if (!mounted) return;
       
-      // Calculate synchronized ticker index based on global epoch time (4000ms steps)
-      const nowSeconds = Math.floor(Date.now() / 4000);
-      const rotationIndex = nowSeconds % BASE_STOCKS.length;
-      const targetStock = BASE_STOCKS[rotationIndex];
+      const batchSize = 3;
+      const startIndex = (tickCounter * batchSize) % BASE_STOCKS.length;
+      tickCounter++;
+      const targetStocks = BASE_STOCKS.slice(startIndex, startIndex + batchSize);
 
-      if (!targetStock) return;
+      if (targetStocks.length === 0) return;
 
       try {
-        const quote = await fetchFinnhubQuote(targetStock.ticker);
-        if (mounted && quote && quote.c && quote.c > 0) {
-          setStocks(prev => {
-            const updated = prev.map(stock => {
-              if (stock.ticker === targetStock.ticker) {
+        const quotes = await Promise.all(targetStocks.map(s => fetchFinnhubQuote(s.ticker)));
+        if (!mounted) return;
+
+        setStocks(prev => {
+          let hasChange = false;
+          const updated = prev.map(stock => {
+            const idx = targetStocks.findIndex(ts => ts.ticker === stock.ticker);
+            if (idx !== -1) {
+              const quote = quotes[idx];
+              if (quote && quote.c && quote.c > 0) {
                 const price = quote.c;
                 const pc = quote.pc || stock.price || price;
-                const change = pc > 0 ? ((price - pc) / pc) * 100 : stock.change;
+                const change = pc > 0 ? Number((((price - pc) / pc) * 100).toFixed(2)) : stock.change;
+                hasChange = true;
                 return { ...stock, price, change, loading: false };
               }
-              return stock;
-            });
-
-            saveToCache(updated);
-            return updated;
+            }
+            return stock;
           });
-          setLastUpdated(Date.now());
-        }
+
+          if (hasChange) {
+            saveToCache(updated);
+          }
+          return updated;
+        });
+        setLastUpdated(Date.now());
       } catch (err) {
-        console.error(`Global ticker update error for ${targetStock.ticker}:`, err);
+        console.error('Ticker update error:', err);
       }
     };
 
-    // Initial tick right away
-    tickGlobalMarket();
-
-    // Synchronized interval every 4000ms
-    const interval = setInterval(tickGlobalMarket, 4000);
+    // Staggered interval every 3.5 seconds
+    const interval = setInterval(tickGlobalMarket, 3500);
 
     return () => {
       mounted = false;
@@ -225,7 +187,7 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
   }, []);
 
   const getStock = (ticker: string) => {
-    const sym = ticker.toUpperCase();
+    const sym = (ticker || '').toUpperCase();
     return stocks.find(s => s.ticker === sym) || BASE_STOCKS.find(s => s.ticker === sym);
   };
 
@@ -239,4 +201,3 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
 export function useStockMarket() {
   return useContext(StockMarketContext);
 }
-

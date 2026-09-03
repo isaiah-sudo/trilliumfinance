@@ -8,6 +8,8 @@ import { getLeaderboard, LeaderboardEntry } from '@/app/actions/leaderboard';
 import { ACHIEVEMENTS, getUserAchievements, RarityType } from '@/app/actions/achievements';
 import { AnimatedNumber } from '@/components/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { getStockLogo } from '@/lib/stockUtils';
+import { useStockMarket } from '@/context/StockMarketContext';
 
 export interface WidgetComponentProps {
   portfolio: any;
@@ -77,20 +79,24 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
                   <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-2.5 pr-3 font-bold text-blue-600 dark:text-blue-400">
                       <div className="flex items-center gap-2.5">
-                        {h.logo ? (
+                        <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0 border border-slate-200 dark:border-slate-700/60 shadow-sm flex items-center justify-center relative overflow-hidden">
                           <img
-                            src={h.logo}
+                            src={h.logo || getStockLogo(h.symbol)}
                             alt={h.symbol}
-                            className="w-7 h-7 rounded-full object-contain bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0 border border-slate-200 dark:border-slate-700/60 shadow-sm"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
                             }}
                           />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-[10px] font-black shrink-0 shadow-sm">
-                            {h.symbol.slice(0, 2)}
+                          <div
+                            style={{ display: 'none' }}
+                            className="absolute inset-0 bg-blue-500/10 text-blue-500 font-black text-[10px] items-center justify-center uppercase"
+                          >
+                            {h.symbol ? h.symbol.slice(0, 2) : 'ST'}
                           </div>
-                        )}
+                        </div>
                         <div className="flex flex-col min-w-0">
                           <div className="leading-tight">{h.symbol}</div>
                           {h.name && <div className="text-[9px] text-slate-400 font-normal truncate max-w-[110px] leading-tight">{h.name}</div>}
@@ -822,20 +828,56 @@ export function QuickTradeWidget({ onOpenTradeModal }: WidgetComponentProps) {
 
 // 8. Market Movers / Top Sparkline Widget
 export function MarketMoversWidget() {
-  const movers = [
-    { ticker: 'AAPL', name: 'Apple Inc.', price: '$224.23', change: '+2.4%', positive: true },
-    { ticker: 'NVDA', name: 'NVIDIA Corp.', price: '$128.50', change: '+4.8%', positive: true },
-    { ticker: 'TSLA', name: 'Tesla Inc.', price: '$219.80', change: '-1.5%', positive: false },
-    { ticker: 'AMZN', name: 'Amazon.com', price: '$186.10', change: '+1.1%', positive: true },
-  ];
+  const { stocks } = useStockMarket();
+  
+  // Sort stocks by absolute percent change to get top market movers
+  const movers = useMemo(() => {
+    if (!stocks || stocks.length === 0) {
+      return [
+        { ticker: 'AAPL', name: 'Apple Inc.', price: '$228.50', change: '+1.45%', positive: true, logo: getStockLogo('AAPL') },
+        { ticker: 'NVDA', name: 'NVIDIA Corp.', price: '$128.54', change: '+3.12%', positive: true, logo: getStockLogo('NVDA') },
+        { ticker: 'TSLA', name: 'Tesla Inc.', price: '$238.50', change: '-1.25%', positive: false, logo: getStockLogo('TSLA') },
+        { ticker: 'AMZN', name: 'Amazon.com', price: '$186.40', change: '+1.15%', positive: true, logo: getStockLogo('AMZN') },
+      ];
+    }
+    const sorted = [...stocks].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    return sorted.slice(0, 4).map(s => ({
+      ticker: s.ticker,
+      name: s.name,
+      price: `$${(s.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: `${(s.change || 0) >= 0 ? '+' : ''}${(s.change || 0).toFixed(2)}%`,
+      positive: (s.change || 0) >= 0,
+      logo: s.logo || getStockLogo(s.ticker)
+    }));
+  }, [stocks]);
 
   return (
     <div className="h-full flex flex-col justify-between space-y-2">
       {movers.map((m) => (
         <div key={m.ticker} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 text-xs">
-          <div>
-            <div className="font-extrabold text-slate-900 dark:text-white">{m.ticker}</div>
-            <div className="text-[10px] text-slate-500">{m.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0 border border-slate-200 dark:border-slate-700/60 shadow-sm flex items-center justify-center relative overflow-hidden">
+              <img
+                src={m.logo}
+                alt={m.ticker}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div
+                style={{ display: 'none' }}
+                className="absolute inset-0 bg-blue-500/10 text-blue-500 font-bold text-[9px] items-center justify-center uppercase"
+              >
+                {m.ticker.slice(0, 2)}
+              </div>
+            </div>
+            <div>
+              <div className="font-extrabold text-slate-900 dark:text-white">{m.ticker}</div>
+              <div className="text-[10px] text-slate-500 truncate max-w-[90px]">{m.name}</div>
+            </div>
           </div>
           <div className="text-right">
             <div className="font-bold text-slate-900 dark:text-white">{m.price}</div>

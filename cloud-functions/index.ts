@@ -13,22 +13,36 @@ const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
  * Helper to fetch stock price from Finnhub
  */
 async function fetchFinnhubQuote(symbol: string): Promise<number> {
-  if (!FINNHUB_API_KEY) {
-    // Mock quote if no API key is provided
-    return symbol.toUpperCase() === 'SPY' ? 510.25 : 150.0;
-  }
-  try {
-    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${FINNHUB_API_KEY}`);
-    if (!response.ok) {
-      console.error(`Finnhub quote fetch failed for ${symbol}: ${response.statusText}`);
-      return 150.0;
+  const sym = symbol.toUpperCase();
+  if (FINNHUB_API_KEY) {
+    try {
+      const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_API_KEY}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && typeof data.c === 'number' && data.c > 0) {
+          return data.c;
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching Finnhub quote for ${sym}:`, error);
     }
-    const data = await response.json();
-    return data.c || 150.0;
-  } catch (error) {
-    console.error(`Error fetching Finnhub quote for ${symbol}:`, error);
-    return 150.0;
   }
+
+  // Real-time market data fallback via Yahoo Finance
+  try {
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d`);
+    if (res.ok) {
+      const data = await res.json();
+      const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (typeof price === 'number' && price > 0) {
+        return price;
+      }
+    }
+  } catch (err) {
+    // Continue to fallback
+  }
+
+  return sym === 'SPY' ? 564.00 : 150.0;
 }
 
 /**
