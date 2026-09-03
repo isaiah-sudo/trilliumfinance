@@ -145,6 +145,11 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
   const [viewMode, setViewMode] = useState<'portfolio' | 'positions'>('portfolio');
   const [displayUnit, setDisplayUnit] = useState<'currency' | 'percent'>('currency');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const cash = Math.max(0, portfolio?.cash || 0);
   const holdings = portfolio?.holdings || [];
@@ -246,54 +251,60 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
 
       {/* Pie Chart Canvas filling main empty container space */}
       <div className="flex-1 w-full min-h-[140px] relative flex items-center justify-center">
-        <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={120}>
-          <PieChart>
-            <Pie
-              data={activeData}
-              cx="50%"
-              cy="50%"
-              innerRadius="46%"
-              outerRadius="78%"
-              paddingAngle={activeData.length > 1 ? 3 : 0}
-              dataKey="value"
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-            >
-              {activeData.map((entry: { name: string; value: number; color: string }, index: number) => (
-                <Cell
-                  key={`cell-${entry.name}-${index}`}
-                  fill={entry.color}
-                  stroke="none"
-                  style={{
-                    transform: activeIndex === index ? 'scale(1.07)' : 'scale(1)',
-                    transformOrigin: 'center center',
-                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    filter: activeIndex === index ? 'drop-shadow(0px 6px 12px rgba(0,0,0,0.35))' : 'none',
-                    cursor: 'pointer',
-                  }}
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              offset={18}
-              formatter={(val: any, name: any) => [
-                displayUnit === 'percent'
-                  ? `${((Number(val || 0) / activeTotalValue) * 100).toFixed(2)}%`
-                  : `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-                `${name}:`
-              ]}
-              contentStyle={{
-                backgroundColor: '#0f111a',
-                borderColor: '#334155',
-                borderRadius: '0.75rem',
-                fontSize: '12px',
-                color: '#fff',
-                fontWeight: 700,
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        {isMounted ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={120}>
+            <PieChart>
+              <Pie
+                data={activeData}
+                cx="50%"
+                cy="50%"
+                innerRadius="46%"
+                outerRadius="78%"
+                paddingAngle={activeData.length > 1 ? 3 : 0}
+                dataKey="value"
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+              >
+                {activeData.map((entry: { name: string; value: number; color: string }, index: number) => (
+                  <Cell
+                    key={`cell-${entry.name}-${index}`}
+                    fill={entry.color}
+                    stroke="none"
+                    style={{
+                      transform: activeIndex === index ? 'scale(1.07)' : 'scale(1)',
+                      transformOrigin: 'center center',
+                      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      filter: activeIndex === index ? 'drop-shadow(0px 6px 12px rgba(0,0,0,0.35))' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                offset={18}
+                formatter={(val: any, name: any) => [
+                  displayUnit === 'percent'
+                    ? `${((Number(val || 0) / activeTotalValue) * 100).toFixed(2)}%`
+                    : `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                  `${name}:`
+                ]}
+                contentStyle={{
+                  backgroundColor: '#0f111a',
+                  borderColor: '#334155',
+                  borderRadius: '0.75rem',
+                  fontSize: '12px',
+                  color: '#fff',
+                  fontWeight: 700,
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+            Loading chart...
+          </div>
+        )}
       </div>
 
       {/* Dynamic Color Identifiers Legend at bottom */}

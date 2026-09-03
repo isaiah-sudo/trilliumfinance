@@ -278,23 +278,23 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
-      <div className="relative z-10 w-full min-h-screen px-4 md:px-8 lg:px-12 pt-4 sm:pt-6 flex flex-col flex-1">
-        <header className="relative z-50 w-full flex h-auto min-h-[62px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-2">
+      <div className="relative z-10 w-full min-h-screen px-3 sm:px-6 lg:px-8 max-w-[1700px] mx-auto pt-3 sm:pt-5 flex flex-col flex-1">
+        <header className="relative z-50 w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-2">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
-              <Link href="/dashboard" className="flex items-center gap-2.5">
+              <Link href="/dashboard" className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_15px_rgba(16,185,129,0.35)] shrink-0 p-0.5">
                   <TrilliumLogoMark />
                 </div>
                 <span className="text-base sm:text-lg font-black text-white tracking-wide whitespace-nowrap">
-                  Trillium <span className="text-emerald-400 hidden min-[360px]:inline">Finance</span>
+                  Trillium <span className="text-emerald-400 hidden min-[380px]:inline">Finance</span>
                 </span>
               </Link>
             </div>
 
             {/* Navigation Center Section */}
-            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-3">
-              <div className="flex items-center justify-center gap-2 xl:gap-3 px-1">
+            <nav className="hidden xl:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-2 min-w-0">
+              <div className="flex items-center justify-center gap-1 xl:gap-1.5 px-1 flex-wrap">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: any; color: string }> = {
                     Dashboard: {
@@ -345,7 +345,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                         href={link.href}
                         onMouseDown={handleNavClick}
                         style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                        className={`text-xs font-bold transition-all duration-200 px-3 py-2 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 ${
+                        className={`text-xs font-bold transition-all duration-200 px-2.5 xl:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 ${
                           isActive
                             ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/35 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
                             : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent hover:border-white/10'
@@ -376,16 +376,16 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line separating nav links and profile/shop controls */}
-            <div className="h-6 w-[1px] bg-white/10 hidden lg:block mx-1 shrink-0" />
+            <div className="h-6 w-[1px] bg-white/10 hidden xl:block mx-1 shrink-0" />
 
             {/* Profile & Settings Section */}
-            <div className="flex items-center justify-end gap-2 sm:gap-2.5 shrink-0 ml-auto lg:ml-0">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 ml-auto">
               {/* Shop Button */}
               <button
                 onClick={() => setIsShopOpen(true)}
                 onMouseDown={handleNavClick}
                 style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                className="flex h-[38px] items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer"
+                className="flex h-[36px] sm:h-[38px] items-center gap-1.5 sm:gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
               >
                 <ShoppingBag className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span className="hidden sm:inline">Shop</span>
@@ -396,14 +396,14 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
                 onClick={() => setIsBadgeHovered(!isBadgeHovered)}
-                className={`relative hidden md:flex h-[38px] items-center gap-2.5 rounded-xl border transition-all duration-300 ease-out cursor-pointer select-none overflow-hidden px-3 ${
+                className={`relative hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 sm:gap-2.5 rounded-xl border transition-all duration-300 ease-out cursor-pointer select-none overflow-hidden px-2.5 sm:px-3 shrink-0 ${
                   isBadgeHovered
                     ? 'bg-slate-900/90 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30'
                     : 'bg-white/5 hover:bg-white/10 border-white/10 shadow-sm'
                 }`}
               >
                 {/* Level Rank Icon & Name */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${isBadgeHovered ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-emerald-400'}`}>
                     <TreePine className="h-3.5 w-3.5 shrink-0" />
                   </div>
@@ -413,9 +413,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 </div>
 
                 {/* Dynamic Expanding Experience Bar & Values */}
-                <div className="flex items-center gap-2.5 transition-all duration-300">
+                <div className="flex items-center gap-2 transition-all duration-300 shrink-0">
                   {/* Illuminated Neon XP Progress Bar */}
-                  <div className={`h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative transition-all duration-300 ${isBadgeHovered ? 'w-24 lg:w-36 ring-1 ring-emerald-400/50' : 'w-14 lg:w-20'}`}>
+                  <div className={`h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative transition-all duration-300 ${isBadgeHovered ? 'w-20 lg:w-28' : 'w-12 lg:w-16'}`}>
                     <div 
                       className={`h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-500 relative overflow-hidden ${
                         isBadgeHovered
@@ -433,11 +433,11 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
                   {/* Side-Expanded Details: Total Experience & Streak */}
                   {isBadgeHovered ? (
-                    <div className="flex items-center gap-2 text-xs font-mono animate-in fade-in slide-in-from-left-2 duration-200 shrink-0">
+                    <div className="flex items-center gap-1.5 text-xs font-mono animate-in fade-in slide-in-from-left-2 duration-200 shrink-0">
                       <span className="font-extrabold text-emerald-400 whitespace-nowrap">
                         {levelInfo?.accumulated || 0} <span className="text-slate-500 font-normal">/</span> {levelInfo?.maxXp || 100} XP
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 whitespace-nowrap">
+                      <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 whitespace-nowrap">
                         {Math.round(levelInfo?.progress || 0)}%
                       </span>
                       {streakCount > 0 && (
@@ -458,7 +458,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Settings */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex h-[38px] w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
+                className="flex h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
                 aria-label="Settings"
               >
                 <Settings className="h-4 w-4 shrink-0" />
@@ -467,16 +467,16 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Logout */}
               <button
                 onClick={() => signOut()}
-                className="hidden md:flex h-[38px] items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 border border-white/10 text-xs font-bold text-slate-300 hover:text-rose-400 transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
+                className="hidden lg:flex h-[36px] sm:h-[38px] items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 border border-white/10 text-xs font-bold text-slate-300 hover:text-rose-400 transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
               >
                 <LogOut className="h-3.5 w-3.5 shrink-0" />
                 <span>Logout</span>
               </button>
 
-              {/* Mobile Navigation Toggle Button */}
+              {/* Mobile / Tablet Navigation Toggle Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex lg:hidden h-[38px] w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm shrink-0"
+                className="flex xl:hidden h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm shrink-0"
                 aria-label="Toggle Navigation Menu"
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -486,7 +486,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
           {/* Mobile Navigation Drawer */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden mt-3 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
+            <div className="xl:hidden mt-3 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
               <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((link) => {
                   const isMobileActive = pathname === link.href;

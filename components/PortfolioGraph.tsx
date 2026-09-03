@@ -98,6 +98,11 @@ export default function PortfolioGraph({
   const [selectedBenchmark, setSelectedBenchmark] = useState<'SPY' | 'DJI' | 'NASDAQ'>('SPY');
   const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; label: string }>({ isOpen: false, label: '' });
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const updateStatus = () => {
@@ -289,12 +294,16 @@ export default function PortfolioGraph({
 
       {/* Chart Canvas Area */}
       <div className="w-full flex-1 h-full min-h-[220px] relative">
-        {activePoints.length === 0 ? (
+        {!isMounted ? (
+          <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">
+            Loading chart...
+          </div>
+        ) : activePoints.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">
             Awaiting live portfolio snapshots...
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
             <AreaChart
               data={chartData}
               onMouseMove={handleMouseMove}

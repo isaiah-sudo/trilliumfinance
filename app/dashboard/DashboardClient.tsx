@@ -27,13 +27,28 @@ const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v2';
 
 const sanitizeLayouts = (rawLayouts: ResponsiveDashboardLayouts): ResponsiveDashboardLayouts => {
   if (!rawLayouts || typeof rawLayouts !== 'object') return DEFAULT_WIDGET_LAYOUTS;
-  const next: ResponsiveDashboardLayouts = {
-    lg: Array.isArray(rawLayouts.lg) ? [...rawLayouts.lg.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.lg],
-    md: Array.isArray(rawLayouts.md) ? [...rawLayouts.md.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.md],
-    sm: Array.isArray(rawLayouts.sm) ? [...rawLayouts.sm.map(item => ({ ...item }))] : [...DEFAULT_WIDGET_LAYOUTS.sm],
+
+  const cleanItem = (item: WidgetLayoutItem): WidgetLayoutItem => {
+    const cleaned: WidgetLayoutItem = {
+      i: String(item.i),
+      x: Number.isFinite(item.x) ? item.x : 0,
+      y: Number.isFinite(item.y) ? item.y : 0,
+      w: Number.isFinite(item.w) ? item.w : 6,
+      h: Number.isFinite(item.h) ? item.h : 4,
+      visible: item.visible !== false,
+    };
+    if (item.minW !== undefined) cleaned.minW = item.minW;
+    if (item.maxW !== undefined) cleaned.maxW = item.maxW;
+    if (item.minH !== undefined) cleaned.minH = item.minH;
+    if (item.maxH !== undefined) cleaned.maxH = item.maxH;
+    return cleaned;
   };
 
-
+  const next: ResponsiveDashboardLayouts = {
+    lg: Array.isArray(rawLayouts.lg) ? rawLayouts.lg.map(cleanItem) : [...DEFAULT_WIDGET_LAYOUTS.lg],
+    md: Array.isArray(rawLayouts.md) ? rawLayouts.md.map(cleanItem) : [...DEFAULT_WIDGET_LAYOUTS.md],
+    sm: Array.isArray(rawLayouts.sm) ? rawLayouts.sm.map(cleanItem) : [...DEFAULT_WIDGET_LAYOUTS.sm],
+  };
 
   return next;
 };
