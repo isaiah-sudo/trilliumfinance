@@ -26,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center rounded-xl font-bold transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] focus:outline-none disabled:opacity-50 disabled:pointer-events-none disabled:transform-none';
 
     const variantClasses = {
-      primary: 'bg-emerald-500 text-slate-950 font-black hover:bg-emerald-400 dark:bg-emerald-500 dark:hover:bg-emerald-400 shadow-md shadow-emerald-500/20',
+      primary: 'bg-[var(--theme-accent,#10b981)] text-white font-black hover:brightness-110 shadow-md shadow-[var(--theme-accent-glow,rgba(16,185,129,0.2))]',
       secondary: 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700/80 dark:hover:bg-slate-700/60',
       danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-500/20',
     }[variant];
@@ -40,7 +40,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const widthClass = block ? 'w-full' : '';
 
     const pulseColor = variant === 'primary' 
-      ? 'rgba(16, 185, 129, 0.6)' 
+      ? 'var(--pulse-ring-color, rgba(16, 185, 129, 0.6))' 
       : variant === 'danger' 
       ? 'rgba(239, 68, 68, 0.6)' 
       : 'rgba(148, 163, 184, 0.6)';

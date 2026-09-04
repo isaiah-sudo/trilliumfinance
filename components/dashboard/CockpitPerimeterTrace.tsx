@@ -473,7 +473,7 @@ export default function CockpitPerimeterTrace({
             ref={pathRefA}
             d={pathDataA}
             fill="none"
-            stroke="#00f5d4"
+            stroke="var(--theme-accent, #00f5d4)"
             strokeWidth="1.75"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -489,7 +489,7 @@ export default function CockpitPerimeterTrace({
             ref={pathRefB}
             d={pathDataB}
             fill="none"
-            stroke="#00f5d4"
+            stroke="var(--theme-accent, #00f5d4)"
             strokeWidth="1.75"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -508,7 +508,7 @@ export default function CockpitPerimeterTrace({
                 cy={headPosA.y}
                 r="2.2"
                 fill="#ffffff"
-                stroke="#00f5d4"
+                stroke="var(--theme-accent, #00f5d4)"
                 strokeWidth="1"
               />
               <circle
@@ -516,7 +516,7 @@ export default function CockpitPerimeterTrace({
                 cy={headPosB.y}
                 r="2.2"
                 fill="#ffffff"
-                stroke="#00f5d4"
+                stroke="var(--theme-accent, #00f5d4)"
                 strokeWidth="1"
               />
             </>

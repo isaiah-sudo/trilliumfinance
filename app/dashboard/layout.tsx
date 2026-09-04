@@ -22,13 +22,13 @@ import {
   Sparkles,
   Flame,
   User,
-  ArrowRight
+  ArrowRight,
+  Check
 } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { spendPortfolioCash } from '@/app/actions/trading';
 import { DashboardSettingsProvider, useDashboardSettings } from '@/context/DashboardSettingsContext';
 
 interface ShopItem {
@@ -37,10 +37,10 @@ interface ShopItem {
   category: 'themes' | 'titles' | 'perks';
   description: string;
   icon: string;
-  costCash?: number;
-  costTrilliums?: number;
+  costTrilliums: number;
   badgeText?: string;
   colorGradient?: string;
+  palette?: string[];
 }
 
 const SHOP_ITEMS: ShopItem[] = [
@@ -50,9 +50,9 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'themes',
     description: 'Classic dark slate interface with ocean blue accents.',
     icon: '🎨',
-    costCash: 0,
     costTrilliums: 0,
-    colorGradient: 'from-slate-700 to-slate-900',
+    colorGradient: 'from-blue-600 to-slate-900',
+    palette: ['#0f172a', '#3b82f6', '#60a5fa'],
   },
   {
     id: 'theme-emerald',
@@ -60,9 +60,9 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'themes',
     description: 'Vibrant neon emerald theme for a high-yield aesthetic.',
     icon: '🌿',
-    costCash: 500,
     costTrilliums: 50,
-    colorGradient: 'from-emerald-600 to-teal-800',
+    colorGradient: 'from-emerald-500 to-teal-800',
+    palette: ['#064e3b', '#10b981', '#34d399'],
   },
   {
     id: 'theme-nebula',
@@ -70,9 +70,9 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'themes',
     description: 'Deep violet gradient with glowing cosmic purple accents.',
     icon: '🌌',
-    costCash: 1200,
     costTrilliums: 120,
     colorGradient: 'from-purple-600 to-indigo-900',
+    palette: ['#2e1065', '#a855f7', '#c084fc'],
   },
   {
     id: 'theme-cyber',
@@ -80,9 +80,9 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'themes',
     description: 'Futuristic gold trim & amber glow for elite portfolios.',
     icon: '⚡',
-    costCash: 2500,
     costTrilliums: 250,
     colorGradient: 'from-amber-500 to-yellow-700',
+    palette: ['#451a03', '#f59e0b', '#fbbf24'],
   },
   {
     id: 'title-bullish',
@@ -91,7 +91,6 @@ const SHOP_ITEMS: ShopItem[] = [
     description: 'Display a Bullish Veteran status tag next to your profile.',
     icon: '🐂',
     badgeText: 'BULLISH',
-    costCash: 300,
     costTrilliums: 30,
     colorGradient: 'from-emerald-500 to-teal-600',
   },
@@ -102,7 +101,6 @@ const SHOP_ITEMS: ShopItem[] = [
     description: 'Gold-embossed leaderboard title and verified status tag.',
     icon: '📈',
     badgeText: 'WS PRO',
-    costCash: 750,
     costTrilliums: 75,
     colorGradient: 'from-amber-400 to-amber-600',
   },
@@ -113,7 +111,6 @@ const SHOP_ITEMS: ShopItem[] = [
     description: 'Elite algorithmic trader badge with holographic glow.',
     icon: '🧬',
     badgeText: 'QUANT',
-    costCash: 1500,
     costTrilliums: 150,
     colorGradient: 'from-purple-500 to-indigo-600',
   },
@@ -124,7 +121,6 @@ const SHOP_ITEMS: ShopItem[] = [
     description: 'Permanently double all Trillium coins earned from lesson streaks.',
     icon: '🔥',
     badgeText: '2X BOOST',
-    costCash: 1000,
     costTrilliums: 100,
     colorGradient: 'from-orange-500 to-amber-600',
   },
@@ -135,7 +131,6 @@ const SHOP_ITEMS: ShopItem[] = [
     description: 'Access real-time institutional sentiment and automated trade alerts.',
     icon: '💎',
     badgeText: 'VIP UNLOCK',
-    costCash: 2000,
     costTrilliums: 200,
     colorGradient: 'from-blue-500 to-cyan-600',
   },
@@ -247,20 +242,6 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
     }
   };
 
-  const handleBuyItemCash = async (item: ShopItem) => {
-    if (item.costCash === undefined) return;
-    try {
-      setShopMessage(null);
-      await spendPortfolioCash(item.costCash);
-      addOwnedSkin(item.id);
-      handleEquipItem(item);
-      await fetchPortfolio();
-      setShopMessage({ text: `Success! You bought and equipped ${item.name}.`, type: 'success' });
-    } catch (e: any) {
-      setShopMessage({ text: e.message || 'Deducting portfolio cash failed', type: 'error' });
-    }
-  };
-
   const handleBuyItemTrilliums = (item: ShopItem) => {
     if (item.costTrilliums === undefined) return;
     setShopMessage(null);
@@ -311,20 +292,30 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       )}
 
       {/* Ambient Glow Effects */}
-      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-500/[0.04] dark:bg-blue-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow" />
-      <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
-      <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
+      {/* Ambient Glow Effects */}
+      <div 
+        className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[150px] pointer-events-none z-0 animate-bg-glow opacity-50"
+        style={{ background: 'var(--theme-accent-glow, rgba(59, 130, 246, 0.04))' }} 
+      />
+      <div 
+        className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s] opacity-40"
+        style={{ background: 'var(--theme-accent-secondary-glow, rgba(244, 63, 94, 0.04))' }} 
+      />
+      <div 
+        className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s] opacity-40"
+        style={{ background: 'var(--theme-accent-glow, rgba(20, 184, 166, 0.04))' }} 
+      />
 
       <div className="relative z-10 w-full min-h-screen px-3 sm:px-6 md:px-8 lg:px-10 xl:px-12 2xl:px-14 max-w-[2560px] mx-auto pt-3 sm:pt-5 flex flex-col flex-1">
         <header className="relative z-[80] w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 md:px-5 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-3">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 shadow-[0_0_15px_rgba(16,185,129,0.35)] shrink-0 p-0.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--theme-accent,#10b981)] to-blue-500 shadow-[0_0_15px_var(--theme-accent-glow,rgba(16,185,129,0.35))] shrink-0 p-0.5">
                   <TrilliumLogoMark />
                 </div>
                 <span className="text-base sm:text-lg font-black text-white tracking-wide whitespace-nowrap">
-                  Trillium <span className="text-emerald-400 hidden min-[380px]:inline">Finance</span>
+                  Trillium <span className="text-[var(--theme-accent,#10b981)] hidden min-[380px]:inline">Finance</span>
                 </span>
               </Link>
             </div>
@@ -381,14 +372,14 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                       <Link
                         href={link.href}
                         onClick={triggerPulse}
-                        style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                        style={{ '--pulse-ring-color': 'var(--pulse-ring-color, rgba(16, 185, 129, 0.4))' } as React.CSSProperties}
                         className={`text-xs font-bold transition-all duration-200 px-2.5 lg:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 cursor-pointer ${
                           isActive
-                            ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/35 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                            ? 'text-[var(--theme-accent,#10b981)] bg-[var(--theme-accent-subtle,rgba(16,185,129,0.15))] border-[var(--theme-accent-border,rgba(16,185,129,0.35))] shadow-[0_0_15px_var(--theme-accent-subtle,rgba(16,185,129,0.25))]'
                             : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent hover:border-white/10'
                         }`}
                       >
-                        <NavIcon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                        <NavIcon className={`h-3.5 w-3.5 ${isActive ? 'text-[var(--theme-accent,#10b981)]' : 'text-slate-400 group-hover:text-slate-200'}`} />
                         <span>{link.name}</span>
                       </Link>
 
@@ -404,8 +395,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                           {linkDetail.desc}
                         </p>
                         <div className="mt-2.5 pt-2 border-t border-white/10 flex justify-between items-center">
-                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-400">Go to tab</span>
-                          <ArrowRight className="h-3 w-3 text-emerald-400" />
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-[var(--theme-accent,#10b981)]">Go to tab</span>
+                          <ArrowRight className="h-3 w-3 text-[var(--theme-accent,#10b981)]" />
                         </div>
                       </div>
                     </div>
@@ -422,10 +413,10 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Shop Button */}
               <button
                 onClick={(e) => { triggerPulse(e); setIsShopOpen(true); }}
-                style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
+                style={{ '--pulse-ring-color': 'var(--pulse-ring-color, rgba(16, 185, 129, 0.4))' } as React.CSSProperties}
                 className="flex h-[36px] sm:h-[38px] items-center gap-1.5 sm:gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
               >
-                <ShoppingBag className="h-4 w-4 text-emerald-400 shrink-0" />
+                <ShoppingBag className="h-4 w-4 text-[var(--theme-accent,#10b981)] shrink-0" />
                 <span className="hidden sm:inline">Shop</span>
               </button>
 
@@ -438,13 +429,13 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 className={`relative hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 sm:gap-2.5 rounded-xl border transition-colors duration-300 ease-out cursor-pointer select-none overflow-hidden px-2.5 sm:px-3 shrink-0 ${
                   isBadgeHovered
-                    ? 'bg-slate-900/90 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30'
+                    ? 'bg-slate-900/90 border-[var(--theme-accent-border,rgba(16,185,129,0.4))] shadow-[0_0_25px_var(--theme-accent-glow,rgba(16,185,129,0.25))] ring-1 ring-[var(--theme-accent-border,rgba(16,185,129,0.3))]'
                     : 'bg-white/5 hover:bg-white/10 border-white/10 shadow-sm'
                 }`}
               >
                 {/* Level Rank Icon & Name */}
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${isBadgeHovered ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-emerald-400'}`}>
+                  <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${isBadgeHovered ? 'bg-[var(--theme-accent-subtle,rgba(16,185,129,0.2))] text-[var(--theme-accent,#10b981)]' : 'bg-white/5 text-[var(--theme-accent,#10b981)]'}`}>
                     <TreePine className="h-3.5 w-3.5 shrink-0" />
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -468,10 +459,10 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                     className="h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative"
                   >
                     <div 
-                      className={`h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-500 relative overflow-hidden ${
+                      className={`h-full bg-gradient-to-r from-[var(--theme-accent,#10b981)] via-teal-400 to-cyan-400 transition-all duration-500 relative overflow-hidden ${
                         isBadgeHovered
-                          ? 'shadow-[0_0_16px_rgba(16,185,129,0.9),0_0_24px_rgba(52,211,153,0.7)] brightness-110'
-                          : 'shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                          ? 'shadow-[0_0_16px_var(--theme-accent-glow,rgba(16,185,129,0.9)),0_0_24px_rgba(52,211,153,0.7)] brightness-110'
+                          : 'shadow-[0_0_8px_var(--theme-accent-glow,rgba(16,185,129,0.5))]'
                       }`}
                       style={{ width: `${levelInfo?.progress || 0}%` }}
                     >
@@ -778,47 +769,42 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             <div className="bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-7 w-full max-w-4xl max-h-[85vh] flex flex-col justify-between shadow-2xl relative overflow-hidden">
               
               {/* Header section */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500 dark:text-blue-400">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 rounded-2xl bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border border-[var(--theme-accent-border,rgba(16,185,129,0.25))] text-[var(--theme-accent,#10b981)]">
                       <ShoppingBag className="h-5 w-5" />
                     </div>
-                    <h2 className="text-slate-900 dark:text-white font-extrabold text-xl md:text-2xl tracking-tight">
+                    <h2 className="text-slate-900 dark:text-white font-black text-xl md:text-2xl tracking-tight">
                       Trillium Store & Customization
                     </h2>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Unlock exclusive UI themes, trader titles, and portfolio perks using Cash or Trilliums
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                    Personalize your terminal with exclusive interface themes, leaderboard titles, and account boosters.
                   </p>
                 </div>
                 
                 {/* Stats & Close Container */}
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    {/* Available Cash */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-inner">
-                      <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cash</span>
-                      <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-num-sans">
-                        ${portfolio?.cash !== undefined ? portfolio.cash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '10,000.00'}
-                      </span>
-                    </div>
-                    {/* Trilliums */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-inner">
-                      <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Trilliums</span>
-                      <div className="flex items-center gap-1">
+                  {/* Trilliums Balance Only */}
+                  <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-slate-800/90 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs">
+                    <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Your Balance</span>
+                    <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200 dark:border-slate-700/80">
+                      <div className="text-[var(--theme-accent,#06b6d4)]">
                         <TrilliumLogoMark />
-                        <span className="text-xs font-black text-cyan-500 dark:text-cyan-400 font-num-sans">
-                          {trilliums}
-                        </span>
                       </div>
+                      <span className="text-sm font-black text-cyan-600 dark:text-cyan-400 font-num-sans">
+                        {trilliums.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Trilliums</span>
                     </div>
                   </div>
                   
                   {/* Close button */}
                   <button
                     onClick={() => setIsShopOpen(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+                    aria-label="Close Store"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -826,15 +812,15 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               </div>
 
               {/* Category Filter Tabs */}
-              <div className="flex items-center gap-2 my-3 shrink-0">
+              <div className="flex items-center gap-2.5 my-4 shrink-0">
                 {(['all', 'themes', 'titles', 'perks'] as const).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setShopCategory(cat)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize transition-all cursor-pointer ${
+                    className={`px-4 py-2 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
                       shopCategory === cat
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        ? 'bg-[var(--theme-accent,#10b981)] text-slate-950 shadow-[0_0_15px_var(--theme-accent-glow,rgba(16,185,129,0.3))]'
+                        : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/70 border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50'
                     }`}
                   >
                     {cat === 'all' ? 'All Store Items' : cat}
@@ -842,9 +828,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 ))}
               </div>
 
-              {/* Scrollable Item Grid - Clean, responsive, non-clipping layout */}
-              <div className="flex-1 overflow-y-auto pr-1 my-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700/50 min-h-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1">
+              {/* Scrollable Item Grid - Clean, spacious, modern layout */}
+              <div className="flex-1 overflow-y-auto pr-1.5 my-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700/50 min-h-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 p-1">
                   {(shopCategory === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter((i) => i.category === shopCategory)).map((item) => {
                     const isOwned = ownedSkins.includes(item.id) || item.id === 'theme-slate';
                     const isActive = item.category === 'titles' 
@@ -854,67 +840,73 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                     return (
                       <div
                         key={item.id}
-                        className={`rounded-2xl border p-4 flex flex-col justify-between transition-all duration-200 bg-slate-50/50 dark:bg-[#0f111a]/60 hover:border-blue-500/50 ${
+                        className={`rounded-2xl border p-5 flex flex-col justify-between transition-all duration-200 bg-white/70 dark:bg-[#0e111a]/75 backdrop-blur-md hover:border-[var(--theme-accent-border,rgba(16,185,129,0.5))] hover:shadow-xl ${
                           isActive
-                            ? 'ring-2 ring-blue-500 border-blue-500/80 shadow-lg'
+                            ? 'ring-2 ring-[var(--theme-accent,#10b981)] border-[var(--theme-accent,#10b981)] shadow-[0_0_20px_var(--theme-accent-subtle,rgba(16,185,129,0.15))]'
                             : 'border-slate-200 dark:border-slate-800'
                         }`}
                       >
                         <div>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.colorGradient} flex items-center justify-center text-xl shadow-md shrink-0`}>
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${item.colorGradient} flex items-center justify-center text-xl shadow-md shrink-0`}>
                               {item.icon}
                             </div>
                             {item.badgeText && (
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] text-[var(--theme-accent,#10b981)] border border-[var(--theme-accent-border,rgba(16,185,129,0.25))]">
                                 {item.badgeText}
                               </span>
                             )}
                           </div>
-                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                          <h4 className="font-black text-sm text-slate-900 dark:text-white leading-tight">
                             {item.name}
                           </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug line-clamp-2">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                             {item.description}
                           </p>
+
+                          {/* Theme Color Palette Preview Bar */}
+                          {item.palette && (
+                            <div className="mt-3.5 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200/60 dark:border-slate-800/60">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Preview:</span>
+                              <div className="flex items-center gap-1.5">
+                                {item.palette.map((color, cIdx) => (
+                                  <span
+                                    key={cIdx}
+                                    className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-xs"
+                                    style={{ backgroundColor: color }}
+                                    title={color}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Footer / Purchase & Equip Actions */}
-                        <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
-                          {isOwned ? (
+                        <div className="mt-5 pt-3.5 border-t border-slate-200/60 dark:border-slate-800/60">
+                          {isActive ? (
+                            <div className="w-full py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border border-[var(--theme-accent-border,rgba(16,185,129,0.3))] text-[var(--theme-accent,#10b981)] shadow-xs">
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Currently Equipped</span>
+                            </div>
+                          ) : isOwned ? (
                             <button
                               onClick={() => handleEquipItem(item)}
-                              disabled={isActive}
-                              className={`w-full py-2 rounded-xl text-xs font-extrabold transition-all ${
-                                isActive
-                                  ? 'bg-blue-600 text-white cursor-default shadow-sm'
-                                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer'
-                              }`}
+                              className="w-full py-2.5 rounded-xl text-xs font-black transition-all bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 shadow-md cursor-pointer active:scale-98"
                             >
-                              {isActive ? 'Active' : 'Equip'}
+                              Equip
                             </button>
                           ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                              {/* Buy with Cash */}
-                              <button
-                                onClick={() => handleBuyItemCash(item)}
-                                className="py-1.5 px-2 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer flex flex-col items-center justify-center"
-                              >
-                                <span className="text-[9px] text-slate-400 font-medium uppercase">Cash</span>
-                                <span>${item.costCash}</span>
-                              </button>
-                              {/* Buy with Trilliums */}
-                              <button
-                                onClick={() => handleBuyItemTrilliums(item)}
-                                className="py-1.5 px-2 rounded-xl text-xs font-black bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 transition-all cursor-pointer flex flex-col items-center justify-center"
-                              >
-                                <span className="text-[9px] text-slate-400 font-medium uppercase">Trilliums</span>
-                                <div className="flex items-center gap-1">
-                                  <TrilliumLogoMark />
-                                  <span>{item.costTrilliums}</span>
-                                </div>
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => handleBuyItemTrilliums(item)}
+                              className="w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-[var(--theme-accent,#10b981)] hover:opacity-95 text-slate-950 shadow-[0_0_15px_var(--theme-accent-glow,rgba(16,185,129,0.3))] cursor-pointer active:scale-98"
+                            >
+                              <span>Unlock for</span>
+                              <div className="flex items-center gap-1 font-extrabold">
+                                <TrilliumLogoMark />
+                                <span>{item.costTrilliums} Trilliums</span>
+                              </div>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -927,7 +919,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {shopMessage && (
                 <div className={`mt-3 p-3 rounded-2xl text-xs font-bold text-center border transition-all shrink-0 ${
                   shopMessage.type === 'success'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-sm'
+                    ? 'bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border-[var(--theme-accent-border,rgba(16,185,129,0.3))] text-[var(--theme-accent,#10b981)] shadow-sm'
                     : 'bg-rose-500/10 border-rose-500/30 text-rose-500 shadow-sm'
                 }`}>
                   {shopMessage.text}
