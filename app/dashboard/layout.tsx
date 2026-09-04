@@ -25,6 +25,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { spendPortfolioCash } from '@/app/actions/trading';
@@ -201,6 +202,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [shopCategory, setShopCategory] = useState<'all' | 'themes' | 'titles' | 'perks'>('all');
   const [equippedItem, setEquippedItem] = useState<string>('theme-slate');
+  const [equippedTitle, setEquippedTitle] = useState<string>('');
   const [shopMessage, setShopMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const triggerPulse = (e: React.MouseEvent<HTMLElement>) => {
@@ -214,15 +216,46 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
     }
   };
 
+  const handleNavClick = triggerPulse;
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('trillium_equipped_theme') || 'theme-slate';
+      setEquippedItem(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      const savedTitle = localStorage.getItem('trillium_equipped_title') || '';
+      setEquippedTitle(savedTitle);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleEquipItem = (item: ShopItem) => {
+    if (item.category === 'themes') {
+      setEquippedItem(item.id);
+      try {
+        localStorage.setItem('trillium_equipped_theme', item.id);
+        document.documentElement.setAttribute('data-theme', item.id);
+      } catch {}
+      setShopMessage({ text: `Equipped ${item.name}!`, type: 'success' });
+    } else if (item.category === 'titles') {
+      setEquippedTitle(item.id);
+      try {
+        localStorage.setItem('trillium_equipped_title', item.id);
+      } catch {}
+      setShopMessage({ text: `Equipped ${item.name}!`, type: 'success' });
+    }
+  };
+
   const handleBuyItemCash = async (item: ShopItem) => {
     if (item.costCash === undefined) return;
     try {
       setShopMessage(null);
       await spendPortfolioCash(item.costCash);
       addOwnedSkin(item.id);
-      setEquippedItem(item.id);
+      handleEquipItem(item);
       await fetchPortfolio();
-      setShopMessage({ text: `Success! You bought ${item.name} with portfolio cash.`, type: 'success' });
+      setShopMessage({ text: `Success! You bought and equipped ${item.name}.`, type: 'success' });
     } catch (e: any) {
       setShopMessage({ text: e.message || 'Deducting portfolio cash failed', type: 'error' });
     }
@@ -234,8 +267,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
     const success = deductTrilliums(item.costTrilliums);
     if (success) {
       addOwnedSkin(item.id);
-      setEquippedItem(item.id);
-      setShopMessage({ text: `Success! You bought ${item.name} with Trilliums.`, type: 'success' });
+      handleEquipItem(item);
+      setShopMessage({ text: `Success! You bought and equipped ${item.name}.`, type: 'success' });
     } else {
       setShopMessage({ text: 'Insufficient Trilliums balance!', type: 'error' });
     }
@@ -282,8 +315,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute top-[30%] right-[-10%] w-[50%] h-[60%] rounded-full bg-rose-500/[0.04] dark:bg-rose-500/[0.02] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:4s]" />
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
-      <div className="relative z-10 w-full min-h-screen px-3 sm:px-6 lg:px-8 max-w-[1700px] mx-auto pt-3 sm:pt-5 flex flex-col flex-1">
-        <header className="relative z-[80] w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-2">
+      <div className="relative z-10 w-full min-h-screen px-3 sm:px-6 md:px-8 lg:px-10 xl:px-12 2xl:px-14 max-w-[2560px] mx-auto pt-3 sm:pt-5 flex flex-col flex-1">
+        <header className="relative z-[80] w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 md:px-5 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-3">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2">
@@ -396,12 +429,14 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 <span className="hidden sm:inline">Shop</span>
               </button>
 
-              {/* Remodeled Expanding Experience/Level Bar */}
-              <div 
+              {/* Remodeled Expanding Experience/Level Bar with Buttery Smooth Spring Animation */}
+              <motion.div 
+                layout
                 onMouseEnter={() => setIsBadgeHovered(true)}
                 onMouseLeave={() => setIsBadgeHovered(false)}
                 onClick={() => setIsBadgeHovered(!isBadgeHovered)}
-                className={`relative hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 sm:gap-2.5 rounded-xl border transition-all duration-300 ease-out cursor-pointer select-none overflow-hidden px-2.5 sm:px-3 shrink-0 ${
+                transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                className={`relative hidden md:flex h-[36px] sm:h-[38px] items-center gap-2 sm:gap-2.5 rounded-xl border transition-colors duration-300 ease-out cursor-pointer select-none overflow-hidden px-2.5 sm:px-3 shrink-0 ${
                   isBadgeHovered
                     ? 'bg-slate-900/90 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30'
                     : 'bg-white/5 hover:bg-white/10 border-white/10 shadow-sm'
@@ -412,15 +447,26 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                   <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${isBadgeHovered ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-emerald-400'}`}>
                     <TreePine className="h-3.5 w-3.5 shrink-0" />
                   </div>
-                  <span className="text-xs font-black text-slate-200 tracking-wide whitespace-nowrap">
-                    {levelInfo?.name || 'Novice'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-200 tracking-wide whitespace-nowrap">
+                      {levelInfo?.name || 'Novice'}
+                    </span>
+                    {equippedTitle && SHOP_ITEMS.find(i => i.id === equippedTitle)?.badgeText && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        {SHOP_ITEMS.find(i => i.id === equippedTitle)?.badgeText}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Dynamic Expanding Experience Bar & Values */}
-                <div className="flex items-center gap-2 transition-all duration-300 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {/* Illuminated Neon XP Progress Bar */}
-                  <div className={`h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative transition-all duration-300 ${isBadgeHovered ? 'w-20 lg:w-28' : 'w-12 lg:w-16'}`}>
+                  <motion.div 
+                    animate={{ width: isBadgeHovered ? 96 : 56 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                    className="h-2.5 rounded-full bg-slate-800/80 overflow-hidden relative"
+                  >
                     <div 
                       className={`h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-500 relative overflow-hidden ${
                         isBadgeHovered
@@ -434,31 +480,47 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[shimmer_1.2s_infinite]" />
                       )}
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Side-Expanded Details: Total Experience & Streak */}
-                  {isBadgeHovered ? (
-                    <div className="flex items-center gap-1.5 text-xs font-mono animate-in fade-in slide-in-from-left-2 duration-200 shrink-0">
-                      <span className="font-extrabold text-emerald-400 whitespace-nowrap">
-                        {levelInfo?.accumulated || 0} <span className="text-slate-500 font-normal">/</span> {levelInfo?.maxXp || 100} XP
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 whitespace-nowrap">
-                        {Math.round(levelInfo?.progress || 0)}%
-                      </span>
-                      {streakCount > 0 && (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 whitespace-nowrap">
-                          <Flame className="h-3 w-3 text-amber-400" />
-                          {streakCount}d
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isBadgeHovered ? (
+                      <motion.div 
+                        key="badge-expanded"
+                        initial={{ opacity: 0, x: -6, width: 0 }}
+                        animate={{ opacity: 1, x: 0, width: 'auto' }}
+                        exit={{ opacity: 0, x: -6, width: 0 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                        className="flex items-center gap-1.5 text-xs font-mono shrink-0 overflow-hidden whitespace-nowrap"
+                      >
+                        <span className="font-extrabold text-emerald-400 whitespace-nowrap">
+                          {levelInfo?.accumulated || 0} <span className="text-slate-500 font-normal">/</span> {levelInfo?.maxXp || 100} XP
                         </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[11px] font-mono font-bold text-slate-400 hidden lg:inline shrink-0">
-                      {Math.round(levelInfo?.progress || 0)}%
-                    </span>
-                  )}
+                        <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 whitespace-nowrap">
+                          {Math.round(levelInfo?.progress || 0)}%
+                        </span>
+                        {streakCount > 0 && (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 whitespace-nowrap">
+                            <Flame className="h-3 w-3 text-amber-400" />
+                            {streakCount}d
+                          </span>
+                        )}
+                      </motion.div>
+                    ) : (
+                      <motion.span 
+                        key="badge-compact"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="text-[11px] font-mono font-bold text-slate-400 hidden xl:inline shrink-0"
+                      >
+                        {Math.round(levelInfo?.progress || 0)}%
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Settings */}
               <button
@@ -785,7 +847,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1">
                   {(shopCategory === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter((i) => i.category === shopCategory)).map((item) => {
                     const isOwned = ownedSkins.includes(item.id) || item.id === 'theme-slate';
-                    const isActive = equippedItem === item.id || (item.id === 'theme-slate' && !equippedItem);
+                    const isActive = item.category === 'titles' 
+                      ? equippedTitle === item.id 
+                      : (equippedItem === item.id || (item.id === 'theme-slate' && !equippedItem));
 
                     return (
                       <div
@@ -819,7 +883,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                         <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
                           {isOwned ? (
                             <button
-                              onClick={() => setEquippedItem(item.id)}
+                              onClick={() => handleEquipItem(item)}
                               disabled={isActive}
                               className={`w-full py-2 rounded-xl text-xs font-extrabold transition-all ${
                                 isActive

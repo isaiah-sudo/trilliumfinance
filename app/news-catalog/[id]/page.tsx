@@ -63,7 +63,7 @@ export default function ArticleReaderPage() {
     <div className="min-h-screen bg-[#070a14] text-slate-100 font-sans selection:bg-blue-500/30 selection:text-white pb-20">
       {/* Header Navigation */}
       <header className="border-b border-slate-800/80 bg-[#0d1222]/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+        <div className="w-full max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <Link
             href="/news-catalog"
             className="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center gap-2 shadow-sm"
@@ -79,7 +79,7 @@ export default function ArticleReaderPage() {
       </header>
 
       {/* Main Article Container */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-10">
+      <main className="w-full max-w-4xl 2xl:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
         {loading ? (
           <div className="space-y-6 animate-pulse">
             <div className="h-10 bg-slate-800 rounded-xl w-3/4" />

@@ -76,7 +76,7 @@ export default function PortfolioSetup() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl 2xl:max-w-7xl">
         {OPTIONS.map((opt, idx) => (
           <motion.div
             key={opt.id}

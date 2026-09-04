@@ -309,3 +309,108 @@ html.dark {
 .green-wave-finish {
   animation: greenWavePulse 0.9s ease-out forwards;
 }
+
+/* Cockpit Intro Neon & Laser Animations */
+@keyframes cockpitLaserPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(0, 245, 212, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(0, 245, 212, 0.9)) drop-shadow(0 0 28px rgba(16, 185, 129, 0.7));
+  }
+}
+
+.animate-cockpit-laser {
+  animation: cockpitLaserPulse 2s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Shop Custom Themes (Sleek Slate, Emerald Glow, Cosmic Nebula, Cyberpunk Gold)
+   ========================================================================== */
+
+:root, [data-theme="theme-slate"] {
+  --theme-accent: #3b82f6;
+  --theme-accent-hover: #2563eb;
+  --theme-accent-border: rgba(59, 130, 246, 0.4);
+  --theme-accent-glow: rgba(59, 130, 246, 0.25);
+  --pulse-ring-color: rgba(59, 130, 246, 0.6);
+}
+
+[data-theme="theme-emerald"] {
+  --theme-accent: #10b981;
+  --theme-accent-hover: #059669;
+  --theme-accent-border: rgba(16, 185, 129, 0.45);
+  --theme-accent-glow: rgba(16, 185, 129, 0.3);
+  --pulse-ring-color: rgba(16, 185, 129, 0.65);
+}
+
+[data-theme="theme-emerald"] .bg-blue-600 {
+  background-color: #10b981 !important;
+}
+[data-theme="theme-emerald"] .hover\:bg-blue-500:hover {
+  background-color: #059669 !important;
+}
+[data-theme="theme-emerald"] .text-blue-500,
+[data-theme="theme-emerald"] .text-blue-400 {
+  color: #34d399 !important;
+}
+[data-theme="theme-emerald"] .border-blue-500\/30,
+[data-theme="theme-emerald"] .border-blue-500\/50 {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+[data-theme="theme-emerald"] .focus\:border-blue-500\/50:focus {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+
+[data-theme="theme-nebula"] {
+  --theme-accent: #a855f7;
+  --theme-accent-hover: #9333ea;
+  --theme-accent-border: rgba(168, 85, 247, 0.45);
+  --theme-accent-glow: rgba(168, 85, 247, 0.3);
+  --pulse-ring-color: rgba(168, 85, 247, 0.65);
+}
+
+[data-theme="theme-nebula"] .bg-blue-600 {
+  background-color: #9333ea !important;
+}
+[data-theme="theme-nebula"] .hover\:bg-blue-500:hover {
+  background-color: #7e22ce !important;
+}
+[data-theme="theme-nebula"] .text-blue-500,
+[data-theme="theme-nebula"] .text-blue-400 {
+  color: #c084fc !important;
+}
+[data-theme="theme-nebula"] .border-blue-500\/30,
+[data-theme="theme-nebula"] .border-blue-500\/50 {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+}
+[data-theme="theme-nebula"] .focus\:border-blue-500\/50:focus {
+  border-color: rgba(168, 85, 247, 0.6) !important;
+}
+
+[data-theme="theme-cyber"] {
+  --theme-accent: #f59e0b;
+  --theme-accent-hover: #d97706;
+  --theme-accent-border: rgba(245, 158, 11, 0.45);
+  --theme-accent-glow: rgba(245, 158, 11, 0.3);
+  --pulse-ring-color: rgba(245, 158, 11, 0.65);
+}
+
+[data-theme="theme-cyber"] .bg-blue-600 {
+  background-color: #d97706 !important;
+}
+[data-theme="theme-cyber"] .hover\:bg-blue-500:hover {
+  background-color: #b45309 !important;
+}
+[data-theme="theme-cyber"] .text-blue-500,
+[data-theme="theme-cyber"] .text-blue-400 {
+  color: #fbbf24 !important;
+}
+[data-theme="theme-cyber"] .border-blue-500\/30,
+[data-theme="theme-cyber"] .border-blue-500\/50 {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+[data-theme="theme-cyber"] .focus\:border-blue-500\/50:focus {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+}
+

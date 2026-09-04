@@ -52,7 +52,7 @@ export default function LandingSimulatorSuite() {
   ];
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto space-y-8 relative">
+    <div className="w-full max-w-[2200px] mx-auto space-y-8 relative">
       {/* Top Section Header & Glass Navigation Tabs */}
       <div className="flex flex-col items-center text-center space-y-4 max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black tracking-wide uppercase shadow-[0_0_20px_rgba(16,185,129,0.2)]">

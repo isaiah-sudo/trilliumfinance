@@ -146,6 +146,40 @@ export default function LessonsPage() {
     syncUserData();
   }, [fetchAchievementsAndStreak]);
 
+  // Lock background scroll and add slide keyboard navigation when lesson modal is active
+  useEffect(() => {
+    if (activeLesson) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setActiveLesson(null);
+        } else if (e.key === 'ArrowRight') {
+          if (currentStep === 0 && activeLesson.slides) {
+            if (slideIndex < activeLesson.slides.length - 1) {
+              setSlideIndex((prev) => prev + 1);
+            } else {
+              setCurrentStep(1);
+            }
+          }
+        } else if (e.key === 'ArrowLeft') {
+          if (currentStep === 0 && slideIndex > 0) {
+            setSlideIndex((prev) => prev - 1);
+          } else if (currentStep === 1) {
+            setCurrentStep(0);
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [activeLesson, currentStep, slideIndex]);
+
   const markLessonComplete = async (lesson: Lesson) => {
     if (!completedLessonIds.includes(lesson.id)) {
       const updated = [...completedLessonIds, lesson.id];
@@ -207,7 +241,7 @@ export default function LessonsPage() {
   const courseProgressPct = Math.round((completedCount / totalLessons) * 100);
 
   return (
-    <div className={`space-y-8 max-w-5xl mx-auto font-txt-${textFont} pb-16`}>
+    <div className={`space-y-8 w-full max-w-[1920px] mx-auto font-txt-${textFont} pb-16`}>
       {/* Top Duolingo-Style Header Dashboard Stats */}
       <div className="rounded-3xl bg-white dark:bg-[#121622]/90 border border-slate-200 dark:border-slate-800/80 p-5 shadow-xl backdrop-blur-md">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -532,15 +566,15 @@ export default function LessonsPage() {
       {/* Interactive Duolingo Lesson Modal */}
       <AnimatePresence>
         {activeLesson && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-hidden">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl relative my-auto space-y-6"
+              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[88vh] shadow-2xl relative my-auto flex flex-col overflow-hidden space-y-5"
             >
               {/* Header: Lesson Title & Progress Bar */}
-              <div className="space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div className="space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4 shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{activeLesson.icon}</span>
@@ -575,7 +609,7 @@ export default function LessonsPage() {
 
               {/* Completion Screen */}
               {isCompleted ? (
-                <div className="py-8 text-center space-y-6">
+                <div className="py-8 text-center space-y-6 overflow-y-auto pr-1">
                   <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-2xl shadow-emerald-500/40 animate-bounce">
                     <Trophy className="h-10 w-10" />
                   </div>
@@ -606,8 +640,8 @@ export default function LessonsPage() {
                   </button>
                 </div>
               ) : (
-                /* Step Content (Slides -> Tool -> Quiz Questions) */
-                <div className="space-y-6">
+                /* Step Content (Slides -> Tool -> Quiz Questions) with internal scroll */
+                <div className="flex-1 overflow-y-auto pr-1 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700/50">
                   {/* Step 0: Slide Content */}
                   {currentStep === 0 && (
                     <div className="space-y-6">

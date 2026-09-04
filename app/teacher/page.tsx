@@ -390,7 +390,7 @@ export default function StandaloneTeacherDashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full space-y-6">
+      <main className="flex-1 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 2xl:px-14 py-6 md:py-10 max-w-[2560px] mx-auto w-full space-y-6">
         {/* Class Overview Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900/60 p-6 rounded-3xl border border-slate-800 backdrop-blur-md shadow-2xl">
           <div className="space-y-1">

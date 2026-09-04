@@ -16,11 +16,12 @@ import { joinClassroom } from '@/app/actions/edu';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-import { Responsive, useContainerWidth, Layout } from 'react-grid-layout';
+import { Responsive, Layout } from 'react-grid-layout';
 import { DEFAULT_WIDGET_LAYOUTS, WidgetLayoutItem, ResponsiveDashboardLayouts } from '@/lib/defaultDashboardLayout';
 import DashboardWidgetCard from '@/components/dashboard/DashboardWidgetCard';
 import { WIDGET_REGISTRY } from '@/components/dashboard/WidgetRegistry';
 import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
+import CockpitPerimeterTrace from '@/components/dashboard/CockpitPerimeterTrace';
 
 
 const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v2';
@@ -239,7 +240,8 @@ export default function DashboardPage() {
     }
     return false;
   });
-  const { width, containerRef } = useContainerWidth();
+  const gridWrapperRef = useRef<HTMLDivElement>(null);
+  const [gridWidth, setGridWidth] = useState<number>(0);
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
     const target = e.currentTarget;
@@ -283,21 +285,50 @@ export default function DashboardPage() {
   const [layouts, setLayouts] = useState<ResponsiveDashboardLayouts>(DEFAULT_WIDGET_LAYOUTS);
   const [currentBreakpoint, setCurrentBreakpoint] = useState<keyof ResponsiveDashboardLayouts>('lg');
   const [mounted, setMounted] = useState(false);
+  const [cockpitIntroTrigger, setCockpitIntroTrigger] = useState(1);
 
-  // Force resize calculation after client mount to prevent initial squished widget layout
+  // Set mounted and measure grid width accurately across all screen sizes
   useEffect(() => {
     setMounted(true);
-    const t1 = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 50);
-    const t2 = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 300);
+
+    const measureWidth = () => {
+      if (gridWrapperRef.current) {
+        const w = gridWrapperRef.current.clientWidth || gridWrapperRef.current.offsetWidth;
+        if (w > 0) {
+          setGridWidth(w);
+        }
+      }
+    };
+
+    measureWidth();
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && gridWrapperRef.current) {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = entry.contentRect.width;
+          if (w > 0) {
+            setGridWidth(w);
+          }
+        }
+      });
+      ro.observe(gridWrapperRef.current);
+    }
+
+    const t1 = setTimeout(measureWidth, 50);
+    const t2 = setTimeout(measureWidth, 150);
+    const t3 = setTimeout(measureWidth, 350);
+
+    window.addEventListener('resize', measureWidth);
     return () => {
+      if (ro) ro.disconnect();
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', measureWidth);
     };
   }, []);
+
 
   const activePerformance = useMemo(() => {
     if (timeRange === '1D') {
@@ -411,6 +442,7 @@ export default function DashboardPage() {
   const handleResetLayout = async () => {
     setLayouts(DEFAULT_WIDGET_LAYOUTS);
     localStorage.removeItem(LOCAL_STORAGE_LAYOUT_KEY);
+    setCockpitIntroTrigger((prev) => prev + 1);
 
     if (user?.uid) {
       try {
@@ -436,6 +468,7 @@ export default function DashboardPage() {
       });
       return next;
     });
+    setCockpitIntroTrigger((prev) => prev + 1);
   };
 
   // Add back removed widget helper
@@ -469,6 +502,7 @@ export default function DashboardPage() {
       });
       return sanitizeLayouts(next);
     });
+    setCockpitIntroTrigger((prev) => prev + 1);
     setWidgetModalOpen(false);
   };
 
@@ -508,6 +542,7 @@ export default function DashboardPage() {
       });
       return sanitizeLayouts(next);
     });
+    setCockpitIntroTrigger((prev) => prev + 1);
   };
 
   const layoutsRef = useRef(layouts);
@@ -550,6 +585,7 @@ export default function DashboardPage() {
     if (hasChanged) {
       const sanitized = sanitizeLayouts(updatedLayouts);
       setLayouts(sanitized);
+      setCockpitIntroTrigger((prev) => prev + 1);
       try {
         localStorage.setItem(LOCAL_STORAGE_LAYOUT_KEY, JSON.stringify(sanitized));
         if (user?.uid) {
@@ -760,7 +796,6 @@ export default function DashboardPage() {
         animate={{ opacity: isGameLoading ? 0 : 1 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="space-y-3 sm:space-y-4 relative w-full min-h-screen flex flex-col flex-1"
-        ref={containerRef}
       >
 
 
@@ -784,6 +819,14 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCockpitIntroTrigger((prev) => prev + 1)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-[11px] font-bold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+              title="Replay Cockpit Intro Animation"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span>Cockpit Intro</span>
+            </button>
             <button
               onClick={() => setWidgetModalOpen(true)}
               className="flex items-center justify-center p-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
@@ -917,97 +960,107 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Dynamic Grid Layout Engine */}
-      <Responsive
-        className="layout w-full"
-        width={mounted && width && width > 0 ? width : 1200}
-        layouts={layouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-        cols={{ lg: 12, md: 10, sm: 6 }}
-        rowHeight={90}
-        margin={[0, 0]}
-        dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
-        resizeConfig={{ enabled: isEditMode, handles: ['se', 'sw'] }}
-        onLayoutChange={handleLayoutChange}
-        onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
-      >
-        {visibleItems.map((item) => {
-          const regItem = WIDGET_REGISTRY[item.i];
-          if (!regItem) return null;
-          const WidgetComp = regItem.component;
+      <div ref={gridWrapperRef} className="relative w-full overflow-visible">
+        {/* Global Unified Cockpit Perimeter Neon Trace: Outlines all widgets with zero interior lines and zero clipping */}
+        <CockpitPerimeterTrace
+          playTrigger={cockpitIntroTrigger}
+          widgets={visibleItems}
+          gridWidth={gridWidth}
+          durationMs={3000}
+        />
+        <Responsive
+          className="layout w-full"
+          width={gridWidth > 0 ? gridWidth : (typeof window !== 'undefined' ? Math.max(window.innerWidth - 64, 1200) : 1200)}
+          layouts={layouts}
+          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+          cols={{ lg: 12, md: 10, sm: 6 }}
+          rowHeight={90}
+          margin={[0, 0]}
+          dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
+          resizeConfig={{ enabled: isEditMode, handles: ['se', 'sw'] }}
+          onLayoutChange={handleLayoutChange}
+          onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
+        >
+          {visibleItems.map((item) => {
+            const regItem = WIDGET_REGISTRY[item.i];
+            if (!regItem) return null;
+            const WidgetComp = regItem.component;
 
-          // Accurately check adjacent touching neighbors along 2D box edges
-          const hasLeft = visibleItems.some(
-            (other) =>
-              other.i !== item.i &&
-              other.x + other.w === item.x &&
-              Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
-          );
-          const hasRight = visibleItems.some(
-            (other) =>
-              other.i !== item.i &&
-              item.x + item.w === other.x &&
-              Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
-          );
-          const hasTop = visibleItems.some(
-            (other) =>
-              other.i !== item.i &&
-              other.y + other.h === item.y &&
-              Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
-          );
-          const hasBottom = visibleItems.some(
-            (other) =>
-              other.i !== item.i &&
-              item.y + item.h === other.y &&
-              Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
-          );
+            // Accurately check adjacent touching neighbors along 2D box edges
+            const hasLeft = visibleItems.some(
+              (other) =>
+                other.i !== item.i &&
+                other.x + other.w === item.x &&
+                Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
+            );
+            const hasRight = visibleItems.some(
+              (other) =>
+                other.i !== item.i &&
+                item.x + item.w === other.x &&
+                Math.max(other.y, item.y) < Math.min(other.y + other.h, item.y + item.h)
+            );
+            const hasTop = visibleItems.some(
+              (other) =>
+                other.i !== item.i &&
+                other.y + other.h === item.y &&
+                Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
+            );
+            const hasBottom = visibleItems.some(
+              (other) =>
+                other.i !== item.i &&
+                item.y + item.h === other.y &&
+                Math.max(other.x, item.x) < Math.min(other.x + other.w, item.x + item.w)
+            );
 
-          const isMergedRow = hasLeft || hasRight;
-          const isMergedCol = hasTop || hasBottom;
+            const isMergedRow = hasLeft || hasRight;
+            const isMergedCol = hasTop || hasBottom;
 
-          const isLeftItem = !hasLeft;
-          const isRightItem = !hasRight;
-          const isTopItem = !hasTop;
-          const isBottomItem = !hasBottom;
+            const isLeftItem = !hasLeft;
+            const isRightItem = !hasRight;
+            const isTopItem = !hasTop;
+            const isBottomItem = !hasBottom;
 
-          const showRightSeparator = hasRight;
-          const showBottomSeparator = hasBottom;
+            const showRightSeparator = hasRight;
+            const showBottomSeparator = hasBottom;
 
-          return (
-            <div key={item.i}>
-              <DashboardWidgetCard
-                id={item.i}
-                title={regItem.title}
-                isEditing={isEditMode}
-                onRemove={handleRemoveWidget}
-                onResizePreset={handleResizePreset}
-                currentWidth={item.w}
-                isMergedRow={isMergedRow}
-                isMergedCol={isMergedCol}
-                isLeftItem={isLeftItem}
-                isRightItem={isRightItem}
-                isTopItem={isTopItem}
-                isBottomItem={isBottomItem}
-                showRightSeparator={showRightSeparator}
-                showBottomSeparator={showBottomSeparator}
-                isMergingAnimation={isMergedRow || isMergedCol}
-              >
-                <WidgetComp
-                  portfolio={portfolio}
-                  chartData={chartData}
-                  timeRange={timeRange}
-                  setTimeRange={setTimeRange}
-                  hoveredData={hoveredData}
-                  setHoveredData={setHoveredData}
-                  handleLookAchievement={handleLookAchievement}
-                  numberFont={numberFont}
-                  onOpenTradeModal={() => router.push('/dashboard/explore')}
-                  borrowedAmountJustNow={borrowedAmountJustNow}
-                />
-              </DashboardWidgetCard>
-            </div>
-          );
-        })}
-      </Responsive>
+            return (
+              <div key={item.i} className="h-full w-full overflow-visible">
+                <DashboardWidgetCard
+                  id={item.i}
+                  title={regItem.title}
+                  isEditing={isEditMode}
+                  onRemove={handleRemoveWidget}
+                  onResizePreset={handleResizePreset}
+                  currentWidth={item.w}
+                  isMergedRow={isMergedRow}
+                  isMergedCol={isMergedCol}
+                  isLeftItem={isLeftItem}
+                  isRightItem={isRightItem}
+                  isTopItem={isTopItem}
+                  isBottomItem={isBottomItem}
+                  showRightSeparator={showRightSeparator}
+                  showBottomSeparator={showBottomSeparator}
+                  isMergingAnimation={isMergedRow || isMergedCol}
+                >
+                  <WidgetComp
+                    portfolio={portfolio}
+                    chartData={chartData}
+                    timeRange={timeRange}
+                    setTimeRange={setTimeRange}
+                    hoveredData={hoveredData}
+                    setHoveredData={setHoveredData}
+                    handleLookAchievement={handleLookAchievement}
+                    numberFont={numberFont}
+                    onOpenTradeModal={() => router.push('/dashboard/explore')}
+                    borrowedAmountJustNow={borrowedAmountJustNow}
+                  />
+                </DashboardWidgetCard>
+              </div>
+            );
+          })}
+        </Responsive>
+      </div>
+
 
       {/* Customizer Trophy Showcase Modal */}
       <AnimatePresence>

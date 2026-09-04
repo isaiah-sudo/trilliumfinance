@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, TrendingUp, Zap, Eye, ShoppingCart, X, Info } from 'lucide-react';
+import { Search, TrendingUp, Zap, Eye, ShoppingCart, X, Info, CheckCircle2, Sparkles, Clock, Hash, Receipt } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { handleTrade } from '@/app/actions/trading';
 import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
@@ -25,6 +25,16 @@ export default function MarketExplorer() {
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState(false);
+  const [lastExecutedTrade, setLastExecutedTrade] = useState<{
+    id: string;
+    timestamp: string;
+    ticker: string;
+    name: string;
+    type: 'BUY' | 'SELL';
+    qty: number;
+    price: number;
+    total: number;
+  } | null>(null);
 
   // Stock Details Drawer State
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -49,6 +59,7 @@ export default function MarketExplorer() {
     setTradeModalOpen(true);
     setTradeError('');
     setTradeSuccess(false);
+    setLastExecutedTrade(null);
     setTradeQty(1);
   };
 
@@ -56,13 +67,33 @@ export default function MarketExplorer() {
     if (!selectedStock) return;
     setTradeLoading(true);
     setTradeError('');
+    const livePrice = getStock(selectedStock.ticker)?.price || selectedStock.price;
+    const orderQty = Number(tradeQty);
+    const orderTotal = livePrice * orderQty;
+
     try {
-      await handleTrade(selectedStock.ticker, Number(tradeQty), type);
+      await handleTrade(selectedStock.ticker, orderQty, type);
+      
+      // Haptic vibration feedback if supported
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate([30, 40, 30]);
+        } catch {
+          // ignore
+        }
+      }
+
+      setLastExecutedTrade({
+        id: `TRX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        ticker: selectedStock.ticker,
+        name: selectedStock.name,
+        type,
+        qty: orderQty,
+        price: livePrice,
+        total: orderTotal
+      });
       setTradeSuccess(true);
-      setTimeout(() => {
-        setTradeModalOpen(false);
-        setTradeSuccess(false);
-      }, 1500);
     } catch (err: any) {
       setTradeError(err.message || 'Trade failed. Ensure you have sufficient funds/shares.');
     } finally {
@@ -109,7 +140,7 @@ export default function MarketExplorer() {
       </div>
 
       {/* Stock Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6">
         <AnimatePresence mode='popLayout'>
           {filteredStocks.map((stock, idx) => (
             <motion.div
@@ -249,14 +280,110 @@ export default function MarketExplorer() {
                 </button>
               </div>
 
-              {tradeSuccess ? (
-                <div className="text-center py-10 space-y-4">
-                  <div className="w-20 h-20 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                    <Zap className="h-10 w-10 text-teal-400 fill-teal-400" />
+              {tradeSuccess && lastExecutedTrade ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                  className="space-y-5"
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Order Filled</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{lastExecutedTrade.timestamp}</span>
+                    </div>
                   </div>
-                  <h4 className="text-2xl font-bold text-white">Order Executed!</h4>
-                  <p className="text-slate-400">Your portfolio has been updated.</p>
-                </div>
+
+                  {/* Receipt Paper Card */}
+                  <div className="rounded-2xl bg-[#0d1017] border border-slate-700/60 p-5 space-y-4 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl pointer-events-none" />
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-blue-400" />
+                        <span className="text-xs font-mono font-bold text-slate-400">{lastExecutedTrade.id}</span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase ${
+                        lastExecutedTrade.type === 'BUY'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      }`}>
+                        {lastExecutedTrade.type}
+                      </span>
+                    </div>
+
+                    <div className="py-2 border-y border-dashed border-slate-800 space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Asset</span>
+                        <span className="font-bold text-white tracking-wide">{lastExecutedTrade.ticker} ({lastExecutedTrade.name})</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Quantity</span>
+                        <span className="font-bold font-mono text-white">{lastExecutedTrade.qty.toLocaleString()} shares</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Execution Price</span>
+                        <span className="font-bold font-mono text-white">${lastExecutedTrade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-300">Total Settled</span>
+                      <span className="text-xl font-black font-mono text-white">
+                        ${lastExecutedTrade.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Gamification Badge */}
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-teal-500/10 border border-blue-500/20">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">XP Gained</div>
+                        <div className="text-[10px] text-slate-400">Trade execution reward</div>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      +25 XP
+                    </span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTradeSuccess(false);
+                        setLastExecutedTrade(null);
+                        setTradeQty(1);
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition-colors"
+                    >
+                      Trade Again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTradeModalOpen(false);
+                        setTradeSuccess(false);
+                        setLastExecutedTrade(null);
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/25 transition-all"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </motion.div>
               ) : (
                 <div className="space-y-6">
                   <div className="p-6 rounded-3xl bg-[#0f111a] border border-slate-700/60 shadow-inner space-y-6">

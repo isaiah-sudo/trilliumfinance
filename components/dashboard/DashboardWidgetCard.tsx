@@ -52,20 +52,23 @@ export default function DashboardWidgetCard({
   }`;
 
   return (
-    <div
-      className={`h-full w-full flex flex-col ${roundedClasses} bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-xl container-3d-bevel ${
-        isMergingAnimation ? 'liquid-pool-merge green-wave-finish' : ''
-      } transition-all duration-300 overflow-hidden relative`}
-    >
+    <div className={`h-full w-full relative ${roundedClasses} overflow-visible group/card`}>
       {/* Sleek vertical (right) divider line matching container border opacity, centered on border */}
       {showRightSeparator && (
-        <div className="absolute right-[-0.5px] top-0 bottom-0 w-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
+        <div className="absolute right-[-0.5px] top-0 bottom-0 w-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-20 pointer-events-none" />
       )}
 
       {/* Sleek horizontal (bottom) divider line matching container border opacity, centered on border */}
       {showBottomSeparator && (
-        <div className="absolute bottom-[-0.5px] left-0 right-0 h-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-30 pointer-events-none" />
+        <div className="absolute bottom-[-0.5px] left-0 right-0 h-[1px] bg-slate-300/40 dark:bg-slate-700/50 z-20 pointer-events-none" />
       )}
+
+      {/* Inner Card Container with background, border, and overflow-hidden for card content */}
+      <div
+        className={`h-full w-full flex flex-col ${roundedClasses} bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 shadow-xl container-3d-bevel ${
+          isMergingAnimation ? 'liquid-pool-merge green-wave-finish' : ''
+        } transition-all duration-300 overflow-hidden relative`}
+      >
       {/* Widget Header */}
       <div
         className="px-4 md:px-6 py-3.5 flex items-center justify-between border-b select-none shrink-0 bg-transparent border-slate-200/60 dark:border-slate-800/50"
@@ -73,7 +76,7 @@ export default function DashboardWidgetCard({
           <div className="flex items-center gap-2 min-w-0">
             {isEditing && (
               <div
-                className="widget-drag-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors shrink-0"
+                className="widget-drag-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors shrink-0 opacity-80 sm:opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
                 title="Drag to reposition widget"
               >
                 <GripVertical className="h-4 w-4" />
@@ -87,9 +90,9 @@ export default function DashboardWidgetCard({
           <div className="flex items-center gap-1.5 shrink-0">
             {headerAction}
 
-            {/* Quick Preset Size Controls */}
+            {/* Quick Preset Size Controls: Elegant on-hover transition so small widths don't crowd the title */}
             {onResizePreset && (
-              <div className="flex items-center bg-slate-200/90 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700 shadow-sm mr-1.5">
+              <div className="flex items-center bg-slate-200/90 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700 shadow-sm mr-1.5 opacity-90 sm:opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -153,6 +156,7 @@ export default function DashboardWidgetCard({
       {/* Widget Body */}
       <div className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-auto">
         {children}
+      </div>
       </div>
     </div>
   );

@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle, resetPassword, syncAuthCookie } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
-import { X, ShieldCheck, Sparkles, Activity, GraduationCap } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Activity, GraduationCap, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -181,17 +182,27 @@ export default function LoginPage() {
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Password
               </label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                block
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => setIsPasswordFocused(false)}
-                className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  block
+                  onFocus={() => setIsPasswordFocused(true)}
+                  onBlur={() => setIsPasswordFocused(false)}
+                  className="bg-slate-50/50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/60 text-slate-900 dark:text-white pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-750 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {/* Remember Me & Forgot Password Row */}

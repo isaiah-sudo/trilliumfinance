@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, User, Sparkles, Newspaper, X, Plus, Search, Check, RefreshCw, Layers } from 'lucide-react';
+import { Send, User, Sparkles, Newspaper, X, Plus, Search, Check, RefreshCw, Layers, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
 import { getDailyThreeNews, NewsArticle } from '@/app/actions/news';
+import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
 
 interface Message {
   id: string;
@@ -30,9 +31,18 @@ function TrilliumLogoMark({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function renderBoldText(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+const QUICK_PROMPTS = [
+  { label: '📊 Analyze $NVDA', query: 'Provide a detailed technical and valuation breakdown for $NVDA.' },
+  { label: '📈 $AAPL vs $MSFT', query: 'Compare $AAPL and $MSFT financials, growth rates, and competitive moats.' },
+  { label: '🏛️ Fed Rate Forecast', query: 'How do upcoming Federal Reserve interest rate decisions affect stock valuations?' },
+  { label: '🎯 Options vs Stocks', query: 'Explain call options vs owning stock for a beginning trader with risk mitigation tips.' },
+  { label: '⚡ $TSLA Valuation', query: 'Analyze $TSLA current valuation, margins, and key market catalysts.' },
+];
+
+function renderFormattedTokens(text: string, onSelectTicker?: (ticker: string) => void) {
+  const parts = text.split(/(\*\*.*?\*\*|\$[A-Z]{1,5}\b)/g);
   return parts.map((part, index) => {
+    if (!part) return null;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={index} className="font-extrabold text-slate-900 dark:text-white">
@@ -40,11 +50,29 @@ function renderBoldText(text: string) {
         </strong>
       );
     }
+    if (part.startsWith('$') && /^\$[A-Z]{1,5}$/.test(part)) {
+      const ticker = part.slice(1);
+      return (
+        <button
+          key={index}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectTicker?.(ticker);
+          }}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-md text-[11px] font-black font-mono bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 dark:text-blue-400 border border-blue-500/30 hover:border-blue-500/50 transition-all cursor-pointer align-baseline hover:scale-105 active:scale-95 shadow-xs"
+          title={`Click to view live stats for $${ticker}`}
+        >
+          <span>${ticker}</span>
+          <TrendingUp className="w-2.5 h-2.5 inline-block opacity-75" />
+        </button>
+      );
+    }
     return part;
   });
 }
 
-function FormattedMessage({ text }: { text: string }) {
+function FormattedMessage({ text, onSelectTicker }: { text: string; onSelectTicker?: (ticker: string) => void }) {
   const blocks = text.split(/\n/);
   
   return (
@@ -60,14 +88,14 @@ function FormattedMessage({ text }: { text: string }) {
         if (trimmed.startsWith('### ')) {
           return (
             <h4 key={idx} className="text-base font-bold text-slate-900 dark:text-white mt-3 mb-1">
-              {renderBoldText(trimmed.replace('### ', ''))}
+              {renderFormattedTokens(trimmed.replace('### ', ''), onSelectTicker)}
             </h4>
           );
         }
         if (trimmed.startsWith('## ')) {
           return (
             <h3 key={idx} className="text-lg font-extrabold text-slate-900 dark:text-white mt-4 mb-2">
-              {renderBoldText(trimmed.replace('## ', ''))}
+              {renderFormattedTokens(trimmed.replace('## ', ''), onSelectTicker)}
             </h3>
           );
         }
@@ -77,7 +105,7 @@ function FormattedMessage({ text }: { text: string }) {
             <div key={idx} className="flex gap-2 pl-1 my-1">
               <span className="text-emerald-500 font-bold">•</span>
               <p className="flex-1 text-slate-700 dark:text-slate-200 leading-relaxed">
-                {renderBoldText(trimmed.substring(2))}
+                {renderFormattedTokens(trimmed.substring(2), onSelectTicker)}
               </p>
             </div>
           );
@@ -89,7 +117,7 @@ function FormattedMessage({ text }: { text: string }) {
             <div key={idx} className="flex gap-2 pl-1 my-1">
               <span className="text-emerald-500 font-bold">{numberedMatch[1]}.</span>
               <p className="flex-1 text-slate-700 dark:text-slate-200 leading-relaxed">
-                {renderBoldText(numberedMatch[2])}
+                {renderFormattedTokens(numberedMatch[2], onSelectTicker)}
               </p>
             </div>
           );
@@ -97,7 +125,7 @@ function FormattedMessage({ text }: { text: string }) {
         
         return (
           <p key={idx} className="text-slate-750 dark:text-slate-200 leading-relaxed">
-            {renderBoldText(trimmed)}
+            {renderFormattedTokens(trimmed, onSelectTicker)}
           </p>
         );
       })}
@@ -120,10 +148,18 @@ export default function ChatPage() {
   const [attachedNews, setAttachedNews] = useState<NewsArticle | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // News catalog state
   const [newsList, setNewsList] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsSearch, setNewsSearch] = useState('');
+
+  // Stock details drawer state for interactive ticker clicks
+  const [drawerSymbol, setDrawerSymbol] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleSelectTicker = (ticker: string) => {
+    setDrawerSymbol(ticker.toUpperCase());
+    setDrawerOpen(true);
+  };
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -275,7 +311,7 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[620px]">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[620px]">
       
       {/* LEFT PANEL: Expanded Main AI Chat Container */}
       <div 
@@ -407,7 +443,7 @@ export default function ChatPage() {
                   )}
 
                   {msg.sender === 'ai' ? (
-                    <FormattedMessage text={msg.text} />
+                    <FormattedMessage text={msg.text} onSelectTicker={handleSelectTicker} />
                   ) : (
                     msg.text
                   )}
@@ -451,6 +487,25 @@ export default function ChatPage() {
             </button>
           </div>
         )}
+
+        {/* Quick-Prompt Suggestions */}
+        <div className="px-4 py-2 border-t border-slate-200/60 dark:border-slate-800/80 bg-slate-50/70 dark:bg-[#121724]/70 backdrop-blur-sm flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 shrink-0">
+          <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0">
+            <Sparkles className="h-3 w-3 text-emerald-400" />
+            <span>Prompts:</span>
+          </div>
+          {QUICK_PROMPTS.map((prompt) => (
+            <button
+              key={prompt.label}
+              type="button"
+              onClick={() => handleSendMessage(prompt.query)}
+              disabled={isThinking}
+              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:text-emerald-500 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all whitespace-nowrap shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 shadow-xs"
+            >
+              {prompt.label}
+            </button>
+          ))}
+        </div>
 
         {/* Input Bar */}
         <div className="border-t border-slate-200 dark:border-slate-700/60 p-4 bg-white/80 dark:bg-[#1a2133]/85 backdrop-blur-md z-10 flex items-center gap-3 shrink-0">
@@ -609,6 +664,12 @@ export default function ChatPage() {
 
       </div>
 
+      {/* Stock Information Drawer for Clicked Ticker Pills */}
+      <StockInfoDrawer
+        symbol={drawerSymbol}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 }

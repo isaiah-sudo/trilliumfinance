@@ -48,7 +48,7 @@ export default function NewsCatalogPage() {
     <div className="min-h-screen bg-[#070a14] text-slate-100 font-sans selection:bg-blue-500/30 selection:text-white">
       {/* Subdomain Header Banner */}
       <header className="border-b border-slate-800/80 bg-[#0d1222]/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="w-full max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-teal-400 p-0.5 shadow-lg shadow-blue-500/20">
               <div className="w-full h-full bg-[#0d1222] rounded-[14px] flex items-center justify-center">
@@ -78,7 +78,7 @@ export default function NewsCatalogPage() {
       </header>
 
       {/* Main Catalog Viewport */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <main className="w-full max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10 space-y-10">
         {/* Hero Section */}
         <div className="relative rounded-3xl bg-gradient-to-br from-[#12182b] via-[#0d1222] to-[#070a14] border border-slate-800/80 p-8 sm:p-12 overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
@@ -131,13 +131,13 @@ export default function NewsCatalogPage() {
 
         {/* Article Catalog Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-8">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="h-96 rounded-3xl bg-slate-900/60 border border-slate-800 animate-pulse p-6 space-y-4" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-8">
             <AnimatePresence mode="popLayout">
               {filteredArticles.map((article, idx) => (
                 <motion.div

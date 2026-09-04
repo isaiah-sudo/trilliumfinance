@@ -38,6 +38,10 @@ const config: Config = {
           700: '#b91c1c',
         },
       },
+      screens: {
+        '3xl': '1920px',
+        '4xl': '2560px',
+      },
       borderRadius: {
         // Custom large radius used for the navbar/panel
         '2xl': '2rem', // matches rounded-[2rem]

@@ -255,8 +255,8 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
         </div>
       </div>
 
-      {/* Pie Chart Canvas filling main empty container space */}
-      <div className="flex-1 w-full min-h-[140px] relative flex items-center justify-center">
+      {/* Pie Chart Canvas with compact, sleek sizing */}
+      <div className="flex-1 w-full min-h-[130px] max-h-[180px] relative flex items-center justify-center my-auto">
         {isMounted ? (
           <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={120}>
             <PieChart>
@@ -264,8 +264,8 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
                 data={activeData}
                 cx="50%"
                 cy="50%"
-                innerRadius="46%"
-                outerRadius="78%"
+                innerRadius={44}
+                outerRadius={70}
                 paddingAngle={activeData.length > 1 ? 3 : 0}
                 dataKey="value"
                 onMouseEnter={(_, index) => setActiveIndex(index)}

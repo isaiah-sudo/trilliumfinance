@@ -657,7 +657,7 @@ export default function LandingPage() {
         <InteractiveDripDotGrid />
 
         {/* Hero Section - Robinhood Editorial Aesthetic with Dynamic Visuals & Ambient Lighting */}
-        <main className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-24 md:py-32 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14 sm:py-16 md:py-20 lg:py-22 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
           {/* Ambient Dark Radial Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] bg-emerald-500/[0.06] blur-[160px] pointer-events-none rounded-full" />
 
@@ -720,7 +720,7 @@ export default function LandingPage() {
         </div>
 
         {/* Overhauled Glassmorphic Interactive Simulator Suite */}
-        <section id="simulator" className="relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-16 py-16">
+        <section id="simulator" className="relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-16 pt-4 pb-16">
           <LandingSimulatorSuite />
         </section>
       </div>
@@ -1013,7 +1013,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-[2000px] mx-auto">
           {/* Card 1: Virtual Trading Feed */}
           <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
             {/* Center Watermark Logo starting off-container and animating to top-right */}
@@ -1104,7 +1104,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-4xl 2xl:max-w-5xl mx-auto space-y-4">
           {faqs.map((faq, index) => {
             const isOpen = openFaq === index;
             return (
