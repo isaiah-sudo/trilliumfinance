@@ -203,11 +203,15 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
   const [equippedItem, setEquippedItem] = useState<string>('theme-slate');
   const [shopMessage, setShopMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
-    const target = e.currentTarget;
-    target.classList.remove('ring-pulse-active');
-    void target.offsetWidth;
-    target.classList.add('ring-pulse-active');
+  const triggerPulse = (e: React.MouseEvent<HTMLElement>) => {
+    // Safe pulse effect that does not disrupt React event delegation
+    const el = e.currentTarget;
+    if (el) {
+      el.classList.remove('ring-pulse-active');
+      requestAnimationFrame(() => {
+        el.classList.add('ring-pulse-active');
+      });
+    }
   };
 
   const handleBuyItemCash = async (item: ShopItem) => {
@@ -279,7 +283,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
       <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.015] blur-[150px] pointer-events-none z-0 animate-bg-glow [animation-delay:8s]" />
 
       <div className="relative z-10 w-full min-h-screen px-3 sm:px-6 lg:px-8 max-w-[1700px] mx-auto pt-3 sm:pt-5 flex flex-col flex-1">
-        <header className="relative z-50 w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-2">
+        <header className="relative z-[80] w-full flex h-auto min-h-[58px] items-center justify-between rounded-2xl bg-slate-900/80 dark:bg-slate-900/85 backdrop-blur-2xl px-3 sm:px-4 py-2 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.36)] transition-all duration-300 gap-1.5 sm:gap-2">
             {/* Logo Section */}
             <div className="flex items-center justify-start shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2">
@@ -293,8 +297,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </div>
 
             {/* Navigation Center Section */}
-            <nav className="hidden xl:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 xl:mx-2 min-w-0">
-              <div className="flex items-center justify-center gap-1 xl:gap-1.5 px-1 flex-wrap">
+            <nav className="hidden lg:flex items-center justify-center flex-1 transition-all duration-500 ease-out mx-1 lg:mx-2 min-w-0">
+              <div className="flex items-center justify-center gap-1 lg:gap-1.5 px-1 flex-wrap">
                 {navLinks.map((link) => {
                   const details: Record<string, { title: string; desc: string; icon: any; color: string }> = {
                     Dashboard: {
@@ -343,9 +347,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                     <div key={link.name} className="relative group py-1">
                       <Link
                         href={link.href}
-                        onMouseDown={handleNavClick}
+                        onClick={triggerPulse}
                         style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                        className={`text-xs font-bold transition-all duration-200 px-2.5 xl:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 ${
+                        className={`text-xs font-bold transition-all duration-200 px-2.5 lg:px-3 py-1.5 rounded-xl border flex items-center justify-center whitespace-nowrap gap-1.5 cursor-pointer ${
                           isActive
                             ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/35 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
                             : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent hover:border-white/10'
@@ -355,8 +359,10 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                         <span>{link.name}</span>
                       </Link>
 
-                      {/* Dropdown Tooltip Card */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 ease-out z-50 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl">
+                      {/* Non-blocking Hover Dropdown Tooltip */}
+                      <div
+                        className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-[70] rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl block text-left select-none"
+                      >
                         <div className="flex items-center gap-2 mb-2">
                           <NavIcon className={`h-4 w-4 ${linkDetail.color}`} />
                           <span className="text-xs font-bold text-white tracking-wide">{linkDetail.title}</span>
@@ -376,14 +382,13 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </nav>
 
             {/* Divider line separating nav links and profile/shop controls */}
-            <div className="h-6 w-[1px] bg-white/10 hidden xl:block mx-1 shrink-0" />
+            <div className="h-6 w-[1px] bg-white/10 hidden lg:block mx-1 shrink-0" />
 
             {/* Profile & Settings Section */}
             <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 ml-auto">
               {/* Shop Button */}
               <button
-                onClick={() => setIsShopOpen(true)}
-                onMouseDown={handleNavClick}
+                onClick={(e) => { triggerPulse(e); setIsShopOpen(true); }}
                 style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
                 className="flex h-[36px] sm:h-[38px] items-center gap-1.5 sm:gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
               >
@@ -448,7 +453,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                       )}
                     </div>
                   ) : (
-                    <span className="text-[11px] font-mono font-bold text-slate-400 hidden xl:inline shrink-0">
+                    <span className="text-[11px] font-mono font-bold text-slate-400 hidden lg:inline shrink-0">
                       {Math.round(levelInfo?.progress || 0)}%
                     </span>
                   )}
@@ -457,7 +462,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
               {/* Settings */}
               <button
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={(e) => { triggerPulse(e); setIsSettingsOpen(true); }}
+                style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.4)' } as React.CSSProperties}
                 className="flex h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm hover:-translate-y-[0.5px] cursor-pointer shrink-0"
                 aria-label="Settings"
               >
@@ -476,7 +482,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               {/* Mobile / Tablet Navigation Toggle Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex xl:hidden h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm shrink-0"
+                className="flex lg:hidden h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-sm shrink-0"
                 aria-label="Toggle Navigation Menu"
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -486,7 +492,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
           {/* Mobile Navigation Drawer */}
           {isMobileMenuOpen && (
-            <div className="xl:hidden mt-3 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
+            <div className="lg:hidden mt-3 rounded-2xl bg-slate-900/95 border border-white/10 p-4 shadow-2xl backdrop-blur-xl space-y-4 z-50 relative animate-in fade-in slide-in-from-top-2">
               <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((link) => {
                   const isMobileActive = pathname === link.href;

@@ -746,7 +746,7 @@ export default function DashboardPage() {
           <motion.div
             key="game-loader-overlay"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, pointerEvents: 'none' }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="fixed inset-0 z-[9999]"
           >

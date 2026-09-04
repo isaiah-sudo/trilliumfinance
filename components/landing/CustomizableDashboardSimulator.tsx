@@ -266,9 +266,9 @@ export default function CustomizableDashboardSimulator() {
 
       case 'watchlist': {
         const miniQuotes = [
-          { sym: 'NVDA', name: 'Nvidia', price: 124.5, chg: 5.4 },
-          { sym: 'AAPL', name: 'Apple', price: 189.45, chg: 3.82 },
-          { sym: 'TSLA', name: 'Tesla', price: 248.2, chg: -1.65 }
+          { sym: 'NVDA', name: 'Nvidia', price: 230.20, chg: 2.56 },
+          { sym: 'AAPL', name: 'Apple', price: 327.30, chg: 0.73 },
+          { sym: 'TSLA', name: 'Tesla', price: 382.70, chg: 7.19 }
         ];
 
         return (

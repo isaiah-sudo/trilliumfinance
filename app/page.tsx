@@ -30,6 +30,7 @@ import {
   Menu
 } from 'lucide-react';
 import { getMarketQuotes } from '@/app/actions/trading';
+import { KNOWN_STOCKS_DATA } from '@/lib/stockUtils';
 import LandingSimulatorSuite from '@/components/landing/LandingSimulatorSuite';
 import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 
@@ -409,21 +410,24 @@ export default function LandingPage() {
     return () => cancelAnimationFrame(frameId);
   }, [activeMilestone]);
 
-  // Ticker bar quotes state initialized with fallback default prices
-  const [tickerQuotes, setTickerQuotes] = useState<Array<{ ticker: string; price: number; change: number }>>([
-    { ticker: 'AAPL', price: 182.50, change: 1.24 },
-    { ticker: 'MSFT', price: 415.60, change: 0.85 },
-    { ticker: 'TSLA', price: 177.40, change: -2.10 },
-    { ticker: 'NVDA', price: 120.50, change: 3.15 },
-    { ticker: 'GOOGL', price: 175.20, change: 0.42 },
-    { ticker: 'AMZN', price: 180.10, change: -0.45 }
-  ]);
+  // Ticker bar quotes state initialized with accurate baseline market prices
+  const [tickerQuotes, setTickerQuotes] = useState<Array<{ ticker: string; price: number; change: number }>>(() => {
+    const defaultTickers = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ'];
+    return defaultTickers.map((t) => {
+      const meta = KNOWN_STOCKS_DATA[t];
+      return {
+        ticker: t,
+        price: meta?.basePrice ?? 200,
+        change: meta?.baseChange ?? 1.2
+      };
+    });
+  });
 
   useEffect(() => {
     let isMounted = true;
     async function fetchTickerData() {
       try {
-        const quotes = await getMarketQuotes(['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN']);
+        const quotes = await getMarketQuotes(['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ']);
         if (isMounted && quotes && quotes.length > 0) {
           const validQuotes = quotes.filter(q => q.price > 0);
           if (validQuotes.length > 0) {
@@ -436,7 +440,7 @@ export default function LandingPage() {
     }
 
     fetchTickerData();
-    const interval = setInterval(fetchTickerData, 60000); // refresh every minute
+    const interval = setInterval(fetchTickerData, 30000); // refresh every 30 seconds
     return () => {
       isMounted = false;
       clearInterval(interval);

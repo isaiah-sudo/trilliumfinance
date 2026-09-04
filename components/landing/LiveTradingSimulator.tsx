@@ -42,46 +42,46 @@ const INITIAL_ASSETS: AssetData[] = [
   {
     symbol: 'AAPL',
     name: 'Apple Inc.',
-    price: 189.45,
-    change: 3.82,
-    high24h: 191.20,
-    low24h: 186.30,
+    price: 327.30,
+    change: 0.73,
+    high24h: 330.80,
+    low24h: 324.10,
     volume: '54.2M',
     category: 'Stock',
-    sparkline: [184, 185.2, 184.8, 186.5, 186.0, 187.4, 188.1, 187.9, 189.45]
+    sparkline: [322, 323.5, 324.8, 326.5, 325.0, 326.4, 327.1, 326.9, 327.30]
   },
   {
     symbol: 'NVDA',
     name: 'NVIDIA Corp.',
-    price: 124.50,
-    change: 5.40,
-    high24h: 126.80,
-    low24h: 119.10,
+    price: 230.20,
+    change: 2.56,
+    high24h: 232.40,
+    low24h: 224.50,
     volume: '88.6M',
     category: 'Stock',
-    sparkline: [118, 119.5, 121.2, 120.4, 122.8, 121.9, 123.5, 124.5]
+    sparkline: [224, 225.5, 226.2, 225.4, 228.8, 227.9, 229.5, 230.20]
   },
   {
     symbol: 'TSLA',
     name: 'Tesla Inc.',
-    price: 248.20,
-    change: -1.65,
-    high24h: 254.00,
-    low24h: 245.50,
+    price: 382.70,
+    change: 7.19,
+    high24h: 385.00,
+    low24h: 360.50,
     volume: '42.1M',
     category: 'Stock',
-    sparkline: [256, 254, 252.5, 255, 250, 247.8, 249.2, 248.2]
+    sparkline: [360, 364, 368.5, 372, 370, 375.8, 379.2, 382.70]
   },
   {
     symbol: 'MSFT',
     name: 'Microsoft Corp.',
-    price: 415.60,
-    change: 1.25,
-    high24h: 418.00,
-    low24h: 412.30,
+    price: 514.90,
+    change: 3.64,
+    high24h: 518.00,
+    low24h: 498.30,
     volume: '22.8M',
     category: 'Stock',
-    sparkline: [410, 411.5, 413, 412.8, 414.2, 413.9, 415.6]
+    sparkline: [500, 502.5, 506, 505.8, 510.2, 512.9, 514.90]
   },
   {
     symbol: 'BTC',

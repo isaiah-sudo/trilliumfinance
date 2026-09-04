@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb } from 'lucide-react';
 
@@ -63,13 +63,18 @@ export default function GameDashboardLoader({
     return () => clearInterval(interval);
   }, []);
 
-  // Fast completion timer
+  const onLoadedRef = useRef(onLoaded);
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+  }, [onLoaded]);
+
+  // Fast completion timer - unaffected by parent re-renders
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (onLoaded) onLoaded();
+      onLoadedRef.current?.();
     }, minDurationMs);
     return () => clearTimeout(timer);
-  }, [minDurationMs, onLoaded]);
+  }, [minDurationMs]);
 
   const currentTip = WEBSITE_TIPS[tipIndex];
 
