@@ -103,62 +103,29 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
 };
 
 /**
- * Client-side action to fetch stock profile details from Finnhub, using standard fetch caching.
+ * Action to fetch stock profile details via server proxy and cache.
  */
 export async function getCompanyProfile(symbol: string): Promise<CompanyProfile> {
-  const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
   const upperSymbol = symbol.toUpperCase();
 
-  if (!token) {
-    return getFallbackProfile(upperSymbol);
-  }
-
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${upperSymbol}&token=${token}`, {
-      cache: 'force-cache'
-    });
+    if (typeof window !== 'undefined') {
+      const res = await fetch(`/api/stocks/profile?symbol=${encodeURIComponent(upperSymbol)}`, {
+        cache: 'default'
+      });
 
-    if (!res.ok) {
-      console.warn(`[StockDetails Action] Finnhub returned status ${res.status}. Falling back.`);
-      return getFallbackProfile(upperSymbol);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.name) {
+          return data as CompanyProfile;
+        }
+      }
     }
-
-    const data = await res.json();
-
-    // Finnhub returns empty object if symbol is invalid/not found
-    if (!data || Object.keys(data).length === 0 || !data.name) {
-      console.warn(`[StockDetails Action] Empty profile response for ${upperSymbol}. Falling back.`);
-      return getFallbackProfile(upperSymbol);
-    }
-
-    // Build the fallback description since profile2 does not feature full descriptive text
-    const name = data.name || upperSymbol;
-    const exchange = data.exchange || 'Major Financial Exchange';
-    const industry = data.finnhubIndustry || 'Global Economy';
-    const outstandingShares = data.shareOutstanding || 0;
-    const marketCap = data.marketCapitalization || 0;
-
-    const formattedMarketCap = marketCap >= 1000 
-      ? `$${(marketCap / 1000).toFixed(2)} billion` 
-      : `$${marketCap.toLocaleString()} million`;
-
-    const description = `${name} (${upperSymbol}) is a premier corporation operating dynamically within the ${industry} industry. Listed and actively traded on the ${exchange}, the company commands a notable market footprint with a capitalization of approximately ${formattedMarketCap} and ${outstandingShares.toLocaleString(undefined, { maximumFractionDigits: 2 })} million outstanding shares. ${name} is dedicated to pioneering innovation, operational excellence, and delivering robust long-term value to its investors globally.`;
-
-    return {
-      name: data.name || upperSymbol,
-      ticker: data.ticker || upperSymbol,
-      exchange: data.exchange || 'Unknown Exchange',
-      logo: data.logo || '',
-      weburl: data.weburl || '',
-      finnhubIndustry: data.finnhubIndustry || 'General Sector',
-      marketCapitalization: data.marketCapitalization || 0,
-      shareOutstanding: data.shareOutstanding || 0,
-      description,
-    };
-  } catch (error) {
-    console.error(`[StockDetails Action] Error fetching profile for ${upperSymbol}:`, error);
-    return getFallbackProfile(upperSymbol);
+  } catch {
+    // Graceful fallback
   }
+
+  return getFallbackProfile(upperSymbol);
 }
 
 /**

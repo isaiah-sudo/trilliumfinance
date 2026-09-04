@@ -88,31 +88,6 @@ export function getMockStockPrice(symbol: string) {
   };
 }
 
-/**
- * Fetch real-time market quote from Yahoo Finance v8 API
- */
-async function fetchYahooQuote(symbol: string): Promise<{ c: number; pc: number } | null> {
-  try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const meta = data?.chart?.result?.[0]?.meta;
-    if (meta && typeof meta.regularMarketPrice === 'number' && meta.regularMarketPrice > 0) {
-      const c = meta.regularMarketPrice;
-      const pc = typeof meta.chartPreviousClose === 'number' && meta.chartPreviousClose > 0
-        ? meta.chartPreviousClose
-        : (typeof meta.previousClose === 'number' && meta.previousClose > 0 ? meta.previousClose : c);
-      return {
-        c: Number(c.toFixed(2)),
-        pc: Number(pc.toFixed(2))
-      };
-    }
-  } catch (err) {
-    // Network or parse issue, proceed to next fallback
-  }
-  return null;
-}
-
 // --- Global In-Memory Cache for Stock Quotes ---
 const quoteCache = new Map<string, { promise: Promise<{ c: number; pc: number }>, timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
@@ -131,36 +106,28 @@ export async function fetchFinnhubQuote(symbol: string): Promise<{ c: number; pc
     }
   }
 
-  // 2. Multi-tier quote fetcher:
-  // Tier 1: Finnhub API (if API key is configured)
-  // Tier 2: Yahoo Finance real-time quote API
-  // Tier 3: Realistic metadata baseline + micro-walk
+  // 2. Fetch through server-side /api/stocks/quotes (safe from CORS, server-cached, graceful fallback)
   const fetchPromise = (async () => {
-    const token = getFinnhubToken();
-    if (token) {
-      try {
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbolKey}&token=${token}`);
+    try {
+      if (typeof window !== 'undefined') {
+        const res = await fetch(`/api/stocks/quotes?symbols=${encodeURIComponent(symbolKey)}`, {
+          cache: 'default'
+        });
         if (res.ok) {
           const data = await res.json();
-          if (data && typeof data.c === 'number' && data.c > 0) {
+          const quote = data?.quotes?.[0];
+          if (quote && typeof quote.c === 'number' && quote.c > 0) {
             return {
-              c: Number(data.c.toFixed(2)),
-              pc: Number((data.pc || data.c).toFixed(2))
+              c: Number(quote.c.toFixed(2)),
+              pc: Number((quote.pc || quote.c).toFixed(2))
             };
           }
         }
-      } catch (err) {
-        // Fallback to Tier 2
       }
+    } catch {
+      // Fallback to local calculation
     }
 
-    // Tier 2: Yahoo Finance Real-Time API
-    const yahooQuote = await fetchYahooQuote(symbolKey);
-    if (yahooQuote && yahooQuote.c > 0) {
-      return yahooQuote;
-    }
-
-    // Tier 3: Accurate baseline metadata
     return getMockStockPrice(symbolKey);
   })();
 
@@ -365,25 +332,39 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       hasBorrowed
     };
 
-    // Asynchronously ensure a snapshot is captured for this session/day
-    // We do not await this to avoid slowing down the UI load
-    const todayStr = new Date().toDateString();
+    // Asynchronously synchronize live netWorth & profile to Firestore so Rankings/Leaderboards always match
     try {
+      const userUpdate: Record<string, any> = {
+        netWorth: summaryObj.netWorth,
+        updatedAt: serverTimestamp()
+      };
+      if (auth.currentUser) {
+        if (auth.currentUser.displayName) {
+          userUpdate.displayName = auth.currentUser.displayName;
+        }
+        if (auth.currentUser.email) {
+          userUpdate.email = auth.currentUser.email;
+          if (!userUpdate.displayName) {
+            userUpdate.displayName = auth.currentUser.email.split('@')[0];
+          }
+        }
+      }
+
+      const todayStr = new Date().toDateString();
       const userDocSnap = await getDoc(userRef);
       if (userDocSnap.exists()) {
         const userDocData = userDocSnap.data();
         if (userDocData?.lastSnapshotDate !== todayStr) {
+          userUpdate.lastSnapshotDate = todayStr;
           capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Background Snapshot Error:', err));
-          setDoc(userRef, { lastSnapshotDate: todayStr }, { merge: true }).catch(err => console.error('Update LastSnapshotDate Error:', err));
         }
       } else {
-        // Lazy creation of user doc
-        setDoc(userRef, { lastSnapshotDate: todayStr, updatedAt: serverTimestamp() }, { merge: true }).catch(err => console.error('Initial UserDoc Creation Error:', err));
+        userUpdate.lastSnapshotDate = todayStr;
         capturePortfolioSnapshot(userId, summaryObj).catch(err => console.error('Initial Background Snapshot Error:', err));
       }
+      setDoc(userRef, userUpdate, { merge: true }).catch(err => console.warn('[getPortfolioSummary] User doc sync error:', err));
     } catch (err) {
-      console.error('Error checking for portfolio snapshot:', err);
-      // Continue anyway as this is non-critical for the immediate render
+      console.warn('Error checking user doc sync:', err);
     }
 
     return summaryObj;
@@ -577,28 +558,39 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   return { success: true };
 }
 
-export async function getMarketQuotes(tickers: string[]) {
-  const results = [];
-  // Chunking to avoid hitting the 30/sec rate limit immediately
-  const chunkSize = 10;
-  for (let i = 0; i < tickers.length; i += chunkSize) {
-    const chunk = tickers.slice(i, i + chunkSize);
-    const chunkPromises = chunk.map(async (ticker) => {
-      const quote = await fetchFinnhubQuote(ticker);
-      const price = quote.c || 0;
-      const pc = quote.pc || price;
-      const change = pc > 0 ? ((price - pc) / pc) * 100 : 0;
-      return { ticker, price, change };
-    });
-    const chunkResults = await Promise.all(chunkPromises);
-    results.push(...chunkResults);
-    
-    // Add a tiny delay between chunks
-    if (i + chunkSize < tickers.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+export async function getMarketQuotes(tickers: string[]): Promise<Array<{ ticker: string; price: number; change: number }>> {
+  if (!tickers || tickers.length === 0) return [];
+  const upperTickers = tickers.map(t => t.toUpperCase());
+
+  try {
+    if (typeof window !== 'undefined') {
+      const symbolsParam = upperTickers.join(',');
+      const res = await fetch(`/api/stocks/quotes?symbols=${encodeURIComponent(symbolsParam)}`, {
+        cache: 'default'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.quotes) && data.quotes.length > 0) {
+          return data.quotes.map((q: any) => ({
+            ticker: q.ticker,
+            price: q.price || q.c,
+            change: q.change
+          }));
+        }
+      }
     }
+  } catch {
+    // Network fallback
   }
-  return results;
+
+  // Graceful local fallback
+  return upperTickers.map(ticker => {
+    const mock = getMockStockPrice(ticker);
+    const price = mock.c;
+    const pc = mock.pc || price;
+    const change = pc > 0 ? Number((((price - pc) / pc) * 100).toFixed(2)) : 0;
+    return { ticker, price, change };
+  });
 }
 
 export async function capturePortfolioSnapshot(userIdOverride?: string, summary?: PortfolioSummary) {

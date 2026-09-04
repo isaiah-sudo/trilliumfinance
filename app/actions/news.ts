@@ -108,65 +108,60 @@ export function determineMacroTags(headline: string, summary: string): string[] 
 }
 
 /**
- * Client-side action to fetch general market news from Finnhub & macro catalog.
+ * Action to fetch general market news via server proxy and cache.
  */
 export async function getDailyThreeNews(): Promise<NewsArticle[]> {
-  const token = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
-
-  if (!token) {
-    return MOCK_NEWS;
-  }
-
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${token}`, {
-      cache: 'force-cache',
-    });
-
-    if (!res.ok) {
-      return MOCK_NEWS;
-    }
-
-    const rawData = await res.json();
-
-    if (!Array.isArray(rawData) || rawData.length === 0) {
-      return MOCK_NEWS;
-    }
-
-    const mappedArticles: NewsArticle[] = rawData
-      .slice(0, 10)
-      .map((article: any, index: number) => {
-        const headline = article.headline || 'Macro Market Update';
-        const summary = article.summary || 'Follow the link to read the full report on current macroeconomic developments.';
-        const tags = determineMacroTags(headline, summary);
-        
-        // Detect restricted/paywalled sources (CNBC, Bloomberg, WSJ, SeekingAlpha, etc.)
-        const sourceStr = (article.source || '').toLowerCase();
-        const urlStr = (article.url || '').toLowerCase();
-        const isRestricted = sourceStr.includes('cnbc') || sourceStr.includes('bloomberg') || sourceStr.includes('wsj') || urlStr.includes('cnbc') || urlStr.includes('bloomberg');
-
-        return {
-          id: article.id ? `news-${article.id}` : `news-gen-${index}`,
-          headline,
-          summary,
-          source: article.source || 'Financial News',
-          url: article.url || 'https://finnhub.io',
-          image: article.image && article.image.startsWith('http') ? article.image : FALLBACK_IMAGE,
-          datetime: article.datetime || Math.floor(Date.now() / 1000),
-          tags,
-          isRestricted,
-          executiveSummary: isRestricted ? [
-            `Key analysis regarding ${headline.slice(0, 50)}...`,
-            'Market impact evaluated across major index sectors and bond yield spreads.',
-            'Click below to process and read the cleansed executive briefing.'
-          ] : undefined
-        };
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/news/market', {
+        cache: 'default',
       });
 
-    return mappedArticles.length >= 3 ? mappedArticles : MOCK_NEWS;
-  } catch (error) {
-    console.error('[News Action] Error fetching news:', error);
-    return MOCK_NEWS;
+      if (res.ok) {
+        const data = await res.json();
+        const rawData = data?.articles;
+
+        if (Array.isArray(rawData) && rawData.length > 0) {
+          const mappedArticles: NewsArticle[] = rawData
+            .slice(0, 10)
+            .map((article: any, index: number) => {
+              const headline = article.headline || 'Macro Market Update';
+              const summary = article.summary || 'Follow the link to read the full report on current macroeconomic developments.';
+              const tags = determineMacroTags(headline, summary);
+
+              const sourceStr = (article.source || '').toLowerCase();
+              const urlStr = (article.url || '').toLowerCase();
+              const isRestricted = sourceStr.includes('cnbc') || sourceStr.includes('bloomberg') || sourceStr.includes('wsj') || urlStr.includes('cnbc') || urlStr.includes('bloomberg');
+
+              return {
+                id: article.id ? `news-${article.id}` : `news-gen-${index}`,
+                headline,
+                summary,
+                source: article.source || 'Financial News',
+                url: article.url || 'https://finnhub.io',
+                image: article.image && article.image.startsWith('http') ? article.image : FALLBACK_IMAGE,
+                datetime: article.datetime || Math.floor(Date.now() / 1000),
+                tags,
+                isRestricted,
+                executiveSummary: isRestricted ? [
+                  `Key analysis regarding ${headline.slice(0, 50)}...`,
+                  'Market impact evaluated across major index sectors and bond yield spreads.',
+                  'Click below to process and read the cleansed executive briefing.'
+                ] : undefined
+              };
+            });
+
+          if (mappedArticles.length >= 3) {
+            return mappedArticles;
+          }
+        }
+      }
+    }
+  } catch {
+    // Graceful fallback to mock news
   }
+
+  return MOCK_NEWS;
 }
 
 /**

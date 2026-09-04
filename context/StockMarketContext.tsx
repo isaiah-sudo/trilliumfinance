@@ -133,56 +133,56 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
     // Check and refresh cache on mount
     refreshCacheIfStale();
 
-    // Staggered ticker loop updating batches of stocks
+    // Local micro-fluctuation loop to keep charts and market tickers alive smoothly without network load
     let tickCounter = 0;
-    const tickGlobalMarket = async () => {
+    const tickGlobalMarket = () => {
       if (!mounted) return;
-      
-      const batchSize = 3;
+
+      const batchSize = 4;
       const startIndex = (tickCounter * batchSize) % BASE_STOCKS.length;
       tickCounter++;
       const targetStocks = BASE_STOCKS.slice(startIndex, startIndex + batchSize);
 
       if (targetStocks.length === 0) return;
 
-      try {
-        const quotes = await Promise.all(targetStocks.map(s => fetchFinnhubQuote(s.ticker)));
-        if (!mounted) return;
-
-        setStocks(prev => {
-          let hasChange = false;
-          const updated = prev.map(stock => {
-            const idx = targetStocks.findIndex(ts => ts.ticker === stock.ticker);
-            if (idx !== -1) {
-              const quote = quotes[idx];
-              if (quote && quote.c && quote.c > 0) {
-                const price = quote.c;
-                const pc = quote.pc || stock.price || price;
-                const change = pc > 0 ? Number((((price - pc) / pc) * 100).toFixed(2)) : stock.change;
-                hasChange = true;
-                return { ...stock, price, change, loading: false };
-              }
-            }
-            return stock;
-          });
-
-          if (hasChange) {
-            saveToCache(updated);
+      setStocks(prev => {
+        let hasChange = false;
+        const updated = prev.map(stock => {
+          const isTarget = targetStocks.some(ts => ts.ticker === stock.ticker);
+          if (isTarget) {
+            // Tiny realistic micro-fluctuation (+/- 0.05% to 0.15%)
+            const deltaPercent = (Math.random() * 0.3 - 0.15);
+            const newPrice = Number((stock.price * (1 + deltaPercent / 100)).toFixed(2));
+            const newChange = Number((stock.change + deltaPercent * 0.1).toFixed(2));
+            hasChange = true;
+            return {
+              ...stock,
+              price: newPrice,
+              change: newChange,
+              loading: false
+            };
           }
-          return updated;
+          return stock;
         });
-        setLastUpdated(Date.now());
-      } catch (err) {
-        console.error('Ticker update error:', err);
-      }
+
+        if (hasChange) {
+          saveToCache(updated);
+        }
+        return updated;
+      });
+      setLastUpdated(Date.now());
     };
 
-    // Staggered interval every 3.5 seconds
-    const interval = setInterval(tickGlobalMarket, 3500);
+    // Micro-walk interval every 4 seconds (zero network requests)
+    const tickInterval = setInterval(tickGlobalMarket, 4000);
+
+    // Network cache sync every 60 seconds
+    const syncInterval = setInterval(refreshCacheIfStale, REFRESH_INTERVAL_MS);
 
     return () => {
       mounted = false;
-      clearInterval(interval);
+      clearInterval(tickInterval);
+      clearInterval(syncInterval);
     };
   }, []);
 

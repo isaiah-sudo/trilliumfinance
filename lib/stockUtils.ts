@@ -89,7 +89,7 @@ export function getStockLogo(ticker: string, customDomain?: string): string {
   const sym = ticker.toUpperCase();
   const meta = KNOWN_STOCKS_DATA[sym];
   const domain = customDomain || meta?.domain || `${sym.toLowerCase()}.com`;
-  return `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(domain)}`;
+  return `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
 }
 
 /**

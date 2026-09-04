@@ -122,22 +122,37 @@ export default function LeaderboardPage() {
           </h2>
         </div>
         <div className="divide-y divide-slate-700/50">
-          {leaders.slice(3).map((leader, index) => (
+          {leaders.slice(3).map((leader) => (
             <div 
               key={leader.id} 
-              className="flex items-center justify-between px-6 py-4 hover:bg-slate-700/20 transition-colors group"
+              className={`flex items-center justify-between px-6 py-4 transition-colors group ${
+                leader.isCurrentUser 
+                  ? 'bg-blue-500/10 border-l-4 border-l-blue-500 hover:bg-blue-500/15' 
+                  : 'hover:bg-slate-700/20'
+              }`}
             >
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-sm font-bold text-slate-400 group-hover:border-blue-500/30 group-hover:text-blue-400 transition-colors">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${
+                  leader.isCurrentUser
+                    ? 'bg-blue-600/30 border-blue-400 text-blue-300 shadow-md shadow-blue-500/20'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 group-hover:border-blue-500/30 group-hover:text-blue-400'
+                }`}>
                   {leader.rank}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate-200">{leader.displayName}</h4>
-                  <p className="text-xs text-slate-500">Trader Account</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-slate-200">{leader.displayName}</h4>
+                    {leader.isCurrentUser && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                        You
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">{leader.isCurrentUser ? 'Your Active Account' : 'Trader Account'}</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-slate-200 font-mono tracking-tight">
+                <div className={`font-bold font-mono tracking-tight ${leader.isCurrentUser ? 'text-blue-400 text-base' : 'text-slate-200'}`}>
                   {formatCurrency(leader.netWorth)}
                 </div>
               </div>

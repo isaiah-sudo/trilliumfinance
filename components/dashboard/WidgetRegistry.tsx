@@ -423,8 +423,10 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
                   <Medal className="h-4 w-4 text-gray-300" />
                 </div>
                 <span className="text-[9px] font-extrabold text-gray-400 uppercase">Rank 2</span>
-                <h5 className="text-xs font-bold text-white truncate max-w-full">{top3[1].displayName}</h5>
-                <p className="text-[10px] text-blue-400 font-extrabold font-num-sans">
+                <h5 className="text-xs font-bold text-white truncate max-w-full">
+                  {top3[1].displayName} {top3[1].isCurrentUser ? '(You)' : ''}
+                </h5>
+                <p className={`text-[10px] font-extrabold font-num-${numberFont} ${top3[1].isCurrentUser ? 'text-teal-400 font-black' : 'text-blue-400'}`}>
                   ${top3[1].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </p>
               </div>
@@ -440,8 +442,10 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
                   <Trophy className="h-5 w-5 text-amber-400" />
                 </div>
                 <span className="text-[9px] font-extrabold text-amber-400 uppercase">Rank 1</span>
-                <h5 className="text-xs font-extrabold text-white truncate max-w-full">{top3[0].displayName}</h5>
-                <p className="text-xs text-amber-400 font-black font-num-sans">
+                <h5 className="text-xs font-extrabold text-white truncate max-w-full">
+                  {top3[0].displayName} {top3[0].isCurrentUser ? '(You)' : ''}
+                </h5>
+                <p className={`text-xs font-black font-num-${numberFont} ${top3[0].isCurrentUser ? 'text-teal-400' : 'text-amber-400'}`}>
                   ${top3[0].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </p>
               </div>
@@ -457,8 +461,10 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
                   <Award className="h-4 w-4 text-amber-600" />
                 </div>
                 <span className="text-[9px] font-extrabold text-amber-600 uppercase">Rank 3</span>
-                <h5 className="text-xs font-bold text-white truncate max-w-full">{top3[2].displayName}</h5>
-                <p className="text-[10px] text-blue-400 font-extrabold font-num-sans">
+                <h5 className="text-xs font-bold text-white truncate max-w-full">
+                  {top3[2].displayName} {top3[2].isCurrentUser ? '(You)' : ''}
+                </h5>
+                <p className={`text-[10px] font-extrabold font-num-${numberFont} ${top3[2].isCurrentUser ? 'text-teal-400 font-black' : 'text-blue-400'}`}>
                   ${top3[2].netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </p>
               </div>
@@ -472,15 +478,25 @@ export function LeaderboardRankingsWidget({ numberFont }: WidgetComponentProps) 
         {rest.map((leader) => (
           <div
             key={leader.id || leader.rank}
-            className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 text-xs"
+            className={`flex items-center justify-between p-2 rounded-xl border text-xs transition-colors ${
+              leader.isCurrentUser
+                ? 'bg-blue-500/15 border-blue-500/40'
+                : 'bg-slate-50/50 dark:bg-[#0f111a]/40 border-slate-200 dark:border-slate-800/50'
+            }`}
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-5 h-5 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+              <span className={`w-5 h-5 rounded-lg border flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                leader.isCurrentUser
+                  ? 'bg-blue-600 text-white border-blue-400'
+                  : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+              }`}>
                 {leader.rank}
               </span>
-              <span className="font-bold text-slate-900 dark:text-white truncate">{leader.displayName}</span>
+              <span className="font-bold text-slate-900 dark:text-white truncate">
+                {leader.displayName} {leader.isCurrentUser ? '(You)' : ''}
+              </span>
             </div>
-            <span className={`font-black text-slate-700 dark:text-slate-300 font-num-${numberFont} shrink-0 text-[11px]`}>
+            <span className={`font-black font-num-${numberFont} shrink-0 text-[11px] ${leader.isCurrentUser ? 'text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
               ${leader.netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </span>
           </div>
