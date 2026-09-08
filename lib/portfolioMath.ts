@@ -99,6 +99,19 @@ export function calculateAssetDayPLUSD(qty: number, currentPrice: number, previo
 }
 
 /**
+ * Calculates Day P/L % (Per Asset)
+ * Day P/L % = ((Current Price - Previous Close Price) / Previous Close Price) * 100
+ */
+export function calculateAssetDayPLPercent(currentPrice: number, previousClose: number): number {
+  if (previousClose <= 0 || isNaN(previousClose) || !isFinite(previousClose)) {
+    return 0;
+  }
+  const difference = safeSubtract(currentPrice, previousClose);
+  const ratio = safeDivide(difference, previousClose);
+  return safeRound(safeMultiply(ratio, 100), 2);
+}
+
+/**
  * Calculates Global Net Worth (Global Equity)
  * Net Worth = Available Cash + Total Market Value
  */

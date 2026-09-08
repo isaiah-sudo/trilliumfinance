@@ -24,7 +24,7 @@ export interface ResponsiveDashboardLayouts {
 export const DEFAULT_WIDGET_LAYOUTS: ResponsiveDashboardLayouts = {
   lg: [
     { i: 'portfolio-graph', x: 0, y: 0, w: 8, h: 5, minW: 4, minH: 3, maxW: 12, maxH: 8, visible: true },
-    { i: 'account-summary', x: 8, y: 0, w: 4, h: 5, minW: 3, minH: 3, maxW: 12, maxH: 8, visible: true },
+    { i: 'account-summary', x: 8, y: 0, w: 4, h: 5, minW: 4, minH: 4, maxW: 12, maxH: 8, visible: true },
     { i: 'watchlist', x: 0, y: 5, w: 12, h: 5, minW: 4, minH: 3, maxW: 12, maxH: 8, visible: true },
 
     // Optional widgets available to add via "+ Add Widgets" modal
@@ -38,7 +38,7 @@ export const DEFAULT_WIDGET_LAYOUTS: ResponsiveDashboardLayouts = {
   ],
   md: [
     { i: 'portfolio-graph', x: 0, y: 0, w: 6, h: 5, minW: 3, minH: 3, maxW: 10, maxH: 8, visible: true },
-    { i: 'account-summary', x: 6, y: 0, w: 4, h: 5, minW: 3, minH: 3, maxW: 10, maxH: 8, visible: true },
+    { i: 'account-summary', x: 6, y: 0, w: 4, h: 5, minW: 4, minH: 4, maxW: 10, maxH: 8, visible: true },
     { i: 'watchlist', x: 0, y: 5, w: 10, h: 5, minW: 3, minH: 3, maxW: 10, maxH: 8, visible: true },
 
     { i: 'recent-trades', x: 0, y: 10, w: 10, h: 4, minW: 3, minH: 3, maxW: 10, maxH: 8, visible: false },
@@ -51,7 +51,7 @@ export const DEFAULT_WIDGET_LAYOUTS: ResponsiveDashboardLayouts = {
   ],
   sm: [
     { i: 'portfolio-graph', x: 0, y: 0, w: 6, h: 5, minW: 2, minH: 3, maxW: 6, maxH: 8, visible: true },
-    { i: 'account-summary', x: 0, y: 5, w: 6, h: 4, minW: 2, minH: 3, maxW: 6, maxH: 7, visible: true },
+    { i: 'account-summary', x: 0, y: 5, w: 6, h: 4, minW: 6, minH: 4, maxW: 6, maxH: 7, visible: true },
     { i: 'watchlist', x: 0, y: 9, w: 6, h: 5, minW: 2, minH: 3, maxW: 6, maxH: 8, visible: true },
 
     { i: 'recent-trades', x: 0, y: 14, w: 6, h: 4, minW: 2, minH: 3, maxW: 6, maxH: 8, visible: false },

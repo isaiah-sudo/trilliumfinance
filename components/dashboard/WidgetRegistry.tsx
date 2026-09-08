@@ -75,6 +75,11 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
               holdings.map((h: any) => {
                 const totalPl = h.pl ?? (h.marketValue - (h.qty * (h.avgPrice || 0)));
                 const totalPlPercent = h.plPercent ?? (h.avgPrice ? ((h.currentPrice - h.avgPrice) / h.avgPrice) * 100 : 0);
+                const dayPl = h.dayPl || 0;
+                const prevMarketVal = (h.marketValue || 0) - dayPl;
+                const dayPlPercent = h.dayPlPercent !== undefined
+                  ? h.dayPlPercent
+                  : (prevMarketVal > 0 ? (dayPl / prevMarketVal) * 100 : 0);
 
                 return (
                   <tr key={h.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -111,8 +116,9 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
                     <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
                       ${(h.marketValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className={`py-2.5 px-3 text-right font-bold font-num-${numberFont} ${(h.dayPl || 0) >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
-                      {(h.dayPl || 0) >= 0 ? '+' : ''}${(h.dayPl || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <td className={`py-2.5 px-3 text-right font-bold font-num-${numberFont} ${dayPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
+                      <div>{dayPl >= 0 ? '+' : ''}${dayPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="text-[10px]">{dayPlPercent >= 0 ? '+' : ''}{dayPlPercent.toFixed(2)}%</div>
                     </td>
                     <td className={`py-2.5 pl-3 text-right font-bold font-num-${numberFont} ${totalPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
                       <div>{totalPl >= 0 ? '+' : ''}${totalPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -256,57 +262,73 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
         </div>
       </div>
 
-      {/* Pie Chart Canvas with compact, sleek sizing */}
-      <div className="flex-1 w-full min-h-[130px] max-h-[180px] relative flex items-center justify-center my-auto">
+      {/* Pie Chart Canvas: dynamically scales with widget dimensions */}
+      <div className="flex-1 w-full min-h-[140px] relative flex items-center justify-center my-auto">
         {isMounted ? (
-          <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={120}>
-            <PieChart>
-              <Pie
-                data={activeData}
-                cx="50%"
-                cy="50%"
-                innerRadius={44}
-                outerRadius={70}
-                paddingAngle={activeData.length > 1 ? 3 : 0}
-                dataKey="value"
-                onMouseEnter={(_, index) => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-              >
-                {activeData.map((entry: { name: string; value: number; color: string }, index: number) => (
-                  <Cell
-                    key={`cell-${entry.name}-${index}`}
-                    fill={entry.color}
-                    stroke="none"
-                    style={{
-                      transform: activeIndex === index ? 'scale(1.07)' : 'scale(1)',
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      filter: activeIndex === index ? 'drop-shadow(0px 6px 12px rgba(0,0,0,0.35))' : 'none',
-                      cursor: 'pointer',
-                    }}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                offset={18}
-                formatter={(val: any, name: any) => [
-                  displayUnit === 'percent'
-                    ? `${((Number(val || 0) / activeTotalValue) * 100).toFixed(2)}%`
-                    : `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-                  `${name}:`
-                ]}
-                contentStyle={{
-                  backgroundColor: '#0f111a',
-                  borderColor: '#334155',
-                  borderRadius: '0.75rem',
-                  fontSize: '12px',
-                  color: '#fff',
-                  fontWeight: 700,
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <>
+            <ResponsiveContainer width="100%" height="100%" minWidth={140} minHeight={140}>
+              <PieChart>
+                <Pie
+                  data={activeData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="48%"
+                  outerRadius="78%"
+                  paddingAngle={activeData.length > 1 ? 3 : 0}
+                  dataKey="value"
+                  onMouseEnter={(_, index) => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                >
+                  {activeData.map((entry: { name: string; value: number; color: string }, index: number) => (
+                    <Cell
+                      key={`cell-${entry.name}-${index}`}
+                      fill={entry.color}
+                      stroke="none"
+                      style={{
+                        transform: activeIndex === index ? 'scale(1.06)' : 'scale(1)',
+                        transformOrigin: 'center center',
+                        transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        filter: activeIndex === index ? 'drop-shadow(0px 6px 12px rgba(0,0,0,0.4))' : 'none',
+                        cursor: 'pointer',
+                      }}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  offset={18}
+                  formatter={(val: any, name: any) => [
+                    displayUnit === 'percent'
+                      ? `${((Number(val || 0) / activeTotalValue) * 100).toFixed(2)}%`
+                      : `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    `${name}:`
+                  ]}
+                  contentStyle={{
+                    backgroundColor: '#0f111a',
+                    borderColor: '#334155',
+                    borderRadius: '0.75rem',
+                    fontSize: '12px',
+                    color: '#fff',
+                    fontWeight: 700,
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Centered slice detail in donut center on hover */}
+            {activeIndex !== null && activeData[activeIndex] && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 max-w-[90px] truncate">
+                  {activeData[activeIndex].name}
+                </span>
+                <span className="text-xs font-black text-slate-900 dark:text-white font-num-sans">
+                  {displayUnit === 'percent'
+                    ? `${((activeData[activeIndex].value / activeTotalValue) * 100).toFixed(1)}%`
+                    : `$${activeData[activeIndex].value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
             Loading chart...

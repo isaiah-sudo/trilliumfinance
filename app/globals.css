@@ -184,28 +184,28 @@ html.dark {
   animation: ring-pulse-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-
 /* 3D Depth bevel & underglow shadow effects for bottom of containers & widgets */
 .container-3d-bevel {
   box-shadow:
-    0 12px 28px -4px rgba(0, 0, 0, 0.45),
+    0 12px 24px -4px rgba(0, 0, 0, 0.45),
     0 8px 16px -2px rgba(0, 0, 0, 0.3),
-    0 16px 36px -4px var(--theme-accent-glow, rgba(59, 130, 246, 0.15)),
+    0 14px 28px -4px var(--theme-accent-glow, rgba(59, 130, 246, 0.12)),
+    0 -4px 12px -2px var(--theme-accent-glow, rgba(59, 130, 246, 0.08)),
     inset 0 -3px 0 0 rgba(0, 0, 0, 0.35),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .light .container-3d-bevel, html:not(.dark) .container-3d-bevel {
   box-shadow:
-    0 12px 28px -4px rgba(15, 23, 42, 0.15),
+    0 12px 24px -4px rgba(15, 23, 42, 0.15),
     0 8px 16px -2px rgba(15, 23, 42, 0.1),
-    0 16px 36px -4px var(--theme-accent-glow, rgba(37, 99, 235, 0.12)),
+    0 14px 28px -4px var(--theme-accent-glow, rgba(37, 99, 235, 0.1)),
+    0 -4px 12px -2px var(--theme-accent-glow, rgba(37, 99, 235, 0.06)),
     inset 0 -3px 0 0 rgba(148, 163, 184, 0.4),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
 }
 
 /* react-grid-layout custom overrides */
-
 .react-grid-item.react-grid-placeholder {
   background: rgba(59, 130, 246, 0.12) !important;
   border: 2px dashed rgba(59, 130, 246, 0.6) !important;
@@ -214,7 +214,6 @@ html.dark {
 }
 
 /* react-grid-layout & react-resizable handle styles */
-
 .react-resizable-handle {
   opacity: 0.4;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -310,14 +309,13 @@ html.dark {
   animation: greenWavePulse 0.9s ease-out forwards;
 }
 
-
 /* Cockpit Intro Neon & Laser Animations */
 @keyframes cockpitLaserPulse {
   0%, 100% {
     filter: drop-shadow(0 0 6px var(--theme-accent-glow, rgba(0, 245, 212, 0.6))) drop-shadow(0 0 16px var(--theme-accent-glow, rgba(59, 130, 246, 0.4)));
   }
   50% {
-    filter: drop-shadow(0 0 12px var(--theme-accent-glow-strong, rgba(0, 245, 212, 0.9))) drop-shadow(0 0 28px var(--theme-accent, rgba(16, 185, 129, 0.7)));
+    filter: drop-shadow(0 0 12px var(--theme-accent-glow-strong, rgba(0, 245, 212, 0.9))) drop-shadow(0 0 28px var(--theme-accent, rgba(168, 85, 247, 0.7)));
   }
 }
 
@@ -335,11 +333,11 @@ html.dark {
   --theme-accent-light: #60a5fa;
   --theme-accent-dark: #1d4ed8;
   --theme-accent-border: rgba(59, 130, 246, 0.45);
-  --theme-accent-glow: rgba(59, 130, 246, 0.35);
-  --theme-accent-glow-strong: rgba(59, 130, 246, 0.6);
+  --theme-accent-glow: rgba(59, 130, 246, 0.12);
+  --theme-accent-glow-strong: rgba(59, 130, 246, 0.28);
   --theme-accent-bg: rgba(59, 130, 246, 0.12);
   --theme-accent-subtle: rgba(59, 130, 246, 0.22);
-  --theme-accent-secondary-glow: rgba(14, 165, 233, 0.25);
+  --theme-accent-secondary-glow: rgba(14, 165, 233, 0.08);
   --pulse-ring-color: rgba(59, 130, 246, 0.6);
 }
 
@@ -349,11 +347,11 @@ html.dark {
   --theme-accent-light: #34d399;
   --theme-accent-dark: #047857;
   --theme-accent-border: rgba(16, 185, 129, 0.45);
-  --theme-accent-glow: rgba(16, 185, 129, 0.35);
-  --theme-accent-glow-strong: rgba(16, 185, 129, 0.6);
+  --theme-accent-glow: rgba(16, 185, 129, 0.12);
+  --theme-accent-glow-strong: rgba(16, 185, 129, 0.28);
   --theme-accent-bg: rgba(16, 185, 129, 0.12);
   --theme-accent-subtle: rgba(16, 185, 129, 0.22);
-  --theme-accent-secondary-glow: rgba(20, 184, 166, 0.25);
+  --theme-accent-secondary-glow: rgba(20, 184, 166, 0.08);
   --pulse-ring-color: rgba(16, 185, 129, 0.65);
 }
 
@@ -363,11 +361,11 @@ html.dark {
   --theme-accent-light: #c084fc;
   --theme-accent-dark: #7e22ce;
   --theme-accent-border: rgba(168, 85, 247, 0.45);
-  --theme-accent-glow: rgba(168, 85, 247, 0.35);
-  --theme-accent-glow-strong: rgba(168, 85, 247, 0.6);
+  --theme-accent-glow: rgba(168, 85, 247, 0.14);
+  --theme-accent-glow-strong: rgba(168, 85, 247, 0.3);
   --theme-accent-bg: rgba(168, 85, 247, 0.12);
   --theme-accent-subtle: rgba(168, 85, 247, 0.22);
-  --theme-accent-secondary-glow: rgba(99, 102, 241, 0.25);
+  --theme-accent-secondary-glow: rgba(99, 102, 241, 0.09);
   --pulse-ring-color: rgba(168, 85, 247, 0.65);
 }
 
@@ -377,11 +375,11 @@ html.dark {
   --theme-accent-light: #fbbf24;
   --theme-accent-dark: #b45309;
   --theme-accent-border: rgba(245, 158, 11, 0.45);
-  --theme-accent-glow: rgba(245, 158, 11, 0.35);
-  --theme-accent-glow-strong: rgba(245, 158, 11, 0.6);
+  --theme-accent-glow: rgba(245, 158, 11, 0.12);
+  --theme-accent-glow-strong: rgba(245, 158, 11, 0.28);
   --theme-accent-bg: rgba(245, 158, 11, 0.12);
   --theme-accent-subtle: rgba(245, 158, 11, 0.22);
-  --theme-accent-secondary-glow: rgba(234, 179, 8, 0.25);
+  --theme-accent-secondary-glow: rgba(234, 179, 8, 0.08);
   --pulse-ring-color: rgba(245, 158, 11, 0.65);
 }
 

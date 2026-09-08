@@ -1,10 +1,37 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Lock, Heart, TreePine, X, Trophy, Rocket, Gem, Crown, PieChart, Zap, Flame, GraduationCap, ShieldAlert, Edit3, Check, RotateCcw, Plus } from 'lucide-react';
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  Lock, 
+  Heart, 
+  TreePine, 
+  X, 
+  Trophy, 
+  Rocket, 
+  Gem, 
+  Crown, 
+  PieChart, 
+  Zap, 
+  Flame, 
+  GraduationCap, 
+  ShieldAlert, 
+  Edit3, 
+  Check, 
+  RotateCcw, 
+  Plus,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -22,6 +49,7 @@ import DashboardWidgetCard from '@/components/dashboard/DashboardWidgetCard';
 import { WIDGET_REGISTRY } from '@/components/dashboard/WidgetRegistry';
 import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 import CockpitPerimeterTrace from '@/components/dashboard/CockpitPerimeterTrace';
+import WidgetPreviewCard from '@/components/dashboard/WidgetPreviewCard';
 
 
 const LOCAL_STORAGE_LAYOUT_KEY = 'trillium_dashboard_layout_v2';
@@ -42,6 +70,14 @@ const sanitizeLayouts = (rawLayouts: ResponsiveDashboardLayouts): ResponsiveDash
     if (item.maxW !== undefined) cleaned.maxW = item.maxW;
     if (item.minH !== undefined) cleaned.minH = item.minH;
     if (item.maxH !== undefined) cleaned.maxH = item.maxH;
+
+    if (cleaned.i === 'account-summary') {
+      cleaned.minW = Math.max(cleaned.minW || 0, 4);
+      cleaned.minH = Math.max(cleaned.minH || 0, 4);
+      if (cleaned.w < cleaned.minW) cleaned.w = cleaned.minW;
+      if (cleaned.h < cleaned.minH) cleaned.h = cleaned.minH;
+    }
+
     return cleaned;
   };
 
@@ -230,7 +266,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { numberFont } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
-  const [isNetWorthExpanded, setIsNetWorthExpanded] = useState(false);
   const [isGameLoading, setIsGameLoading] = useState(() => {
     if (typeof window === 'undefined') return false;
     const shouldShow = sessionStorage.getItem('trillium_show_loader') === 'true';
@@ -240,7 +275,9 @@ export default function DashboardPage() {
     }
     return false;
   });
-  const gridWrapperRef = useRef<HTMLDivElement>(null);
+  const gridWrapperRef = useRef<HTMLDivElement | null>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
+  const hasFiredIntroRef = useRef<boolean>(false);
   const [gridWidth, setGridWidth] = useState<number>(0);
 
   const handlePulse = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -285,9 +322,48 @@ export default function DashboardPage() {
   const [layouts, setLayouts] = useState<ResponsiveDashboardLayouts>(DEFAULT_WIDGET_LAYOUTS);
   const [currentBreakpoint, setCurrentBreakpoint] = useState<keyof ResponsiveDashboardLayouts>('lg');
   const [mounted, setMounted] = useState(false);
-  const [cockpitIntroTrigger, setCockpitIntroTrigger] = useState(1);
+  const [cockpitIntroTrigger, setCockpitIntroTrigger] = useState(0);
 
-  // Set mounted and measure grid width accurately across all screen sizes
+  // Reliable callback ref ensuring immediate synchronous dimension measurement upon DOM mount
+  const gridWrapperCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    if (roRef.current) {
+      roRef.current.disconnect();
+      roRef.current = null;
+    }
+    gridWrapperRef.current = node;
+
+    if (node) {
+      const updateWidth = () => {
+        const w = node.clientWidth || node.offsetWidth;
+        if (w > 0) {
+          setGridWidth(w);
+          if (!hasFiredIntroRef.current) {
+            hasFiredIntroRef.current = true;
+            setTimeout(() => {
+              setCockpitIntroTrigger(1);
+            }, 100);
+          }
+        }
+      };
+
+      updateWidth();
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const w = entry.contentRect.width;
+            if (w > 0) {
+              setGridWidth(w);
+            }
+          }
+        });
+        ro.observe(node);
+        roRef.current = ro;
+      }
+    }
+  }, []);
+
+  // Additional safety synchronization on mount and data transition
   useEffect(() => {
     setMounted(true);
 
@@ -296,38 +372,27 @@ export default function DashboardPage() {
         const w = gridWrapperRef.current.clientWidth || gridWrapperRef.current.offsetWidth;
         if (w > 0) {
           setGridWidth(w);
+          if (!hasFiredIntroRef.current) {
+            hasFiredIntroRef.current = true;
+            setTimeout(() => {
+              setCockpitIntroTrigger(1);
+            }, 100);
+          }
         }
       }
     };
 
     measureWidth();
-
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined' && gridWrapperRef.current) {
-      ro = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const w = entry.contentRect.width;
-          if (w > 0) {
-            setGridWidth(w);
-          }
-        }
-      });
-      ro.observe(gridWrapperRef.current);
-    }
-
     const t1 = setTimeout(measureWidth, 50);
-    const t2 = setTimeout(measureWidth, 150);
-    const t3 = setTimeout(measureWidth, 350);
+    const t2 = setTimeout(measureWidth, 200);
 
     window.addEventListener('resize', measureWidth);
     return () => {
-      if (ro) ro.disconnect();
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
       window.removeEventListener('resize', measureWidth);
     };
-  }, []);
+  }, [portfolio, storeLoading]);
 
 
   const activePerformance = useMemo(() => {
@@ -810,29 +875,39 @@ export default function DashboardPage() {
       )}
 
       {/* Financial Summary Card Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl container-3d-bevel pet-container-target relative w-full"
-      >
+      <div className="relative w-full overflow-visible">
+        {/* Exact Ambient Underglow Layer: Matches the widget silhouette underglow */}
+        <div
+          className="absolute inset-0 rounded-3xl pointer-events-none z-0 overflow-visible"
+          aria-hidden="true"
+        >
+          {/* Ambient aura stroke matching widget Layer 1A */}
+          <div
+            className="absolute -inset-1 rounded-[26px] pointer-events-none transition-opacity duration-700"
+            style={{
+              border: '14px solid var(--theme-accent-glow, rgba(168, 85, 247, 0.15))',
+              filter: 'blur(16px)',
+              opacity: 0.22,
+            }}
+          />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl container-3d-bevel pet-container-target relative w-full z-10"
+        >
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCockpitIntroTrigger((prev) => prev + 1)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-[11px] font-bold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(6,182,212,0.3)]"
-              title="Replay Cockpit Intro Animation"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              <span>Cockpit Intro</span>
-            </button>
-            <button
               onClick={() => setWidgetModalOpen(true)}
-              className="flex items-center justify-center p-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 text-[11px] font-bold transition-all cursor-pointer shadow-sm"
               title="Add Widgets"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Widgets</span>
             </button>
             <button
               onClick={handleResetLayout}
@@ -855,66 +930,7 @@ export default function DashboardPage() {
                   <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
-              
-              <button
-                onClick={() => setIsNetWorthExpanded(!isNetWorthExpanded)}
-                onMouseDown={handlePulse}
-                style={{ '--pulse-ring-color': 'rgba(148, 163, 184, 0.4)' } as React.CSSProperties}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-700/50 transition-all duration-200 hover:-translate-y-[0.5px] hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] active:translate-y-[0.5px] shadow-md shrink-0"
-                title="Toggle Borrowing Details"
-              >
-                {isNetWorthExpanded ? (
-                  <ChevronUp className="h-5 w-5 text-blue-400" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-blue-400 animate-pulse" />
-                )}
-              </button>
             </div>
-
-            {/* Collapsible Borrowing Details */}
-            <AnimatePresence>
-              {isNetWorthExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                  animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
-                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden border-t border-slate-200 dark:border-slate-800/50 pt-4"
-                >
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Borrowed Money</div>
-                        <div className={`text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
-                          ${(portfolio.borrowedAmount || 0).toLocaleString()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Interest Rate on Borrowed Money</div>
-                        <div className={`text-xs md:text-sm font-extrabold text-amber-650 dark:text-amber-500 font-num-${numberFont}`}>
-                          {((portfolio.interestRate || 0.08) * 100).toFixed(2)}%
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 border-l border-slate-200 dark:border-slate-800/30 pl-6">
-                      <div>
-                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Owed</div>
-                        <div className={`text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
-                          ${(portfolio.amountOwed || 0).toLocaleString()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500 dark:text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Added Per Month</div>
-                        <div className={`text-xs md:text-sm font-extrabold text-amber-650 dark:text-amber-500 font-num-${numberFont}`}>
-                          ${(portfolio.monthlyInterest || 0).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           {/* Supporting Stats */}
@@ -958,29 +974,47 @@ export default function DashboardPage() {
           </div>
         </div>
       </motion.div>
+      </div>
+
+      {/* Seamless Underglow Connector Bridge: Softly connects underglows between Portfolio Overview and Widgets Grid */}
+      <div 
+        className="relative w-full -my-3 sm:-my-4 h-6 sm:h-7 pointer-events-none z-0 overflow-visible flex items-center justify-center" 
+        aria-hidden="true"
+      >
+        {/* Soft, dim ambient glow puddle */}
+        <div
+          className="w-full h-full rounded-full blur-2xl opacity-20 transition-opacity duration-700"
+          style={{
+            background: 'radial-gradient(ellipse 80% 100% at 50% 50%, var(--theme-accent-glow, rgba(168, 85, 247, 0.15)) 0%, transparent 70%)',
+          }}
+        />
+      </div>
 
       {/* Dynamic Grid Layout Engine */}
-      <div ref={gridWrapperRef} className="relative w-full overflow-visible">
+      <div ref={gridWrapperCallbackRef} className="relative w-full overflow-visible min-h-[400px]">
         {/* Global Unified Cockpit Perimeter Neon Trace: Outlines all widgets with zero interior lines and zero clipping */}
-        <CockpitPerimeterTrace
-          playTrigger={cockpitIntroTrigger}
-          widgets={visibleItems}
-          gridWidth={gridWidth}
-          durationMs={3000}
-        />
-        <Responsive
-          className="layout w-full"
-          width={gridWidth > 0 ? gridWidth : (typeof window !== 'undefined' ? Math.max(window.innerWidth - 64, 1200) : 1200)}
-          layouts={layouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-          cols={{ lg: 12, md: 10, sm: 6 }}
-          rowHeight={90}
-          margin={[0, 0]}
-          dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
-          resizeConfig={{ enabled: isEditMode, handles: ['se', 'sw'] }}
-          onLayoutChange={handleLayoutChange}
-          onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
-        >
+        {gridWidth > 0 && (
+          <CockpitPerimeterTrace
+            playTrigger={cockpitIntroTrigger}
+            widgets={visibleItems}
+            gridWidth={gridWidth}
+            durationMs={3000}
+          />
+        )}
+        {gridWidth > 0 ? (
+          <Responsive
+            className="layout w-full"
+            width={gridWidth}
+            layouts={layouts}
+            breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+            cols={{ lg: 12, md: 10, sm: 6 }}
+            rowHeight={90}
+            margin={[0, 0]}
+            dragConfig={{ enabled: isEditMode, handle: '.widget-drag-handle' }}
+            resizeConfig={{ enabled: isEditMode, handles: ['se', 'sw'] }}
+            onLayoutChange={handleLayoutChange}
+            onBreakpointChange={(newBp) => setCurrentBreakpoint(newBp as keyof ResponsiveDashboardLayouts)}
+          >
           {visibleItems.map((item) => {
             const regItem = WIDGET_REGISTRY[item.i];
             if (!regItem) return null;
@@ -1059,6 +1093,14 @@ export default function DashboardPage() {
             );
           })}
         </Responsive>
+        ) : (
+          <div className="w-full h-[500px] flex items-center justify-center rounded-2xl bg-white/40 dark:bg-[#121622]/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+              <span>Calibrating dashboard layout...</span>
+            </div>
+          </div>
+        )}
       </div>
 
 
@@ -1220,47 +1262,64 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-6 backdrop-blur-xl"
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800/60 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] shadow-2xl flex flex-col gap-4 backdrop-blur-xl"
             >
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center shrink-0 border-b border-slate-200/60 dark:border-slate-800/60 pb-4">
                 <div>
                   <h3 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Widget Selection & Management</h3>
-                  <p className="text-slate-505 dark:text-slate-400 text-xs mt-1 font-semibold">Enable or restore widgets on your grid canvas.</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-semibold">Enable or restore widgets on your cockpit grid canvas with live component previews.</p>
                 </div>
                 <button 
                   onClick={() => setWidgetModalOpen(false)} 
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-inner cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-1 py-1">
                 {Object.values(WIDGET_REGISTRY).map((widget) => {
                   const isVisible = !hiddenWidgetIds.includes(widget.id);
                   return (
                     <div 
                       key={widget.id}
-                      onClick={() => {
-                        if (!isVisible) {
-                          handleAddWidget(widget.id);
-                        }
-                      }}
-                      className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
+                      className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
                         isVisible
-                          ? 'bg-slate-100/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 opacity-60 cursor-default'
-                          : 'bg-blue-600/10 dark:bg-blue-950/40 border-blue-500/40 hover:bg-blue-600/20 cursor-pointer shadow-md'
+                          ? 'bg-slate-100/40 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800/60 opacity-60'
+                          : 'bg-white dark:bg-[#0f111a]/70 border-slate-200 dark:border-slate-800/80 hover:border-blue-500/50 shadow-md hover:shadow-xl transition-all'
                       }`}
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">{widget.title}</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{widget.description}</p>
+                      {/* Top Header Row with Widget Name, Subtext & Action Button */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                            {widget.title}
+                          </h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
+                            {widget.description}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!isVisible) {
+                              handleAddWidget(widget.id);
+                            }
+                          }}
+                          disabled={isVisible}
+                          className={`text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-xl shrink-0 transition-all cursor-pointer ${
+                            isVisible 
+                              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed' 
+                              : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/25 active:scale-95'
+                          }`}
+                        >
+                          {isVisible ? 'Active' : '+ Add'}
+                        </button>
                       </div>
-                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${
-                        isVisible ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' : 'bg-blue-500 text-white shadow-sm'
-                      }`}>
-                        {isVisible ? 'Active' : '+ Add'}
-                      </span>
+
+                      {/* Accurate, Authentic Non-AI Component Preview */}
+                      <div className="w-full">
+                        <WidgetPreviewCard widgetId={widget.id} />
+                      </div>
                     </div>
                   );
                 })}

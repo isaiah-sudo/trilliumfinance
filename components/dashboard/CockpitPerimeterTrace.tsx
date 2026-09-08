@@ -63,13 +63,14 @@ export default function CockpitPerimeterTrace({
   const { width: W, height: H } = dimensions;
 
   // Build the outer perimeter paths from the active widget layout
-  const { pathDataA, pathDataB } = useMemo(() => {
-    if (W <= 0 || H <= 0 || !widgets || widgets.length === 0) {
-      return { pathDataA: '', pathDataB: '' };
+  const { pathDataA, pathDataB, closedPath, maxRow = 0 } = useMemo(() => {
+    const effectiveW = gridWidth > 0 ? gridWidth : W;
+    if (effectiveW <= 0 || H <= 0 || !widgets || widgets.length === 0) {
+      return { pathDataA: '', pathDataB: '', closedPath: '', maxRow: 0 };
     }
 
     const maxRow = widgets.reduce((acc, w) => Math.max(acc, w.y + w.h), 0);
-    if (maxRow <= 0) return { pathDataA: '', pathDataB: '' };
+    if (maxRow <= 0) return { pathDataA: '', pathDataB: '', closedPath: '', maxRow: 0 };
 
     // 1. Build discrete 2D occupancy grid [row][col]
     const grid: boolean[][] = Array.from({ length: maxRow }, () => Array(12).fill(false));
@@ -84,18 +85,18 @@ export default function CockpitPerimeterTrace({
     // 2. Map grid coordinates to pixel bounds
     // Inset stroke by 1px so neon line sits squarely on top of card borders with zero clipping
     const pad = 1.0;
-    const colW = W / 12;
+    const colW = effectiveW / 12;
     const rowH = 90;
 
     const pxX = (c: number) => {
       if (c === 0) return pad;
-      if (c === 12) return W - pad;
+      if (c === 12) return effectiveW - pad;
       return Math.round(c * colW);
     };
 
     const pxY = (r: number) => {
       if (r === 0) return pad;
-      if (r === maxRow) return H - pad;
+      if (r === maxRow) return Math.round(maxRow * rowH) - pad;
       return Math.round(r * rowH);
     };
 
@@ -104,7 +105,7 @@ export default function CockpitPerimeterTrace({
     while (rMin < maxRow && !grid[rMin].some(Boolean)) {
       rMin++;
     }
-    if (rMin >= maxRow) return { pathDataA: '', pathDataB: '' };
+    if (rMin >= maxRow) return { pathDataA: '', pathDataB: '', closedPath: '', maxRow: 0 };
 
     let cStart = 0;
     while (cStart < 12 && !grid[rMin][cStart]) {
@@ -245,8 +246,14 @@ export default function CockpitPerimeterTrace({
       verticesB.push({ x: pxX(cEndCol), y: pxY(rEndRow) });
     }
 
-    // Helper: Convert point sequence to SVG path with rounded 16px corners
-    const buildRoundedPath = (pts: Point[]): string => {
+    // 5. Build Closed Perimeter Path (Top-Left -> Branch A -> Bottom-Right -> Branch B reversed -> Top-Left)
+    const verticesClosed: Point[] = [
+      ...verticesA,
+      ...verticesB.slice(1, -1).reverse(),
+    ];
+
+    // Helper: Convert point sequence to SVG path with rounded corners
+    const buildRoundedPath = (pts: Point[], close = false): string => {
       // Remove consecutive duplicates or collinear points
       const clean: Point[] = [];
       pts.forEach((pt) => {
@@ -261,8 +268,9 @@ export default function CockpitPerimeterTrace({
 
       // Filter collinear points
       const filtered: Point[] = [];
-      for (let i = 0; i < clean.length; i++) {
-        if (i > 0 && i < clean.length - 1) {
+      const n = clean.length;
+      for (let i = 0; i < n; i++) {
+        if (i > 0 && i < n - 1) {
           const prev = clean[i - 1];
           const curr = clean[i];
           const next = clean[i + 1];
@@ -280,13 +288,15 @@ export default function CockpitPerimeterTrace({
 
       if (filtered.length < 2) return '';
 
-      const R = 16;
+      const R = 24; // 24px corner radius matching rounded-3xl / rounded-2xl
       let d = `M ${filtered[0].x.toFixed(1)},${filtered[0].y.toFixed(1)}`;
 
-      for (let i = 1; i < filtered.length - 1; i++) {
+      const total = close ? filtered.length : filtered.length - 1;
+
+      for (let i = 1; i < total; i++) {
         const p0 = filtered[i - 1];
         const p1 = filtered[i];
-        const p2 = filtered[i + 1];
+        const p2 = filtered[(i + 1) % filtered.length];
 
         const ux = p1.x - p0.x;
         const uy = p1.y - p0.y;
@@ -321,15 +331,52 @@ export default function CockpitPerimeterTrace({
         d += ` A ${radius.toFixed(1)},${radius.toFixed(1)} 0 0,${sweep} ${endX.toFixed(1)},${endY.toFixed(1)}`;
       }
 
-      const lastPt = filtered[filtered.length - 1];
-      d += ` L ${lastPt.x.toFixed(1)},${lastPt.y.toFixed(1)}`;
+      if (close) {
+        // Handle closing corner between last point and first point
+        const lastIdx = filtered.length - 1;
+        const p0 = filtered[lastIdx - 1];
+        const p1 = filtered[lastIdx];
+        const p2 = filtered[0];
+
+        const ux = p1.x - p0.x;
+        const uy = p1.y - p0.y;
+        const lenU = Math.hypot(ux, uy);
+
+        const vx = p2.x - p1.x;
+        const vy = p2.y - p1.y;
+        const lenV = Math.hypot(vx, vy);
+
+        if (lenU >= 1 && lenV >= 1) {
+          const cross = ux * vy - uy * vx;
+          const radius = Math.min(R, lenU / 2, lenV / 2);
+          if (radius >= 3) {
+            const startX = p1.x - (ux / lenU) * radius;
+            const startY = p1.y - (uy / lenU) * radius;
+            const endX = p1.x + (vx / lenV) * radius;
+            const endY = p1.y + (vy / lenV) * radius;
+            const sweep = cross > 0 ? 1 : 0;
+            d += ` L ${startX.toFixed(1)},${startY.toFixed(1)}`;
+            d += ` A ${radius.toFixed(1)},${radius.toFixed(1)} 0 0,${sweep} ${endX.toFixed(1)},${endY.toFixed(1)}`;
+          } else {
+            d += ` L ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
+          }
+        } else {
+          d += ` L ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
+        }
+        d += ' Z';
+      } else {
+        const lastPt = filtered[filtered.length - 1];
+        d += ` L ${lastPt.x.toFixed(1)},${lastPt.y.toFixed(1)}`;
+      }
 
       return d;
     };
 
     return {
-      pathDataA: buildRoundedPath(verticesA),
-      pathDataB: buildRoundedPath(verticesB),
+      pathDataA: buildRoundedPath(verticesA, false),
+      pathDataB: buildRoundedPath(verticesB, false),
+      closedPath: buildRoundedPath(verticesClosed, true),
+      maxRow,
     };
   }, [W, H, widgets]);
 
@@ -343,7 +390,13 @@ export default function CockpitPerimeterTrace({
   const [headPosA, setHeadPosA] = useState<Point>({ x: 0, y: 0 });
   const [headPosB, setHeadPosB] = useState<Point>({ x: 0, y: 0 });
 
-  // Animation controller
+  const [laserOpacity, setLaserOpacity] = useState(0);
+  const [underglowOpacity, setUnderglowOpacity] = useState(1);
+
+  const hasStartedRef = useRef(false);
+  const lastPlayTriggerRef = useRef(playTrigger);
+
+  // Animation controller: Cockpit Intro traces around widgets, then fades smoothly into the underglow
   const startTrace = useCallback(() => {
     if (W <= 0 || H <= 0 || !pathDataA || !pathDataB) return;
 
@@ -354,7 +407,8 @@ export default function CockpitPerimeterTrace({
 
     setAnimationState('tracing');
     setProgress(0);
-    setOpacity(1);
+    setLaserOpacity(1);
+    setUnderglowOpacity(0.25); // Subtle ambient glow during Cockpit Intro trace
 
     startTimeRef.current = performance.now();
 
@@ -385,29 +439,32 @@ export default function CockpitPerimeterTrace({
       if (rawP < 1) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
-        // Both beams meet simultaneously at bottom-right
+        // Cockpit intro has finished tracing around the widgets!
         setProgress(1);
-        setAnimationState('holding');
-        setTimeout(() => {
-          setAnimationState('fading');
-          const fadeStart = performance.now();
-          const fadeDuration = 800;
+        setAnimationState('fading');
 
-          const fadeAnimate = (fadeNow: number) => {
-            const fadeElapsed = fadeNow - fadeStart;
-            const fadeP = Math.min(1, fadeElapsed / fadeDuration);
-            setOpacity(Math.max(0, 1 - fadeP));
+        // Smooth cross-fade: Cockpit Intro fades OUT while the Portfolio underglow blooms IN
+        const fadeStart = performance.now();
+        const fadeDuration = 800; // 800ms luxurious crossfade
 
-            if (fadeP < 1) {
-              animFrameRef.current = requestAnimationFrame(fadeAnimate);
-            } else {
-              setAnimationState('completed');
-              setOpacity(0);
-            }
-          };
+        const crossFade = (fadeNow: number) => {
+          const fadeElapsed = fadeNow - fadeStart;
+          const fadeP = Math.min(1, fadeElapsed / fadeDuration);
+          const easedFadeP = easeInOutCubic(fadeP);
 
-          animFrameRef.current = requestAnimationFrame(fadeAnimate);
-        }, 400);
+          setLaserOpacity(Math.max(0, 1 - easedFadeP));
+          setUnderglowOpacity(Math.min(1, 0.25 + 0.75 * easedFadeP));
+
+          if (fadeP < 1) {
+            animFrameRef.current = requestAnimationFrame(crossFade);
+          } else {
+            setAnimationState('completed');
+            setLaserOpacity(0);
+            setUnderglowOpacity(1); // Keep underglow permanently active under widgets
+          }
+        };
+
+        animFrameRef.current = requestAnimationFrame(crossFade);
       }
     };
 
@@ -422,11 +479,22 @@ export default function CockpitPerimeterTrace({
   }, [W, H, pathDataA, pathDataB, durationMs, easeInOutCubic]);
 
   useEffect(() => {
-    if (W > 0 && H > 0 && pathDataA && pathDataB) {
+    const effectiveW = gridWidth > 0 ? gridWidth : W;
+    if (effectiveW <= 0 || H <= 0 || !pathDataA || !pathDataB) return;
+
+    if (!hasStartedRef.current) {
+      hasStartedRef.current = true;
+      lastPlayTriggerRef.current = playTrigger;
       const cleanup = startTrace();
       return cleanup;
     }
-  }, [playTrigger, W, H, pathDataA, pathDataB, startTrace]);
+
+    if (playTrigger !== lastPlayTriggerRef.current) {
+      lastPlayTriggerRef.current = playTrigger;
+      const cleanup = startTrace();
+      return cleanup;
+    }
+  }, [playTrigger, gridWidth, W, H, pathDataA, pathDataB, startTrace]);
 
   useEffect(() => {
     return () => {
@@ -436,92 +504,136 @@ export default function CockpitPerimeterTrace({
     };
   }, []);
 
-  if (animationState === 'completed' || opacity <= 0) {
+  if (W <= 0 || H <= 0 || !pathDataA || !pathDataB) {
     return (
       <div
         ref={containerRef}
-        className="absolute inset-0 pointer-events-none z-30 overflow-visible"
+        className="absolute inset-0 pointer-events-none z-0 overflow-visible"
         aria-hidden="true"
       />
     );
   }
 
+  const svgHeight = Math.max(H, maxRow * 90);
+
   return (
-    <div
-      ref={containerRef}
-      className="absolute inset-0 pointer-events-none z-30 overflow-visible transition-opacity duration-75 ease-out"
-      style={{ opacity }}
-      aria-hidden="true"
-    >
-      {W > 0 && H > 0 && pathDataA && pathDataB && (
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none overflow-visible">
+      {/* 1. Ambient Underglow Layer: Positioned beneath widgets (z-0), casting the EXACT same underglow as Portfolio Overview */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0 overflow-visible transition-opacity duration-700 ease-out"
+        style={{ opacity: underglowOpacity }}
+        aria-hidden="true"
+      >
         <svg
           className="absolute inset-0 w-full h-full overflow-visible pointer-events-none"
-          viewBox={`0 0 ${W} ${H}`}
+          viewBox={`0 0 ${W} ${svgHeight}`}
         >
-          <defs>
-            <filter id="cockpit-unified-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Top & Right Outer Boundary (Branch A) */}
-          <path
-            ref={pathRefA}
-            d={pathDataA}
-            fill="none"
-            stroke="var(--theme-accent, #00f5d4)"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pathLength={1}
-            strokeDasharray="1"
-            strokeDashoffset={1 - progress}
-            filter="url(#cockpit-unified-glow)"
-            opacity="0.95"
-          />
-
-          {/* Left & Bottom Outer Boundary (Branch B) */}
-          <path
-            ref={pathRefB}
-            d={pathDataB}
-            fill="none"
-            stroke="var(--theme-accent, #00f5d4)"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pathLength={1}
-            strokeDasharray="1"
-            strokeDashoffset={1 - progress}
-            filter="url(#cockpit-unified-glow)"
-            opacity="0.95"
-          />
-
-          {/* Leading Tips (Active during trace only; vanish upon arrival) */}
-          {animationState === 'tracing' && progress > 0.01 && progress < 0.99 && (
+          {closedPath && (
             <>
-              <circle
-                cx={headPosA.x}
-                cy={headPosA.y}
-                r="2.2"
-                fill="#ffffff"
-                stroke="var(--theme-accent, #00f5d4)"
-                strokeWidth="1"
+              {/* Layer 1A: Soft subtle ambient whisper path (Dim and barely noticeable) */}
+              <path
+                d={closedPath}
+                fill="none"
+                stroke="var(--theme-accent-glow, rgba(168, 85, 247, 0.15))"
+                strokeWidth="16"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                style={{
+                  filter: 'blur(16px)',
+                  opacity: 0.22,
+                }}
               />
-              <circle
-                cx={headPosB.x}
-                cy={headPosB.y}
-                r="2.2"
-                fill="#ffffff"
-                stroke="var(--theme-accent, #00f5d4)"
-                strokeWidth="1"
+
+              {/* Layer 1B: Unified 3D Silhouette with Dim, Subtle CSS Drop-Shadows */}
+              <path
+                d={closedPath}
+                className="fill-white/95 dark:fill-[#121622]/95"
+                stroke="none"
+                style={{
+                  filter: [
+                    'drop-shadow(0px 12px 24px rgba(0, 0, 0, 0.45))',
+                    'drop-shadow(0px 14px 28px var(--theme-accent-glow, rgba(168, 85, 247, 0.12)))',
+                    'drop-shadow(0px -4px 12px var(--theme-accent-glow, rgba(168, 85, 247, 0.08)))',
+                  ].join(' '),
+                }}
               />
             </>
           )}
         </svg>
+      </div>
+
+      {/* 2. Cockpit Intro Laser Tracing Layer: Positioned above widgets (z-30) during active Cockpit Intro */}
+      {laserOpacity > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none z-30 overflow-visible transition-opacity duration-300 ease-out"
+          style={{ opacity: laserOpacity }}
+          aria-hidden="true"
+        >
+          <svg
+            className="absolute inset-0 w-full h-full overflow-visible pointer-events-none"
+            viewBox={`0 0 ${W} ${svgHeight}`}
+          >
+            {/* Top & Right Outer Boundary (Branch A) */}
+            <path
+              ref={pathRefA}
+              d={pathDataA}
+              fill="none"
+              stroke="var(--theme-accent, #3b82f6)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength={1}
+              strokeDasharray="1"
+              strokeDashoffset={1 - progress}
+              style={{
+                filter: 'drop-shadow(0 0 6px var(--theme-accent, #3b82f6)) drop-shadow(0 0 14px var(--theme-accent-glow, rgba(59, 130, 246, 0.6)))',
+              }}
+              opacity="0.95"
+            />
+
+            {/* Left & Bottom Outer Boundary (Branch B) */}
+            <path
+              ref={pathRefB}
+              d={pathDataB}
+              fill="none"
+              stroke="var(--theme-accent, #3b82f6)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength={1}
+              strokeDasharray="1"
+              strokeDashoffset={1 - progress}
+              style={{
+                filter: 'drop-shadow(0 0 6px var(--theme-accent, #3b82f6)) drop-shadow(0 0 14px var(--theme-accent-glow, rgba(59, 130, 246, 0.6)))',
+              }}
+              opacity="0.95"
+            />
+
+            {/* Leading Tips (Active during trace only; vanish upon arrival) */}
+            {animationState === 'tracing' && progress > 0.01 && progress < 0.99 && (
+              <>
+                <circle
+                  cx={headPosA.x}
+                  cy={headPosA.y}
+                  r="4"
+                  fill="#ffffff"
+                  stroke="var(--theme-accent, #3b82f6)"
+                  strokeWidth="2"
+                  style={{ filter: 'drop-shadow(0 0 8px var(--theme-accent, #3b82f6))' }}
+                />
+                <circle
+                  cx={headPosB.x}
+                  cy={headPosB.y}
+                  r="4"
+                  fill="#ffffff"
+                  stroke="var(--theme-accent, #3b82f6)"
+                  strokeWidth="2"
+                  style={{ filter: 'drop-shadow(0 0 8px var(--theme-accent, #3b82f6))' }}
+                />
+              </>
+            )}
+          </svg>
+        </div>
       )}
     </div>
   );

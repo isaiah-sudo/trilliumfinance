@@ -11,6 +11,7 @@ import {
   calculateAssetPLUSD,
   calculateAssetPLPercent,
   calculateAssetDayPLUSD,
+  calculateAssetDayPLPercent,
   calculateNetWorth,
   calculateGlobalTotalPerformanceUSD,
   calculateGlobalTotalPerformancePercent,
@@ -286,6 +287,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
         const pl = calculateAssetPLUSD(marketValue, costBase);
         const plPercent = calculateAssetPLPercent(currentPrice, holdingData.avgPrice || 0);
         const holdingDayPL = isWeekend ? 0 : calculateAssetDayPLUSD(holdingData.qty, currentPrice, previousClose);
+        const holdingDayPLPercent = isWeekend ? 0 : calculateAssetDayPLPercent(currentPrice, previousClose);
 
         totalMarketValue = safeAdd(totalMarketValue, marketValue);
         totalCostBasis = safeAdd(totalCostBasis, costBase);
@@ -300,6 +302,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
           currentPrice,
           marketValue,
           dayPl: holdingDayPL,
+          dayPlPercent: holdingDayPLPercent,
           pl,
           plPercent
         });
