@@ -6,7 +6,14 @@ import { getFallbackProfile } from '@/app/actions/stockDetails';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'openrouter/free';
+const CANDIDATE_MODELS = [
+  process.env.OPENROUTER_MODEL,
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'deepseek/deepseek-r1:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'openrouter/auto',
+].filter(Boolean) as string[];
 
 const SYSTEM_PROMPT = `You are a Senior Financial Market Analyst & Portfolio Strategist at Trillium Finance.
 Your goal is to provide concise, institutional-grade market analysis, explain financial concepts clearly, and guide users on stock and paper trading.
@@ -205,12 +212,46 @@ function generateFallbackFinancialResponse(
   }
 
   // Case 4: General financial topic fallback
-  return `### Trillium Market & Portfolio Analysis\n\n` +
-    `**Current Market Posture:** Financial markets are closely analyzing interest rate policy, enterprise tech earnings, and inflation data.\n\n` +
-    `**Core Trading Rules:**\n` +
-    `1. **Risk Management:** Limit individual trade risk to 1-2% of total portfolio net worth.\n` +
-    `2. **Diversification:** Spread allocation across technology ($NVDA, $MSFT), healthcare, energy, and index ETFs ($SPY).\n` +
-    `3. **Paper Trading:** Execute virtual trades on the Simulator tab to build strategy before allocating live capital.`;
+  const clean = (rawText || '').toLowerCase().trim();
+
+  if (/\b(short|shorting|sell short|short position|short sale)\b/i.test(clean)) {
+    return `# Short Selling (Short Position) Overview\n\n` +
+      `**Short selling** is an advanced trading strategy where an investor borrows shares of a stock they expect to fall, sells them at current market value, and plans to buy them back later at a lower price to return to the lender, profiting from the price drop.\n\n` +
+      `### ⚙️ Mechanics of a Short Trade\n` +
+      `1. **Borrow**: Borrow shares from your broker.\n` +
+      `2. **Sell**: Sell borrowed shares immediately at market price.\n` +
+      `3. **Cover**: Buy back the shares when the price drops.\n` +
+      `4. **Profit**: The difference between your sell price and buyback price is your profit.\n\n` +
+      `### ⚠️ Key Risk Factors\n` +
+      `- **Unlimited Loss Potential**: Unlike buying a stock (where loss is capped at 100%), stock prices can rise infinitely, creating unlimited loss potential.\n` +
+      `- **Short Squeeze**: Rapid price rallies force short sellers to buy back shares simultaneously to cut losses, creating extreme upward price volatility.`;
+  }
+
+  if (/\b(option|options|call|put|strike)\b/i.test(clean)) {
+    return `# Options Trading Overview\n\n` +
+      `**Options** are financial derivative contracts that give investors the right, but not the obligation, to buy or sell a stock at a specified **Strike Price** before an **Expiration Date**.\n\n` +
+      `### 📈 Call vs 📉 Put Options\n` +
+      `- **Call Options**: Bet that the underlying stock will **rise** above the strike price.\n` +
+      `- **Put Options**: Bet that the stock will **fall** below the strike price or hedge existing share positions.\n` +
+      `- **Key Concept**: Buying options costs a **Premium** (upfront fee), which represents your maximum risk as an option buyer.`;
+  }
+
+  if (/\b(pe ratio|p\/e|valuation|earnings ratio|price to earnings)\b/i.test(clean)) {
+    return `# Price-to-Earnings (P/E) Ratio Analysis\n\n` +
+      `The **P/E Ratio** measures how much investors are paying per dollar of company earnings:\n\n` +
+      `$$\\text{P/E Ratio} = \\frac{\\text{Share Price}}{\\text{Earnings Per Share (EPS)}}$$\n\n` +
+      `- **High P/E (30x+)**: Indicates high growth expectations (e.g. $NVDA, tech sector).\n` +
+      `- **Low P/E (<15x)**: Indicates value stocks or companies facing revenue headwinds.`;
+  }
+
+  return `# Financial Market & Portfolio Strategy Analysis\n\n` +
+    `**Topic Focus:** ${rawText ? `"${rawText.trim()}"` : 'Market Strategy & Portfolio Allocation'}\n\n` +
+    `### 💡 Core Takeaway & Analysis\n` +
+    `In current market conditions, evaluating asset allocations requires balancing risk management, macroeconomic trends (interest rate expectations, inflation data), and company fundamental metrics (P/E ratios, gross margins).\n\n` +
+    `### 📈 Actionable Portfolio Rules:\n` +
+    `1. **Risk Management**: Never risk more than 1-2% of net portfolio equity on a single position.\n` +
+    `2. **Core Diversification**: Balance mega-cap tech ($NVDA, $MSFT) with broad-market ETFs ($SPY, $QQQ) and strategic cash reserves.\n` +
+    `3. **Paper Trading Strategy**: Practice entry/exit plans on the Trillium Simulator to refine conviction before deploying live capital.`;
 }
 
 export async function POST(request: Request) {
@@ -303,36 +344,42 @@ export async function POST(request: Request) {
     // 7. Retrieve OpenRouter API Key
     const apiKey = process.env.OPENROUTER_API_KEY || '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';
 
-    // If an OpenRouter key is available, attempt the live LLM call
+    // If an OpenRouter key is available, attempt live LLM call across candidate models
     if (apiKey && apiKey !== 'your_openrouter_api_key_here') {
-      try {
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://trillium.finance',
-            'X-Title': 'Trillium Finance Analyst',
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages: formattedMessages,
-            temperature: 0.6,
-          }),
-        });
+      for (const model of CANDIDATE_MODELS) {
+        try {
+          const response = await fetch(OPENROUTER_API_URL, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://trillium.finance',
+              'X-Title': 'Trillium Finance Analyst',
+            },
+            body: JSON.stringify({
+              model,
+              messages: formattedMessages,
+              temperature: 0.6,
+            }),
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          const aiResponseText = data.choices?.[0]?.message?.content;
-          if (aiResponseText) {
-            return NextResponse.json({ text: aiResponseText });
+          if (response.ok) {
+            const data = await response.json();
+            const aiResponseText = data.choices?.[0]?.message?.content;
+            if (aiResponseText) {
+              return NextResponse.json({ text: aiResponseText });
+            }
+          } else {
+            const errorText = await response.text();
+            console.warn(`[Chat API] OpenRouter model (${model}) returned status ${response.status}:`, errorText);
+            if (response.status === 401) {
+              // Key is unauthorized; don't repeatedly fail on other models with same key
+              break;
+            }
           }
-        } else {
-          const errorText = await response.text();
-          console.warn('[Chat API] OpenRouter API returned non-200 status:', response.status, errorText);
+        } catch (llmErr) {
+          console.warn(`[Chat API] External LLM call error for ${model}:`, llmErr);
         }
-      } catch (llmErr) {
-        console.warn('[Chat API] External LLM call error, using resilient market analyst fallback:', llmErr);
       }
     }
 

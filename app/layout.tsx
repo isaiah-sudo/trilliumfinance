@@ -17,6 +17,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: 'Trillium Finance',
   description: 'Modern finance dashboard with realtime insights',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
@@ -29,6 +30,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${montserrat.variable} dark`} suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className="min-h-screen w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col">
         <AuthProvider>
           <SettingsProvider>
@@ -37,6 +41,24 @@ export default function RootLayout({ children }: PropsWithChildren) {
             </StockMarketProvider>
           </SettingsProvider>
         </AuthProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
