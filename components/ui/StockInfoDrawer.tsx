@@ -87,7 +87,7 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-[#030712]/80 backdrop-blur-[6px] cursor-pointer"
+            className="fixed inset-0 z-[100] bg-[#030712]/80 backdrop-blur-[6px] cursor-pointer"
           />
 
           {/* Premium Right Slide-Over Drawer */}
@@ -96,7 +96,7 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 210 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md md:max-w-lg bg-[#0e121f]/95 border-l border-slate-800/80 shadow-[0_0_50px_rgba(0,0,0,0.6)] backdrop-blur-xl flex flex-col"
+            className="fixed top-0 right-0 bottom-0 z-[100] w-full max-w-md md:max-w-lg bg-[#0e121f]/95 border-l border-slate-800/80 shadow-[0_0_50px_rgba(0,0,0,0.6)] backdrop-blur-xl flex flex-col"
           >
             {/* Elegant Background Visual Accents */}
             <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/10 blur-[120px] pointer-events-none" />

@@ -17,6 +17,13 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: 'Trillium Finance',
   description: 'Modern finance dashboard with realtime insights',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
