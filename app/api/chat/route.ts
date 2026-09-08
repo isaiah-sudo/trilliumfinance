@@ -244,6 +244,44 @@ function generateFallbackFinancialResponse(
       `- **Low P/E (<15x)**: Indicates value stocks or companies facing revenue headwinds.`;
   }
 
+  if (/\b(inflation|cpi|ppi|purchasing power|cost of living)\b/i.test(clean)) {
+    return `# Macroeconomic Analysis: Inflation & Market Valuation Impact\n\n` +
+      `**Inflation** directly shapes asset pricing by dictating central bank interest rate policy and corporate profit margins.\n\n` +
+      `### 🏭 Corporate Margins vs. Pricing Power\n` +
+      `- **Margin Compression**: Companies unable to raise prices suffer rising operating expenses and lower EBITDA.\n` +
+      `- **Pricing Power Moats**: Monopolistic tech firms ($AAPL, $MSFT) and essential consumer staples preserve margins by passing price increases to consumers.\n\n` +
+      `### 📉 Valuation Multiple Pressure\n` +
+      `- Persistent inflation increases bond yields, raising the discount rate applied to future cash flows and compressing high-growth P/E multiples.`;
+  }
+
+  if (/\b(federal reserve|the fed|fed funds|rate hike|rate cut|jerome powell|monetary policy)\b/i.test(clean)) {
+    return `# Federal Reserve Monetary Policy & Market Direction\n\n` +
+      `The **Federal Reserve** steers systemic liquidity through benchmark interest rates and quantitative tightening/easing.\n\n` +
+      `### 📉 Rate Hikes (Tightening Policy)\n` +
+      `- Discourages risk-taking, increases corporate borrowing costs, and pulls liquidity from speculative growth stocks.\n\n` +
+      `### 📈 Rate Cuts (Easing Policy)\n` +
+      `- Decreases borrowing costs, stimulating enterprise investment and expanding equity valuation multiples across $SPY and $QQQ.`;
+  }
+
+  if (/\b(treasury|treasuries|bond yield|10-year yield|yield curve)\b/i.test(clean)) {
+    return `# Treasury Yields & Fixed Income Dynamics\n\n` +
+      `U.S. Treasury yields represent the baseline cost of capital across the global financial system.\n\n` +
+      `### ⚖️ The Equity Risk Premium (ERP)\n` +
+      `- When the 10-Year Treasury yield approaches 4.5% - 5.0%, guaranteed sovereign returns compete fiercely with stock dividends and earnings yields.\n\n` +
+      `### 📉 Impact on Growth Equities\n` +
+      `- Long-duration tech companies see immediate valuation multiple compression as discounted cash flow models absorb higher discount rates.`;
+  }
+
+  if (/\b(liquidity|institutional capital|order flow|financial markets|market depth)\b/i.test(clean)) {
+    return `# Institutional Capital Flow & Market Liquidity Analysis\n\n` +
+      `Institutional capital flows—originating from pension funds, algorithmic desks, and hedge funds—account for over 80% of daily volume.\n\n` +
+      `### 🌊 Market Depth & Volatility\n` +
+      `- High systemic liquidity dampens volatility and supports orderly trend continuation.\n` +
+      `- Thinned liquidity creates slippage and triggers abrupt air-pockets during sell-offs.\n\n` +
+      `### 🐋 Smart Money Footprints\n` +
+      `- Monitor dark pool volume and volume-weighted average price (VWAP) to track institutional accumulation.`;
+  }
+
   return `# Financial Market & Portfolio Strategy Analysis\n\n` +
     `**Topic Focus:** ${rawText ? `"${rawText.trim()}"` : 'Market Strategy & Portfolio Allocation'}\n\n` +
     `### 💡 Core Takeaway & Analysis\n` +

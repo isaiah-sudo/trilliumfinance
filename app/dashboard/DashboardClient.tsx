@@ -899,23 +899,36 @@ export default function DashboardPage() {
           className="rounded-3xl bg-white/95 dark:bg-[#121622]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/60 p-4 md:p-6 lg:p-8 shadow-xl container-3d-bevel pet-container-target relative w-full z-10"
         >
         <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-blue-600 dark:text-blue-400 text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight">Portfolio Overview</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm shrink-0">
+              <Wallet className="h-4 w-4 text-[var(--theme-accent,#3b82f6)]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-slate-900 dark:text-white text-lg md:text-xl lg:text-2xl font-black tracking-tight">
+                Portfolio Overview
+              </h2>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--theme-accent-bg,rgba(59,130,246,0.1))] border border-[var(--theme-accent-border,rgba(59,130,246,0.3))] text-[10px] font-extrabold text-[var(--theme-accent,#3b82f6)] uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-accent,#3b82f6)] animate-pulse" /> Live
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setWidgetModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 text-[11px] font-bold transition-all cursor-pointer shadow-sm"
+              className="p-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-500 hover:text-blue-400 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center"
               title="Add Widgets"
+              aria-label="Add Widgets"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add Widgets</span>
+              <Plus className="h-4 w-4" />
             </button>
             <button
               onClick={handleResetLayout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
-              title="Reset Grid Layout"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 group flex items-center justify-center"
+              title="Reset Layout"
+              aria-label="Reset Layout"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>Reset Layout</span>
+              <RotateCcw className="h-4 w-4 transition-transform duration-500 group-hover:rotate-180" />
             </button>
           </div>
         </div>

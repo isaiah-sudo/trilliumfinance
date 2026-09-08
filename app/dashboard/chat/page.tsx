@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, User, Sparkles, Newspaper, X, Plus, Search, Check, RefreshCw, TrendingUp, Layers, Landmark, Scale, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -244,7 +245,7 @@ function FormattedMessage({ text, onSelectTicker }: { text: string; onSelectTick
   return <div className="space-y-2">{elements}</div>;
 }
 
-export default function ChatPage() {
+function ChatInner() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -429,6 +430,70 @@ export default function ChatPage() {
       setIsThinking(false);
     }
   };
+
+  const searchParams = useSearchParams();
+  const promptParam = searchParams.get('prompt');
+  const lastProcessedPromptRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (promptParam && promptParam !== lastProcessedPromptRef.current) {
+      lastProcessedPromptRef.current = promptParam;
+      
+      const userMsg: Message = {
+        id: Math.random().toString(),
+        sender: 'user',
+        text: promptParam,
+        timestamp: new Date(),
+      };
+      
+      // Reset chat completely for the fresh topic
+      setMessages([userMsg]);
+      setInputValue('');
+      setAttachedNews(null);
+      setIsThinking(true);
+
+      (async () => {
+        try {
+          const idToken = await auth.currentUser?.getIdToken();
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken || ''}`,
+            },
+            body: JSON.stringify({
+              messages: [userMsg],
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to fetch response');
+          }
+
+          const data = await response.json();
+          const aiMsg: Message = {
+            id: Math.random().toString(),
+            sender: 'ai',
+            text: data.text || "I focus strictly on stock trading, market analysis, financial literacy, and portfolio management. What financial topic would you like to explore?",
+            timestamp: new Date(),
+          };
+          setMessages([userMsg, aiMsg]);
+        } catch (err: any) {
+          console.error('Error fetching AI response:', err);
+          const errorMsg: Message = {
+            id: Math.random().toString(),
+            sender: 'ai',
+            text: `Network Error: ${err.message || 'Unable to complete request. Please try again.'}`,
+            timestamp: new Date(),
+          };
+          setMessages([userMsg, errorMsg]);
+        } finally {
+          setIsThinking(false);
+        }
+      })();
+    }
+  }, [promptParam]);
 
   const filteredNews = newsList.filter(article => 
     article.headline.toLowerCase().includes(newsSearch.toLowerCase()) ||
@@ -810,3 +875,18 @@ export default function ChatPage() {
     </div>
   );
 }
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-[calc(100vh-140px)] min-h-[620px] flex items-center justify-center text-slate-400 font-semibold text-sm">
+          Loading market intelligence chat...
+        </div>
+      }
+    >
+      <ChatInner />
+    </Suspense>
+  );
+}
+

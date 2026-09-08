@@ -70,8 +70,78 @@ const PREPROGRAMMED_QA: PreprogrammedQA[] = [
     answer: "Managing risk is the key to long-term investing success. Here are the core rules:\n1. **Use the 1% Rule**: Never risk more than 1% to 2% of your capital on a single trade.\n2. **Set Stop-Losses**: Determine a price point at which you will sell a stock to limit your loss.\n3. **Diversify**: Balance your portfolio with ETFs or stocks in different sectors.\n4. **Keep Emotion Out**: Stick to a clear plan rather than trading on panic or hype."
   },
   {
-    keywords: ['what is inflation', 'inflation work', 'purchasing power'],
-    answer: "Inflation is the general increase in prices and fall in the purchasing value of money over time.\n\nFor example, if inflation is at 3% per year, a $100 grocery bill this year will cost $103 next year. This is why investing is so critical: keeping your money in cash under a mattress means it loses purchasing power. To grow wealth, your investments need to outpace the inflation rate."
+    keywords: ['inflation affect', 'inflation impact', 'how does inflation', 'what is inflation', 'inflation work', 'purchasing power', 'corporate profit margins', 'inflation statistics'],
+    answer: `# How Inflation Impacts Markets, Corporate Margins & Valuations
+
+Inflation—the rate at which prices for goods and services rise—is one of the most powerful macroeconomic forces dictating stock market returns.
+
+### 🏭 1. Corporate Margin Compression vs. Pricing Power
+- **Input Cost Pressures**: When raw material, energy, and labor costs surge, companies face immediate gross margin compression.
+- **Pricing Power Moats**: Industry leaders with pricing power (e.g. $AAPL, $MSFT) pass higher costs onto customers without sacrificing volume. Companies in competitive commodity sectors see net earnings collapse.
+
+### 🏦 2. Central Bank Policy & Interest Rates
+- Persistent inflation forces the Federal Reserve to raise benchmark interest rates.
+- Higher borrowing costs make debt financing more expensive for capital-intensive companies, slowing corporate expansion and share buyback programs.
+
+### 📉 3. Valuation Multiple Contraction
+- Future corporate earnings are discounted using the risk-free rate (Treasury yields).
+- When yields rise alongside inflation, the present value of future earnings decreases, triggering severe multiple contraction in high-growth, high-P/E equities.
+
+> **Trader Takeaway:** During high inflation regimes, focus on cash-generative businesses with robust pricing power, low debt-to-equity ratios, and defensive or commodity-backed balance sheets.`
+  },
+  {
+    keywords: ['institutional capital', 'liquidity influence', 'financial markets', 'capital flow and liquidity', 'institutional order flow', 'market liquidity'],
+    answer: `# Institutional Capital Flow & Market Liquidity Explained
+
+Over 80% of daily equity trading volume originates from institutional investors—including sovereign wealth funds, pension systems, hedge funds, and market makers.
+
+### 🌊 1. Liquidity & Price Discovery
+- **Systemic Liquidity**: Plentiful cash reserves in the banking system lower market volatility and encourage risk-taking, driving equities higher.
+- **Illiquidity Shocks**: When liquidity dries up, market depth thins. Even modest selling volume can cause violent downward gap-downs across equities.
+
+### 🐋 2. Institutional Order Flow Dynamics
+- **Block Trades & Dark Pools**: Institutions execute multi-million dollar positions algorithmically over days or weeks to minimize price slippage.
+- **Passive Rebalancing**: Monthly and quarterly rebalancing by index giants (like Vanguard and BlackRock) creates massive predictable volume surges into re-weighted equities.
+
+### 🎯 3. Bid-Ask Spreads & Market Makers
+- High liquidity narrows the bid-ask spread to pennies, reducing transaction drag.
+- Low liquidity widens spreads, increasing trading costs and heightening slippage on entries and exits.
+
+> **Trader Takeaway:** Follow volume profiles ($SPY, $QQQ) and watch institutional accumulation/distribution patterns rather than retail headlines to time market momentum.`
+  },
+  {
+    keywords: ['market trends', 'sustainable stock market trends', 'identify market trends', 'trend indicators', 'technical indicators'],
+    answer: `# How Traders Identify Sustainable Market Trends
+
+Spotting whether a market move is an enduring secular trend or a temporary fakeout requires synthesizing price action, technical structure, and macro breadth.
+
+### 📈 1. Key Technical Trend Indicators
+- **200-Day Simple Moving Average (SMA)**: The institutional dividing line between bull and bear regimes. Above the 200 SMA indicates secular accumulation.
+- **Moving Average Confluence**: Golden Cross (50-day crossing above 200-day) and Death Cross (50-day crossing below 200-day) signal major multi-month directional shifts.
+- **Relative Strength (RS)**: Stocks making new 52-week highs while the broad index consolidates demonstrate institutional leadership.
+
+### 🧭 2. Market Breadth & Sector Rotation
+- A healthy rally requires wide participation—advance/decline lines should rise alongside the S&P 500.
+- Healthy bull markets rotate capital into cyclical sectors (Tech, Industrials, Consumer Discretionary), while defensive rotations (Utilities, Healthcare) signal caution.
+
+> **Trader Takeaway:** Never trade counter to the primary 200-day trend. Look for pullback entries to key exponential moving averages (21-day or 50-day EMA) during confirmed uptrends.`
+  },
+  {
+    keywords: ['treasury yield', 'treasury yields', 'bond yields', '10-year treasury', 'why do rising treasury'],
+    answer: `# Treasury Yields & Their Direct Impact on Equities
+
+The 10-Year U.S. Treasury yield serves as the global benchmark "risk-free rate" upon which all risk assets are priced.
+
+### ⚖️ 1. Competition for Equity Capital
+- When Treasury yields rise (e.g. above 4.5%), guaranteed government bonds become compelling alternatives to volatile equities, pulling institutional capital out of stocks.
+
+### 📉 2. Discount Rate Pressure on Growth Stocks
+- Valuations of tech and growth stocks rely heavily on projected earnings 5 to 10 years in the future.
+- Higher discount rates drastically shrink the present value of distant cash flows, causing growth multiples ($NVDA, $TSLA) to compress quickly.
+
+### 🔄 3. Yield Curve Signals
+- **Normal Curve**: Long-term yields exceed short-term yields, reflecting economic expansion.
+- **Inverted Curve**: 2-year yields exceed 10-year yields, historically a reliable leading indicator of economic slowdowns or recessions.`
   },
   {
     keywords: ['what is a dividend', 'how do dividends work', 'dividend yield'],
