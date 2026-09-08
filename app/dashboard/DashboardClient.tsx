@@ -1051,7 +1051,7 @@ export default function DashboardPage() {
                     setHoveredData={setHoveredData}
                     handleLookAchievement={handleLookAchievement}
                     numberFont={numberFont}
-                    onOpenTradeModal={() => router.push('/dashboard/explore')}
+                    onOpenTradeModal={() => setTradeModalOpen(true)}
                     borrowedAmountJustNow={borrowedAmountJustNow}
                   />
                 </DashboardWidgetCard>

@@ -10,6 +10,7 @@ import { AnimatedNumber } from '@/components/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { getStockLogo } from '@/lib/stockUtils';
 import { useStockMarket } from '@/context/StockMarketContext';
+import { getDailyThreeNews, NewsArticle } from '@/app/actions/news';
 
 export interface WidgetComponentProps {
   portfolio: any;
@@ -338,7 +339,7 @@ export function RecentTradesWidget({ portfolio, numberFont }: WidgetComponentPro
   const history = portfolio?.tradeHistory || [];
 
   return (
-    <div className="h-full flex flex-col justify-between">
+    <div className="h-full flex flex-col justify-between overflow-y-auto pr-1">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs font-semibold whitespace-nowrap">
           <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -358,16 +359,16 @@ export function RecentTradesWidget({ portfolio, numberFont }: WidgetComponentPro
               </tr>
             ) : (
               history.map((trade: any, idx: number) => (
-                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr key={trade.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-2.5 pr-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${trade.type === 'BUY' ? 'bg-teal-500/20 text-teal-400' : 'bg-rose-500/20 text-rose-400'}`}>
                       {trade.type}
                     </span>
                   </td>
                   <td className="py-2.5 px-2 font-bold text-slate-900 dark:text-white">{trade.ticker || trade.symbol}</td>
-                  <td className={`py-2.5 px-2 text-right font-num-${numberFont}`}>{trade.qty}</td>
+                  <td className={`py-2.5 px-2 text-right font-num-${numberFont}`}>{trade.qty ?? trade.quantity ?? 1}</td>
                   <td className={`py-2.5 pl-2 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
-                    ${trade.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(trade.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                 </tr>
               ))
@@ -580,8 +581,19 @@ export function AchievementsTrackerWidget() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
-  // Default to blank slate (null for all 3 slots)
-  const [slotSelections, setSlotSelections] = useState<(string | null)[]>([null, null, null]);
+  // Saved slot selections in localStorage
+  const [slotSelections, setSlotSelections] = useState<(string | null)[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('achievements_widget_slots');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === 3) return parsed;
+        }
+      } catch (e) {}
+    }
+    return [null, null, null];
+  });
 
   // Cursor tracking tilt state for each slot
   const [tilt, setTilt] = useState<{ [key: number]: { rx: number; ry: number } }>({
@@ -633,6 +645,9 @@ export function AchievementsTrackerWidget() {
       const updated = [...slotSelections];
       updated[selectedSlot] = achievementId;
       setSlotSelections(updated);
+      try {
+        localStorage.setItem('achievements_widget_slots', JSON.stringify(updated));
+      } catch (e) {}
     }
     setModalOpen(false);
     setSelectedSlot(null);
@@ -868,7 +883,7 @@ export function MarketMoversWidget() {
   }, [stocks]);
 
   return (
-    <div className="h-full flex flex-col justify-between space-y-2">
+    <div className="h-full flex flex-col justify-between space-y-2 overflow-y-auto pr-1">
       {movers.map((m) => (
         <div key={m.ticker} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 text-xs">
           <div className="flex items-center gap-2">
@@ -908,8 +923,8 @@ export function MarketMoversWidget() {
 // 9. Financial Goals / Target Sparkline Widget
 export function PortfolioGoalsWidget({ portfolio }: WidgetComponentProps) {
   const target = 25000;
-  const current = portfolio?.totalValue || 10000;
-  const progress = Math.min(100, Math.round((current / target) * 100));
+  const current = portfolio?.netWorth ?? portfolio?.totalValue ?? 10000;
+  const progress = Math.max(0, Math.min(100, Math.round((current / target) * 100)));
 
   return (
     <div className="h-full flex flex-col justify-between space-y-4">
@@ -918,15 +933,20 @@ export function PortfolioGoalsWidget({ portfolio }: WidgetComponentProps) {
           <Target className="h-5 w-5 text-emerald-400" />
           <span className="text-xs font-bold text-slate-900 dark:text-white">$25,000 Portfolio Goal</span>
         </div>
-        <span className="text-xs font-black text-emerald-400">{progress}% Reached</span>
+        <span className={`text-xs font-black ${progress >= 100 ? 'text-amber-400' : 'text-emerald-400'}`}>
+          {progress >= 100 ? '🎉 Goal Achieved!' : `${progress}% Reached`}
+        </span>
       </div>
 
       <div className="h-3 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" style={{ width: `${progress}%` }} />
+        <div
+          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex justify-between items-center">
-        <span>Current Net Worth: <strong>${current.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
+        <span>Current Net Worth: <strong>${Math.max(0, current).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
         <span>Target: <strong>$25,000</strong></span>
       </div>
     </div>
@@ -935,23 +955,53 @@ export function PortfolioGoalsWidget({ portfolio }: WidgetComponentProps) {
 
 // 10. Financial News Feed Widget
 export function FinancialNewsWidget() {
-  const newsItems = [
-    { title: 'Fed Signals Potential Rate Cut in Upcoming Meeting', source: 'MarketWatch', time: '10m ago' },
-    { title: 'Tech Rally Continues Led by AI Hardware Growth', source: 'Bloomberg', time: '25m ago' },
-    { title: 'Retail Trading Volume Hits New Quarter High', source: 'Reuters', time: '1h ago' },
-  ];
+  const [newsItems, setNewsItems] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadNews() {
+      try {
+        const items = await getDailyThreeNews();
+        setNewsItems(items);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadNews();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center text-slate-400">
+        <RefreshCw className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col justify-between space-y-3">
-      {newsItems.map((item, idx) => (
-        <div key={idx} className="p-2.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 space-y-1">
-          <h5 className="text-xs font-bold text-slate-900 dark:text-white leading-snug hover:text-blue-400 transition-colors cursor-pointer">{item.title}</h5>
-          <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
-            <span>{item.source}</span>
-            <span>{item.time}</span>
-          </div>
-        </div>
-      ))}
+    <div className="h-full flex flex-col justify-between space-y-2.5 overflow-y-auto pr-1">
+      {newsItems.slice(0, 4).map((item) => {
+        const timeAgo = item.datetime ? `${Math.max(1, Math.floor((Date.now() / 1000 - item.datetime) / 3600))}h ago` : 'Recent';
+        return (
+          <a
+            key={item.id}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2.5 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 space-y-1 hover:border-blue-500/40 transition-colors block group"
+          >
+            <h5 className="text-xs font-bold text-slate-900 dark:text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2">
+              {item.headline}
+            </h5>
+            <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold">
+              <span className="truncate max-w-[120px]">{item.source}</span>
+              <span>{timeAgo}</span>
+            </div>
+          </a>
+        );
+      })}
     </div>
   );
 }

@@ -131,7 +131,7 @@ export async function getCompanyProfile(symbol: string): Promise<CompanyProfile>
 /**
  * Returns a high-fidelity preset or dynamically compiled fallback profile if API fails/missing
  */
-function getFallbackProfile(symbol: string): CompanyProfile {
+export function getFallbackProfile(symbol: string): CompanyProfile {
   const mock = MOCK_PROFILES[symbol];
 
   const name = mock?.name || `${symbol} Inc.`;

@@ -65,8 +65,8 @@ export function filterMarketHoursOnly(snapshots: RawSnapshot[]): RawSnapshot[] {
 }
 
 /**
- * Generates 40 fixed 10-minute slots covering market hours for a trading day:
- * 9:30 AM to 4:00 PM EST (390 total minutes = 40 milestone time points at 10-minute intervals).
+ * Generates 26 fixed slots covering market hours for a trading day:
+ * 9:30 AM to 4:00 PM EST (390 total minutes = 26 milestone time points at 15.6-minute intervals).
  */
 export function generate1DSlots(referenceDate: Date = new Date()): Date[] {
   const estStr = referenceDate.toLocaleString('en-US', { timeZone: 'America/New_York' });
@@ -77,18 +77,15 @@ export function generate1DSlots(referenceDate: Date = new Date()): Date[] {
   target930.setHours(9, 30, 0, 0);
 
   const marketOpenMs = target930.getTime() + diffMs;
-  const slotIntervalMs = 10 * 60 * 1000; // 10 minutes (600 seconds) per slot
+  const slotIntervalMs = (390 * 60 * 1000) / 25; // 15.6 minutes (936 seconds) per slot for 26 points
 
   const slots: Date[] = [];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 26; i++) {
     slots.push(new Date(marketOpenMs + i * slotIntervalMs));
   }
   return slots;
 }
 
-/**
- * Formats a Date object into a readable time/date string for tooltips and axes.
- */
 /**
  * Formats a Date object into a readable time/date string for tooltips and axes.
  */
@@ -121,7 +118,7 @@ export function formatSlotLabel(date: Date, timeRange: TimeRange): string {
 }
 
 /**
- * Transforms raw portfolio & benchmark snapshots for the 1D view into 40 fixed 10-minute slots (9:30 AM to 4:00 PM EST).
+ * Transforms raw portfolio & benchmark snapshots for the 1D view into 26 fixed slots (9:30 AM to 4:00 PM EST).
  */
 export function process1DSnapshots(
   portfolioRaw: RawSnapshot[],
@@ -135,7 +132,7 @@ export function process1DSnapshots(
   const sortedBench = [...benchmarkRaw].sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
 
   if (sortedPort.length === 0) {
-    return Array.from({ length: 40 }, (_, i) => ({
+    return Array.from({ length: 26 }, (_, i) => ({
       slotIndex: i,
       timeLabel: formatSlotLabel(slots[i], '1D'),
       time: Math.floor(slots[i].getTime() / 1000),
@@ -152,17 +149,17 @@ export function process1DSnapshots(
 
   const result: ChartPoint26[] = [];
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 26; i++) {
     const slotDate = slots[i];
     const slotSec = Math.floor(slotDate.getTime() / 1000);
     const label = formatSlotLabel(slotDate, '1D');
-    const fraction = i / 39;
+    const fraction = i / 25;
 
     let portVal: number;
     if (i === 0) {
       portVal = startPortVal;
     } else {
-      const bucket = sortedPort.filter((p) => Math.abs(toSeconds(p.time) - slotSec) <= 600);
+      const bucket = sortedPort.filter((p) => Math.abs(toSeconds(p.time) - slotSec) <= 468);
       if (bucket.length > 0) {
         portVal = bucket.reduce((acc, curr) => acc + curr.value, 0) / bucket.length;
       } else {
@@ -182,7 +179,7 @@ export function process1DSnapshots(
     }
 
     let benchVal: number;
-    const benchBucket = sortedBench.filter((b) => Math.abs(toSeconds(b.time) - slotSec) <= 600);
+    const benchBucket = sortedBench.filter((b) => Math.abs(toSeconds(b.time) - slotSec) <= 468);
     if (benchBucket.length > 0) {
       benchVal = benchBucket.reduce((acc, curr) => acc + (curr.spyValue || curr.value), 0) / benchBucket.length;
     } else {
@@ -254,7 +251,7 @@ export function processMultiTimeframeSnapshots(
 
   if (sortedPort.length === 0) {
     const dummyDate = new Date();
-    return Array.from({ length: 40 }, (_, i) => ({
+    return Array.from({ length: 26 }, (_, i) => ({
       slotIndex: i,
       timeLabel: formatSlotLabel(dummyDate, timeRange),
       time: Math.floor(dummyDate.getTime() / 1000),
@@ -268,10 +265,8 @@ export function processMultiTimeframeSnapshots(
   const startPortVal = sortedPort[0]?.value ?? 10000;
   const startBenchVal = sortedBench[0]?.value ?? 510.25;
 
-  // Determine target point count based on range
-  // 1W: 39 slots per day * 5 days = 195 points (or downsampled every 20-30 mins to ~40-60 points)
-  // 1M / 1Y: ~40-50 clean aligned points
-  const targetPointCount = timeRange === '1W' ? 40 : 40;
+  // Standardized 26-point target count for all multi-timeframe views
+  const targetPointCount = 26;
 
   const minTime = toSeconds(sortedPort[0].time);
   const maxTime = toSeconds(sortedPort[sortedPort.length - 1].time);

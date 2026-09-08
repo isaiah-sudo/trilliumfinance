@@ -1,5 +1,5 @@
 import { db, auth } from '@/lib/firebase';
-import { doc, getDoc, collection, setDoc, runTransaction, serverTimestamp, getDocs, writeBatch, query, where, orderBy, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, setDoc, runTransaction, serverTimestamp, getDocs, writeBatch, query, where, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import {
   safeRound,
   safeAdd,
@@ -177,6 +177,7 @@ export interface PortfolioSummary {
   dayPL: number; // for backward compatibility
   dayPLPercent: number; // for backward compatibility
   holdings: any[];
+  tradeHistory?: any[]; // Executed trade order history
   balanceHistory?: any[]; // For backward compatibility and custom fallbacks
   borrowedAmount?: number;
   interestRate?: number;
@@ -199,6 +200,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     dayPL: 0,
     dayPLPercent: 0,
     holdings: [],
+    tradeHistory: [],
     balanceHistory: [],
     borrowedAmount: 0,
     interestRate: 0.08,
@@ -311,6 +313,32 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     const totalPerformancePercent = calculateGlobalTotalPerformancePercent(totalPerformanceUSD, totalCostBasis);
     const dayPerformancePercent = calculateGlobalDayPLPercent(dayPerformanceUSD, netWorth);
 
+    // Fetch trade history (executed orders)
+    let tradeHistoryList: any[] = [];
+    try {
+      const historyRef = collection(db, 'users', userId, 'portfolio_history');
+      const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(15));
+      const historySnap = await getDocs(historyQuery);
+      if (!historySnap.empty) {
+        tradeHistoryList = historySnap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ticker: data.ticker || data.symbol || 'ST',
+            symbol: data.ticker || data.symbol || 'ST',
+            qty: data.quantity ?? data.qty ?? 0,
+            quantity: data.quantity ?? data.qty ?? 0,
+            price: data.price || 0,
+            type: data.type || 'BUY',
+            timestamp: data.timestamp ? (data.timestamp.seconds ? data.timestamp.seconds * 1000 : data.timestamp) : Date.now(),
+            description: data.description
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('[getPortfolioSummary] Failed to fetch trade history:', err);
+    }
+
     const summaryObj: PortfolioSummary = {
       cash,
       totalValue: netWorth, // Backwards compatibility for UI displaying net worth
@@ -324,6 +352,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       dayPL: dayPerformanceUSD, // Backwards compatibility for UI
       dayPLPercent: dayPerformancePercent, // Backwards compatibility for UI
       holdings: holdingsList.sort((a, b) => b.marketValue - a.marketValue),
+      tradeHistory: tradeHistoryList,
       balanceHistory,
       borrowedAmount,
       interestRate,
@@ -786,7 +815,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   if (rawPoints.length <= 2 || allSameValue) {
     const startVal = timeRange === '1D' ? startOfDayNetWorth : (rawPoints[0]?.value || 10000);
     const endVal = currentNetWorth;
-    const pointCount = 40;
+    const pointCount = 26;
     const syntheticPoints = [];
     
     const diff = endVal - startVal;
@@ -836,8 +865,8 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     };
   });
 
-  // Resample helper to guarantee clean target points evenly distributed
-  function resampleData(data: typeof rawPoints, targetCount = 40): { time: number; value: number; spyValue: number }[] {
+  // Resample helper to guarantee clean 26 target points evenly distributed
+  function resampleData(data: typeof rawPoints, targetCount = 26): { time: number; value: number; spyValue: number }[] {
     if (data.length === 0) return [];
     if (data.length === 1) {
       const pt = data[0];
@@ -856,7 +885,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     for (let i = 0; i < targetCount; i++) {
       const targetTime = minTime + i * timeStep;
       
-      // Find the two closest points to interpolate
+      // Find the two closest points to interpolate using standard linear formula t = (targetTime - p0.time) / (p1.time - p0.time)
       let left = 0;
       let right = data.length - 1;
       while (left < right - 1) {
@@ -886,10 +915,16 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
         spyValue: Number(spyValue.toFixed(2))
       });
     }
+
+    // Live pinning: guarantee final resampled point reflects real-time net worth
+    if (result.length > 0) {
+      result[result.length - 1].value = Number(currentNetWorth.toFixed(2));
+    }
+
     return result;
   }
 
-  const targetCount = 40;
+  const targetCount = 26;
   const resampled = resampleData(rawPoints, targetCount);
 
   // Fetch user achievements and unlocks
@@ -902,7 +937,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   }
 
   // Filter unlocks to only those that fall within the range of the resampled points
-  // Map them to the closest resampled point
+  // Map exact Unix timestamps from getUserAchievementUnlocks to the nearest resampled slot
   const resampledWithMilestones = resampled.map(r => ({
     ...r,
     achievements: [] as any[]
@@ -916,7 +951,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
 
     Object.entries(achievementUnlocks).forEach(([id, unlockTime]) => {
       if (unlockTime >= minTime && unlockTime <= maxTime) {
-        // Find closest point
+        // Find closest point in 26-point array
         let closestIdx = 0;
         let minDiff = Math.abs(resampled[0].time - unlockTime);
         for (let i = 1; i < resampled.length; i++) {

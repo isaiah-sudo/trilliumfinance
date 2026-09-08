@@ -1,0 +1,282 @@
+================================================================================
+TRILLIUM FINANCE - PORTFOLIO GRAPH ARCHITECTURE & TECHNICAL SPECIFICATIONS
+================================================================================
+Generated: September 2026
+Target File: /PORTFOLIO_GRAPH_SPECS.txt
+Location: Root Directory (c:\Users\timme\Documents\GitHub\trilliumfinance)
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE OVERVIEW
+--------------------------------------------------------------------------------
+The Portfolio Graph in Trillium Finance is a real-time, interactive, financial
+charting component designed in the aesthetic of modern trading platforms
+(TradingView, Robinhood, Apple Stocks).
+
+Key capabilities:
+- Renders historical net worth trajectories alongside benchmark indices (SPY, DJI, NASDAQ).
+- Displays real-time market trading status and countdown clocks (US Eastern Time).
+- Tracks multiple timeframes (1D, 1W, 1M, 1Y).
+- Features interactive tooltips, linear gradient area fills, and dynamic color coding.
+- Visualizes unlocked gamification milestones / achievements directly along the curve.
+- Strictly adheres to official US Market trading hours (9:30 AM – 4:00 PM EST, Mon-Fri).
+- Integrates automated snapshot extraction via Firebase Cloud Functions and client-side actions.
+
+--------------------------------------------------------------------------------
+2. COMPONENT MAP & FILE SITEMAP
+--------------------------------------------------------------------------------
+The portfolio graph ecosystem is composed of the following core files:
+
+1. components/PortfolioGraph.tsx
+   - Primary visual chart component using Recharts (AreaChart, Line, Area, Tooltip).
+   - Contains market status timer, timeframe buttons, benchmark selector, and SVG renderers.
+
+2. components/PortfolioChart.tsx
+   - Backward-compatibility re-export module that aliases PortfolioGraph.
+
+3. lib/portfolioTransformation.ts
+   - Time series mathematical utilities, 10-minute slot generator, timezone converters,
+     market hours filtering, and benchmark normalizers.
+
+4. app/actions/trading.ts
+   - Server actions for:
+     * getGraphData(timeRange) - aggregates snapshots, executes interpolation, maps milestones.
+     * capturePortfolioSnapshot() - stores point-in-time net worth and prunes transient records.
+     * initializePortfolio() & handleTrade() - execution hooks triggering immediate snapshots.
+
+5. app/actions/achievements.ts
+   - Achievement registry and timestamp tracking (getUserAchievementUnlocks) mapped to chart points.
+
+6. cloud-functions/index.ts
+   - Scheduled Cloud Function ('capturePortfolioSnapshots') running every 10 minutes on weekdays.
+   - Queries real-time quotes (Finnhub API / Yahoo Finance fallback) and writes batch snapshots.
+
+7. store/usePortfolioStore.ts
+   - Zustand global state store managing user portfolio summaries, trades, XP, level, and streaks.
+
+8. app/dashboard/DashboardClient.tsx
+   - Top-level dashboard consumer orchestrating layout, timeRange state, graph polling, and widget sync.
+
+9. components/dashboard/WidgetRegistry.tsx
+   - 'PortfolioGraphWidget' wrapper allowing the graph to reside inside the draggable/resizable grid.
+
+--------------------------------------------------------------------------------
+3. CORE UI & VISUAL SPECIFICATIONS
+--------------------------------------------------------------------------------
+A. Canvas & Dimensions:
+   - Built on Recharts ResponsiveContainer (width: 100%, height: 100%, minHeight: 220px).
+   - SVG Linear Gradients for fill underneath the area curve:
+     * Positive Gain: 'portfolioGainGradient' (Stop 0%: #10B981 opacity 0.35 -> Stop 100%: opacity 0.0)
+     * Negative Loss: 'portfolioLossGradient' (Stop 0%: #F43F5E opacity 0.35 -> Stop 100%: opacity 0.0)
+
+B. Line Styling:
+   - Portfolio Curve:
+     * Type: 'monotone' (smooth cubic spline)
+     * Stroke Width: 2.5px
+     * Color: Emerald (#10B981) when total return >= 0, Crimson (#F43F5E) when total return < 0
+     * Active Dot: Radius 6px, stroke #0F172A (2.5px), fill matching line color
+   - Benchmark Line (SPY/DJI/NASDAQ):
+     * Type: 'monotone'
+     * Stroke Width: 1.5px
+     * Stroke Dasharray: '4 4' (dashed line)
+     * Color: Slate (#64748B)
+     * Animation: Static / false for fast rendering
+
+C. Milestone Pin Rendering ('renderCustomDot'):
+   - Points with unlocked achievements render an interactive dual-circle milestone dot:
+     * Outer circle: Radius 7px, Fill #F59E0B (Amber Gold), Stroke #0F172A (2px width)
+     * Inner circle: Radius 3px, Fill #FFFFFF, CSS 'animate-ping' pulse animation
+     * Interaction: Clicking or hovering focuses the achievement card.
+
+D. Axes & Grid:
+   - CartesianGrid: Minimal horizontal dashed grid (#334155 opacity 0.4), vertical grid disabled.
+   - X-Axis: Text fill #94A3B8, font size 11px, font-weight 500. Formats time labels based on range.
+   - Y-Axis: Hidden for minimalist aesthetic. Domain auto-computes with dynamic 8% top/bottom padding:
+     Domain = [Math.max(0, min - padding), max + padding]
+
+E. Floating TradingView Tooltip ('CustomTooltip'):
+   - Container: Rounded-xl, bg-white/95 (light) or bg-[#0F172A]/95 (dark), backdrop-blur-md, border border-slate-800.
+   - Cursor: Vertical dashed line matching the active theme color (strokeOpacity: 0.6).
+   - Content:
+     * Formatted Time (EST timezone: e.g., 'Mon, Sep 7, 2:40 PM').
+     * Portfolio Value ($USD) + percentage change from period baseline.
+     * Benchmark Value ($USD scaled to portfolio starting value) + relative percentage change.
+
+--------------------------------------------------------------------------------
+4. LIVE MARKET COUNTDOWN ENGINE
+--------------------------------------------------------------------------------
+Located in: components/PortfolioGraph.tsx -> getMarketStatus()
+
+A. Trading Hours Rules:
+   - Market Timezone: US Eastern Time ('America/New_York').
+   - Active Session: Monday through Friday, 9:30 AM EST (570 min) to 4:00 PM EST (960 min).
+   - Closed: Weekends (Saturday / Sunday) and outside 9:30 AM - 4:00 PM on weekdays.
+
+B. Status Logic & Indicator:
+   - When Open:
+     * State: isOpen = true
+     * Badge: Pulsing Emerald Dot (#10B981)
+     * Text: "Closes in Xh Ym" (calculated from 4:00 PM EST remaining seconds).
+   - When Closed:
+     * State: isOpen = false
+     * Badge: Amber/Rose Dot
+     * Text: "Opens in Xh Ym" (for same-day premarket) or "Opens in Xd Yh" (for weekends/overnight).
+   - Dynamic Interval: Runs every 1,000ms (1s) to guarantee precise countdown seconds.
+
+--------------------------------------------------------------------------------
+5. BENCHMARK COMPARISON ENGINE
+--------------------------------------------------------------------------------
+A. Benchmark Selection:
+   - Supported Indices:
+     * SPY (S&P 500 ETF Trust - Default)
+     * DJI (Dow Jones Industrial Average)
+     * NASDAQ (Invesco QQQ / Tech Index)
+
+B. Scaling & Normalization Algorithm:
+   - Raw benchmark index prices (e.g. SPY @ $510.25) cannot be plotted directly against portfolio dollars
+     without skewing the Y-axis.
+   - The graph normalizes benchmark points to start at the user's initial portfolio dollar value:
+     scaledBenchmarkValue = (benchmarkCurrentPrice / benchmarkStartPrice) * portfolioStartValue
+   - This allows users to see whether their portfolio outperformed or underperformed the market
+     on an exact dollar-for-dollar basis over the selected timeframe.
+
+--------------------------------------------------------------------------------
+6. TIMEFRAMES & DATA TRANSFORMATION
+--------------------------------------------------------------------------------
+Located in: lib/portfolioTransformation.ts
+
+A. Timeframe Modes:
+   1. '1D' (Intraday):
+      - Generates exactly 26 fixed slots spanning 9:30 AM EST to 4:00 PM EST (390 minutes, 15.6 min per interval).
+      - Slot 0 = 9:30 AM, Slot 1 = 9:45 AM ... Slot 25 = 4:00 PM.
+      - Slots beyond the current time are flagged with 'isFuture: true' and 'portfolioValue: null',
+        allowing the graph line to terminate naturally at the current minute without clipping.
+   2. '1W' (Past 7 Days):
+      - Extracts market hours across the past 5 trading days.
+      - Resamples to 26 evenly distributed milestone buckets.
+   3. '1M' (Past 30 Days):
+      - Filters 30 calendar days down to trading sessions, downsampled to 26 clean data points.
+   4. '1Y' (Past 365 Days):
+      - Aggregates long-term historical trading sessions into 26 consolidated points matching ChartPoint26.
+
+B. Market Hours Filtering ('filterMarketHoursOnly'):
+   - Filters out overnight fluctuations and weekend dates to eliminate misleading flat plateaus.
+   - If raw data contains off-market entries (e.g., test mocks), it safely gracefully falls back
+     to raw points to prevent an empty graph.
+
+--------------------------------------------------------------------------------
+7. FIRESTORE DATABASE SCHEMA & PERSISTENCE
+--------------------------------------------------------------------------------
+Primary Collection Path:
+users/{userId}/portfolio_snapshots/{snapshotId}
+
+Document Schema:
+{
+  "timestamp": Timestamp (ServerTimestamp),
+  "totalValue": 10450.25,        // Net worth (Cash + Holdings Market Value)
+  "cashBalance": 4200.00,        // Available buying power
+  "holdingsValue": 6250.25,      // Aggregate value of active equity positions
+  "spyValue": 512.80,            // S&P 500 price at capture time
+  "type": "10min" | "1min"       // Granularity tag
+}
+
+Legacy Collection Path (Fallback support):
+users/{userId}/portfolio_history/{historyId}
+{
+  "timestamp": Timestamp,
+  "totalValue": number,
+  "cashBalance": number,
+  "holdingsValue": number
+}
+
+--------------------------------------------------------------------------------
+8. SNAPSHOT GENERATION & CRON PIPELINE
+--------------------------------------------------------------------------------
+A. Scheduled Cloud Function (cloud-functions/index.ts):
+   - Trigger: PubSub Schedule '*/10 * * * 1-5' (Every 10 minutes, Mon-Fri).
+   - Timezone: 'America/New_York'.
+   - Execution Workflow:
+     1. Market Hours Gate: Exits if current EST time is before 9:30 AM or after 4:00 PM.
+     2. Fetches current SPY quote via Finnhub API (or Yahoo Finance query fallback).
+     3. Scans all registered users in 'users' collection.
+     4. Gathers unique stock symbols held across all user portfolios.
+     5. Fetches live market quotes for unique symbols with rate-limit throttling (200ms delay).
+     6. Computes net worth = cash + sum(qty * price).
+     7. Commits Firestore batch writes (up to 500 documents per batch).
+
+B. In-App Immediate Snapshot Captures (app/actions/trading.ts):
+   - Triggered automatically whenever:
+     * A user executes a BUY or SELL order ('handleTrade').
+     * A user initializes their portfolio ('initializePortfolio').
+     * Background summary calculations run.
+   - Block Consolidation & Pruning:
+     * When completed 10-minute intervals pass, transient 1-minute snapshots are averaged
+       into a single permanent '10min' milestone doc and transient docs are deleted.
+
+--------------------------------------------------------------------------------
+9. INTERPOLATION, SYNTHETIC BACKFILL & LIVE PINNING
+--------------------------------------------------------------------------------
+A. Flatline / Cold-Start Prevention ('app/actions/trading.ts'):
+   - When a user has <= 2 snapshots or a brand-new account, an organic synthetic market wave
+     is generated using 26 points with sinusoidal variations:
+     value = startVal + t * diff + Math.sin(i * 0.45) * waveAmplitude
+   - Guarantees new users see a dynamic, realistic financial graph rather than a broken flat line.
+
+B. Resampling & Linear Interpolation ('resampleData'):
+   - Any irregular snapshot intervals are mapped onto exactly 26 time-equidistant points using
+     standard linear interpolation:
+     t = (targetTime - p0.time) / (p1.time - p0.time)
+     value = p0.value + t * (p1.value - p0.value)
+
+C. Real-time Live Pinning:
+   - The final active point on the chart is unconditionally overwritten with the exact live
+     portfolio value computed from live cash + realtime quotes, ensuring zero discrepancy between
+     the header stat card and the chart's ending line.
+
+--------------------------------------------------------------------------------
+10. GAMIFICATION & ACHIEVEMENT INTEGRATION
+--------------------------------------------------------------------------------
+- Achievements unlocked by the user (e.g., 'FIRST_TRADE', 'WHALE', 'DIVERSIFIED', 'BULL_MARKET')
+  are queried via 'getUserAchievementUnlocks(userId)' with their exact unlock Unix timestamp.
+- During graph data processing, each achievement is assigned to the closest chronological 10-minute
+  slot on the graph.
+- These achievements populate the 'achievements' array inside 'ChartPoint26', prompting
+  PortfolioGraph to render the glowing milestone pin.
+- Clicking an achievement milestone triggers 'onLookAchievement(id)', which smoothly scrolls
+  and highlights the corresponding trophy card in the UI.
+
+--------------------------------------------------------------------------------
+11. STATE MANAGEMENT & CLIENT DATA FLOW
+--------------------------------------------------------------------------------
+1. usePortfolioStore (Zustand):
+   - Stores 'portfolio' (PortfolioSummary: cash, totalValue, dayPerformanceUSD, holdings).
+   - Provides 'fetchPortfolio()' and 'executeTrade()'.
+
+2. DashboardClient (React):
+   - Maintains 'timeRange' ('1D' | '1W' | '1M' | '1Y') and 'chartData'.
+   - Calls 'getGraphData(timeRange)' on mount and on timeframe changes.
+   - For '1D' view, runs a 10-minute polling interval (setInterval 600,000ms) to refresh data.
+   - Syncs mouse hover events via 'onHover(hoveredData)' to update real-time header performance metrics.
+
+3. WidgetRegistry:
+   - Houses 'PortfolioGraphWidget' within the react-grid-layout responsive grid.
+
+--------------------------------------------------------------------------------
+12. DEPENDENCIES & ENVIRONMENT REQUIREMENTS
+--------------------------------------------------------------------------------
+A. NPM Packages:
+   - recharts (^2.x): SVG charting engine
+   - zustand (^5.x): Client state management
+   - lucide-react: Icons (ChevronDown, Check, Trophy, etc.)
+   - firebase & firebase-admin: Database & Auth
+   - firebase-functions: PubSub cron scheduling
+   - tailwindcss: Styling & dark mode classes
+
+B. Environment Variables:
+   - NEXT_PUBLIC_FIREBASE_API_KEY
+   - NEXT_PUBLIC_FIREBASE_PROJECT_ID
+   - NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID
+   - FINNHUB_API_KEY (used for real-time market quotes in Cloud Functions and server actions)
+
+================================================================================
+END OF SPECIFICATION FILE
+================================================================================

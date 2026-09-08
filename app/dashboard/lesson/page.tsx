@@ -116,6 +116,7 @@ export default function LessonsPage() {
   // Lesson Runner State
   const [currentStep, setCurrentStep] = useState(0);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [shuffledQuiz, setShuffledQuiz] = useState<{ question: string; options: string[]; correctIndex: number; explanation: string }[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<Record<number, boolean>>({});
   const [isCompleted, setIsCompleted] = useState(false);
@@ -228,6 +229,21 @@ export default function LessonsPage() {
   };
 
   const handleStartLesson = (lesson: Lesson) => {
+    // Dynamically shuffle options for every quiz question on load so answer position is randomized
+    const shuffled = lesson.quiz.map((q) => {
+      const indexed = q.options.map((opt, idx) => ({ text: opt, isCorrect: idx === q.correctIndex }));
+      for (let i = indexed.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+      }
+      return {
+        question: q.question,
+        options: indexed.map((item) => item.text),
+        correctIndex: indexed.findIndex((item) => item.isCorrect),
+        explanation: q.explanation
+      };
+    });
+    setShuffledQuiz(shuffled);
     setActiveLesson(lesson);
     setCurrentStep(0);
     setSlideIndex(0);
@@ -597,12 +613,12 @@ export default function LessonsPage() {
                     <div 
                       className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 transition-all duration-300"
                       style={{ 
-                        width: `${((currentStep + 1) / (1 + 1 + activeLesson.quiz.length)) * 100}%` 
+                        width: `${((currentStep + 1) / (1 + 1 + (shuffledQuiz.length || activeLesson.quiz.length))) * 100}%` 
                       }}
                     />
                   </div>
                   <span className="text-[10px] font-extrabold text-blue-500 uppercase tracking-widest whitespace-nowrap">
-                    Step {currentStep + 1} of {1 + 1 + activeLesson.quiz.length}
+                    Step {currentStep + 1} of {1 + 1 + (shuffledQuiz.length || activeLesson.quiz.length)}
                   </span>
                 </div>
               </div>
@@ -731,7 +747,8 @@ export default function LessonsPage() {
                     <div className="space-y-6">
                       {(() => {
                         const qIndex = currentStep - 2;
-                        const q = activeLesson.quiz[qIndex];
+                        const activeQuiz = shuffledQuiz.length > 0 ? shuffledQuiz : activeLesson.quiz;
+                        const q = activeQuiz[qIndex];
                         if (!q) return null;
 
                         const isSubmitted = quizSubmitted[qIndex] || false;
@@ -742,7 +759,7 @@ export default function LessonsPage() {
                           <div className="space-y-5">
                             <div className="flex items-center gap-2 text-xs font-extrabold uppercase text-purple-500 tracking-wider">
                               <HelpCircle className="h-4 w-4" />
-                              <span>Question {qIndex + 1} of {activeLesson.quiz.length}</span>
+                              <span>Question {qIndex + 1} of {activeQuiz.length}</span>
                             </div>
 
                             <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
@@ -812,7 +829,7 @@ export default function LessonsPage() {
                               ) : (
                                 <button
                                   onClick={() => {
-                                    if (qIndex < activeLesson.quiz.length - 1) {
+                                    if (qIndex < activeQuiz.length - 1) {
                                       setCurrentStep(currentStep + 1);
                                     } else {
                                       markLessonComplete(activeLesson);
@@ -820,7 +837,7 @@ export default function LessonsPage() {
                                   }}
                                   className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-extrabold shadow-md hover:bg-emerald-500"
                                 >
-                                  {qIndex < activeLesson.quiz.length - 1 ? 'Next Question →' : 'Complete Lesson 🎉'}
+                                  {qIndex < activeQuiz.length - 1 ? 'Next Question →' : 'Complete Lesson 🎉'}
                                 </button>
                               )}
                             </div>

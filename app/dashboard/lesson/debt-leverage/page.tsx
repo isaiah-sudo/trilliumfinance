@@ -37,53 +37,58 @@ interface QuizQuestion {
 const quizQuestions: QuizQuestion[] = [
   {
     id: 1,
-    question: "What is a 'Liability' in financial terms?",
+    question: "What is a 'Liability' in accounting and corporate finance?",
     options: [
-      "An asset that automatically makes you money every single day.",
-      "Something you owe to someone else, like a loan or a bill.",
-      "The physical key to a bank vault containing cash."
+      "Any tangible property owned by a business that generates revenue",
+      "Something a person or company owes to another entity, such as loans, bonds, or payables",
+      "The net profit remaining after paying taxes and employee wages",
+      "A tax deduction issued by the government for capital investments"
     ],
     correctAnswer: 1
   },
   {
     id: 2,
-    question: "If you borrow money with a daily compounding interest rate, how is the interest calculated?",
+    question: "If you borrow money with a daily compounding interest rate, how is the interest calculated and added?",
     options: [
-      "It is calculated once at the very end of the year on the original sum.",
-      "The annual rate is divided by 365, and interest is compounded onto the balance daily.",
-      "It is never added because simulator borrowing is always interest-free."
+      "Interest is calculated once at the end of the loan term based strictly on the original principal",
+      "The annual interest rate is divided by 365, and that daily rate is compounded onto the accumulating balance each day",
+      "Interest is paid in advance and subtracted directly from your asset portfolio",
+      "Interest is calculated weekly using a simple non-compounding multiplier"
     ],
     correctAnswer: 1
   },
   {
     id: 3,
-    question: "What is the primary risk of using 'Leverage' in investing?",
+    question: "What is the primary financial risk of using 'Leverage' (margin debt) when investing?",
     options: [
-      "It multiplies your potential gains but also amplifies your potential losses.",
-      "It makes the stock market freeze up and stop trading.",
-      "It causes your portfolio to be locked forever without any access."
+      "It caps your maximum potential profit at 10% per year",
+      "It forces your broker to automatically sell all your stocks after 30 days",
+      "It magnifies percentage gains on the upside, but equally amplifies percentage losses on the downside",
+      "It converts equity shares into non-voting preferred stocks"
     ],
-    correctAnswer: 0
+    correctAnswer: 2
   },
   {
     id: 4,
-    question: "What happens if your interest rate exceeds your investment returns?",
+    question: "What occurs if your borrowing interest rate exceeds the total rate of return on your leveraged investments?",
     options: [
-      "You make double the money because interest counts as income.",
-      "You lose money overall, creating a leverage trap where debt eats your equity.",
-      "The lender forgives your loan automatically."
+      "You generate positive cash flow because interest paid is fully tax-deductible",
+      "Your lender absorbs the excess loss and lowers your interest rate",
+      "You experience a negative leverage spread where debt interest erodes your underlying portfolio equity",
+      "The investment automatically converts into a risk-free treasury bond"
     ],
-    correctAnswer: 1
+    correctAnswer: 2
   },
   {
     id: 5,
-    question: "Why does the interest rate increase as you borrow larger amounts of money?",
+    question: "Why do lenders charge higher interest rates as a borrower takes on larger amounts of debt leverage?",
     options: [
-      "Because the bank wants to celebrate your success.",
-      "Because larger loans carry higher default and leverage risk for the lender.",
-      "Because smaller loans are legally prohibited from having interest rates."
+      "Larger loans carry higher credit risk, default probability, and debt-service burden for the lender",
+      "Central banks mandate fixed rate hikes for accounts holding high cash reserves",
+      "Larger loan balances are exempt from state tax reporting",
+      "Lenders charge higher fees to discourage long-term investing"
     ],
-    correctAnswer: 1
+    correctAnswer: 0
   }
 ];
 
@@ -172,10 +177,27 @@ export default function DebtLeverageLessonPage() {
   const draggingPopupsRef = useRef<Record<string, boolean>>({});
 
   // Quiz state
+  const [shuffledQuestions, setShuffledQuestions] = useState<QuizQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizPassed, setQuizPassed] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+
+  const handleShuffleQuestions = () => {
+    const shuffled = quizQuestions.map((q) => {
+      const indexed = q.options.map((opt, idx) => ({ text: opt, isCorrect: idx === q.correctAnswer }));
+      for (let i = indexed.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+      }
+      return {
+        ...q,
+        options: indexed.map((item) => item.text),
+        correctAnswer: indexed.findIndex((item) => item.isCorrect)
+      };
+    });
+    setShuffledQuestions(shuffled);
+  };
   
   // Celebration state
   const [celebrationStep, setCelebrationStep] = useState<CelebrationStep>('none');
@@ -194,6 +216,7 @@ export default function DebtLeverageLessonPage() {
   const marketReturnPercent = 0.20; // 20%
 
   useEffect(() => {
+    handleShuffleQuestions();
     if (typeof window !== 'undefined') {
       synthRef.current = window.speechSynthesis;
     }
@@ -561,12 +584,14 @@ export default function DebtLeverageLessonPage() {
     }, 1500);
   };
 
+  const activeQuestions = shuffledQuestions.length > 0 ? shuffledQuestions : quizQuestions;
+
   const calculateScorePercent = () => {
     let correctCount = 0;
-    quizQuestions.forEach(q => {
+    activeQuestions.forEach(q => {
       if (selectedAnswers[q.id] === q.correctAnswer) correctCount++;
     });
-    return Math.round((correctCount / quizQuestions.length) * 100);
+    return Math.round((correctCount / activeQuestions.length) * 100);
   };
 
   // Handle Quiz Submission
@@ -574,7 +599,7 @@ export default function DebtLeverageLessonPage() {
     let allCorrect = true;
     let answeredAll = true;
 
-    quizQuestions.forEach((q) => {
+    activeQuestions.forEach((q) => {
       if (selectedAnswers[q.id] === undefined) {
         answeredAll = false;
       } else if (selectedAnswers[q.id] !== q.correctAnswer) {
@@ -611,6 +636,7 @@ export default function DebtLeverageLessonPage() {
   };
 
   const handleResetQuiz = () => {
+    handleShuffleQuestions();
     setSelectedAnswers({});
     setQuizSubmitted(false);
     setQuizPassed(false);
@@ -1128,7 +1154,7 @@ export default function DebtLeverageLessonPage() {
 
               {/* Quiz questions list */}
               <div className="p-6 space-y-6 flex-1 overflow-y-auto max-h-[820px]">
-                {quizQuestions.map((q, idx) => (
+                {activeQuestions.map((q, idx) => (
                   <div key={q.id} className="space-y-3 p-4 bg-slate-550/5 dark:bg-slate-900/25 rounded-2xl border border-slate-100 dark:border-slate-800/80">
                     <h4 className="text-xs font-extrabold text-slate-850 dark:text-slate-200">
                       Problem {idx + 1}: {q.question}

@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { DashboardSettingsProvider, useDashboardSettings } from '@/context/DashboardSettingsContext';
+import JoinClassModal from '@/components/edu/JoinClassModal';
 
 interface ShopItem {
   id: string;
@@ -410,6 +411,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
             {/* Profile & Settings Section */}
             <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 ml-auto">
+              {/* Join Class Button & Modal */}
+              <JoinClassModal />
+
               {/* Shop Button */}
               <button
                 onClick={(e) => { triggerPulse(e); setIsShopOpen(true); }}
@@ -591,6 +595,17 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
               {/* Mobile quick actions toolbar */}
               <div className="pt-2 border-t border-slate-200 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                <JoinClassModal
+                  trigger={
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-600 dark:text-emerald-400 active:scale-95 transition-transform"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span>Join Class</span>
+                    </button>
+                  }
+                />
                 <button
                   onClick={() => { setIsShopOpen(true); setIsMobileMenuOpen(false); }}
                   className="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400 active:scale-95 transition-transform"
