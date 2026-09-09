@@ -39,6 +39,8 @@ import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
 import { AnimatedNumber } from '@/components/ui';
 import { useDashboardSettings } from '@/context/DashboardSettingsContext';
+import { useStockMarket } from '@/context/StockMarketContext';
+import { safeRound, safeAdd, safeSubtract } from '@/lib/portfolioMath';
 import { joinClassroom } from '@/app/actions/edu';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -311,11 +313,80 @@ export default function DashboardPage() {
     streakCount,
     fetchAchievementsAndStreak 
   } = usePortfolioStore();
+  const { getStock, lastUpdated } = useStockMarket();
+
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
+
+  // Compute real-time live portfolio calculations synced with StockMarketContext ticks
+  const livePortfolio = useMemo(() => {
+    if (!portfolio) return null;
+
+    const rawHoldings = portfolio.holdings || [];
+    let totalMarketValue = 0;
+    let totalCostBasis = 0;
+    let dayPerformanceUSD = 0;
+
+    const holdings = rawHoldings.map((h: any) => {
+      const liveStock = getStock(h.symbol);
+      const currentPrice = liveStock?.price || h.currentPrice || 0;
+      const qty = h.qty || 0;
+      const avgPrice = h.avgPrice || 0;
+
+      const marketValue = safeRound(qty * currentPrice, 2);
+      const costBasis = safeRound(qty * avgPrice, 2);
+      const pl = safeRound(marketValue - costBasis, 2);
+      const plPercent = avgPrice > 0 ? safeRound(((currentPrice - avgPrice) / avgPrice) * 100, 2) : 0;
+
+      const stockChangePercent = liveStock?.change ?? h.dayPlPercent ?? 0;
+      const prevPrice = stockChangePercent !== -100 ? currentPrice / (1 + stockChangePercent / 100) : currentPrice;
+      const dayPl = safeRound(qty * (currentPrice - prevPrice), 2);
+      const dayPlPercent = safeRound(stockChangePercent, 2);
+
+      totalMarketValue = safeAdd(totalMarketValue, marketValue);
+      totalCostBasis = safeAdd(totalCostBasis, costBasis);
+      dayPerformanceUSD = safeAdd(dayPerformanceUSD, dayPl);
+
+      return {
+        ...h,
+        currentPrice,
+        marketValue,
+        costBasis,
+        pl,
+        plPercent,
+        dayPl,
+        dayPlPercent
+      };
+    });
+
+    const cash = portfolio.cash ?? 10000;
+    const borrowedAmount = portfolio.borrowedAmount ?? 0;
+    const netWorth = safeSubtract(safeAdd(cash, totalMarketValue), borrowedAmount);
+    const totalPerformanceUSD = safeRound(totalMarketValue - totalCostBasis, 2);
+    const totalPerformancePercent = totalCostBasis > 0 ? safeRound((totalPerformanceUSD / totalCostBasis) * 100, 2) : 0;
+
+    const previousNetWorth = safeSubtract(netWorth, dayPerformanceUSD);
+    const dayPerformancePercent = previousNetWorth > 0 ? safeRound((dayPerformanceUSD / previousNetWorth) * 100, 2) : 0;
+
+    return {
+      ...portfolio,
+      cash,
+      totalValue: netWorth,
+      netWorth,
+      totalMarketValue,
+      totalCostBasis,
+      totalPerformanceUSD,
+      totalPerformancePercent,
+      dayPerformanceUSD,
+      dayPerformancePercent,
+      holdings
+    };
+  }, [portfolio, getStock, lastUpdated]);
+
+  const displayPortfolio = livePortfolio || portfolio;
 
   // Layout customization states - widgets are always editable
   const [isEditMode, setIsEditMode] = useState(true);
@@ -776,6 +847,19 @@ export default function DashboardPage() {
   };
 
   const formatCurrency = (val: number) => val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const formatSignedCurrency = (val: number) => {
+    const absVal = Math.abs(val);
+    const formatted = absVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    if (val > 0) return `+${formatted}`;
+    if (val < 0) return `-${formatted}`;
+    return formatted;
+  };
+  const formatSignedPercent = (val: number) => {
+    const formatted = Math.abs(val).toFixed(2) + '%';
+    if (val > 0) return `+${formatted}`;
+    if (val < 0) return `-${formatted}`;
+    return formatted;
+  };
   const formatNumberNoCurrency = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatPercent = (val: number) => val.toFixed(2) + '%';
 
@@ -940,7 +1024,7 @@ export default function DashboardPage() {
               <div>
                 <div className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
                 <div className={`text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
-                  <AnimatedNumber value={portfolio.totalValue} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
+                  <AnimatedNumber value={displayPortfolio?.totalValue ?? 0} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
             </div>
@@ -952,20 +1036,18 @@ export default function DashboardPage() {
               <div className="pb-4 md:pb-0 md:pr-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
                 <div className={`text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
-                  <AnimatedNumber value={portfolio.cash} formatter={formatNumberNoCurrency} startOffset={borrowedAmountJustNow} />
+                  <AnimatedNumber value={displayPortfolio?.cash ?? 0} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
 
               <div className="py-4 md:py-0 md:px-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${portfolio.totalPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                    {portfolio.totalPerformanceUSD >= 0 ? '+' : ''}
-                    <AnimatedNumber value={portfolio.totalPerformanceUSD} formatter={formatNumberNoCurrency} />
+                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.totalPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                    <AnimatedNumber value={displayPortfolio?.totalPerformanceUSD ?? 0} formatter={formatSignedCurrency} />
                   </div>
-                  <div className={`text-[11px] md:text-xs font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                    {portfolio.totalPerformancePercent >= 0 ? '+' : ''}
-                    <AnimatedNumber value={portfolio.totalPerformancePercent} formatter={formatPercent} />
+                  <div className={`text-[11px] md:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                    <AnimatedNumber value={displayPortfolio?.totalPerformancePercent ?? 0} formatter={formatSignedPercent} />
                   </div>
                 </div>
               </div>
@@ -973,13 +1055,11 @@ export default function DashboardPage() {
               <div className="pt-4 md:pt-0 md:pl-6 w-full flex-1">
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${portfolio.dayPerformanceUSD >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
-                    {portfolio.dayPerformanceUSD >= 0 ? '+' : ''}
-                    <AnimatedNumber value={portfolio.dayPerformanceUSD} formatter={formatNumberNoCurrency} />
+                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.dayPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                    <AnimatedNumber value={displayPortfolio?.dayPerformanceUSD ?? 0} formatter={formatSignedCurrency} />
                   </div>
-                  <div className={`text-[11px] md:text-xs font-bold text-slate-455 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
-                    {portfolio.dayPerformancePercent >= 0 ? '+' : ''}
-                    <AnimatedNumber value={portfolio.dayPerformancePercent} formatter={formatPercent} />
+                  <div className={`text-[11px] md:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                    <AnimatedNumber value={displayPortfolio?.dayPerformancePercent ?? 0} formatter={formatSignedPercent} />
                   </div>
                 </div>
               </div>
@@ -1090,7 +1170,7 @@ export default function DashboardPage() {
                   isMergingAnimation={isMergedRow || isMergedCol}
                 >
                   <WidgetComp
-                    portfolio={portfolio}
+                    portfolio={displayPortfolio}
                     chartData={chartData}
                     timeRange={timeRange}
                     setTimeRange={setTimeRange}

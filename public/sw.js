@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trillium-finance-v1';
+const CACHE_NAME = 'trillium-finance-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -37,13 +37,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Cache-first strategy with network fallback
+// Fetch Event: Cache-first strategy for static assets with robust network fallback
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   // Skip non-HTTP(S) requests
   if (!event.request.url.startsWith('http')) return;
+
+  const url = new URL(event.request.url);
+
+  // Skip API routes, Firebase Auth/Firestore, external APIs, and chrome extensions
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('finnhub.io') ||
+    url.hostname.includes('google.com')
+  ) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
@@ -53,7 +66,7 @@ self.addEventListener('fetch', (event) => {
 
       return fetch(event.request).then((networkResponse) => {
         // Validate response before caching
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type !== 'basic' && networkResponse.type !== 'cors')) {
           return networkResponse;
         }
 
@@ -63,9 +76,15 @@ self.addEventListener('fetch', (event) => {
         });
 
         return networkResponse;
-      }).catch((err) => {
-        console.error('[Service Worker] Fetch failed; returning network error:', err);
+      });
+    }).catch((err) => {
+      console.warn('[Service Worker] Network fetch failed, returning 503 response:', err);
+      return new Response('Network error', {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: new Headers({ 'Content-Type': 'text/plain' })
       });
     })
   );
 });
+

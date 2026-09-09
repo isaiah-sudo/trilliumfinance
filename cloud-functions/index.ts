@@ -126,7 +126,26 @@ export const capturePortfolioSnapshots = functions.pubsub
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
-      // 5. Loop through users and write snapshots in batches of 500
+      // Persist global market quote snapshots to Firestore for server-synchronized background caching (chunked for safety)
+      try {
+        const entries = Object.entries(pricesCache);
+        if (entries.length > 0) {
+          const CHUNK_SIZE = 400;
+          for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+            const chunk = Object.fromEntries(entries.slice(i, i + CHUNK_SIZE));
+            const docId = i === 0 ? 'latest' : `latest_part${Math.floor(i / CHUNK_SIZE) + 1}`;
+            await db.doc(`market_quotes/${docId}`).set({
+              quotes: chunk,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+          console.log(`Successfully saved ${entries.length} global market quotes across chunked documents in market_quotes.`);
+        }
+      } catch (quoteErr) {
+        console.error('Failed to write market_quotes:', quoteErr);
+      }
+
+      // 5. Loop through users and write snapshots in batches of 500 maximum
       let batch = db.batch();
       let count = 0;
 
@@ -150,8 +169,12 @@ export const capturePortfolioSnapshots = functions.pubsub
 
         // Firestore batches can write up to 500 documents at a time
         if (count >= 500) {
-          await batch.commit();
-          console.log(`Committed batch of ${count} snapshots.`);
+          try {
+            await batch.commit();
+            console.log(`Committed batch of ${count} snapshots.`);
+          } catch (batchErr) {
+            console.error('Failed to commit user snapshot batch:', batchErr);
+          }
           batch = db.batch();
           count = 0;
         }
@@ -159,8 +182,12 @@ export const capturePortfolioSnapshots = functions.pubsub
 
       // Commit any remaining writes
       if (count > 0) {
-        await batch.commit();
-        console.log(`Committed remaining ${count} snapshots.`);
+        try {
+          await batch.commit();
+          console.log(`Committed remaining ${count} snapshots.`);
+        } catch (batchErr) {
+          console.error('Failed to commit final user snapshot batch:', batchErr);
+        }
       }
 
       console.log('Snapshot extraction run finished successfully.');

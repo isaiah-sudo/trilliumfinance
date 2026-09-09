@@ -38,11 +38,39 @@ const StockMarketContext = createContext<StockMarketContextValue>({
 const CACHE_KEY = 'trillium_global_stock_market_v2';
 const TIMESTAMP_KEY = 'trillium_global_stock_market_time_v2';
 const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds fresh cache sync
+const CLIENT_CACHE_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour maximum cache age
+
+/**
+ * Formats a timestamp into US Eastern Trading Day string (America/New_York)
+ * to prevent timezone drift across international client devices.
+ */
+function getMarketDateString(ts: number): string {
+  try {
+    return new Date(ts).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+  } catch {
+    return new Date(ts).toISOString().split('T')[0];
+  }
+}
 
 export function StockMarketProvider({ children }: PropsWithChildren) {
   const [stocks, setStocks] = useState<StockQuote[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
+        const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+        const now = Date.now();
+
+        const isExpiredByTime = !lastTime || (now - lastTime > CLIENT_CACHE_MAX_AGE_MS);
+        const isExpiredByDate = lastTime > 0 && (getMarketDateString(lastTime) !== getMarketDateString(now));
+
+        if (isExpiredByTime || isExpiredByDate) {
+          localStorage.removeItem(CACHE_KEY);
+          localStorage.removeItem(TIMESTAMP_KEY);
+          sessionStorage.removeItem(CACHE_KEY);
+          sessionStorage.removeItem(TIMESTAMP_KEY);
+          return BASE_STOCKS;
+        }
+
         const cached = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem(CACHE_KEY);
         if (cached) {
           const parsed: StockQuote[] = JSON.parse(cached);
@@ -73,15 +101,17 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
 
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
-  // Function to persist stock state and timestamp to cache
-  const saveToCache = (updatedStocks: StockQuote[]) => {
+  // Function to persist stock state to cache
+  const saveToCache = (updatedStocks: StockQuote[], isNetworkFetch = false) => {
     if (typeof window !== 'undefined') {
       try {
         const now = Date.now();
         localStorage.setItem(CACHE_KEY, JSON.stringify(updatedStocks));
-        localStorage.setItem(TIMESTAMP_KEY, now.toString());
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(updatedStocks));
-        sessionStorage.setItem(TIMESTAMP_KEY, now.toString());
+        if (isNetworkFetch) {
+          localStorage.setItem(TIMESTAMP_KEY, now.toString());
+          sessionStorage.setItem(TIMESTAMP_KEY, now.toString());
+        }
       } catch (e) {
         console.error('Failed to save stock cache', e);
       }
@@ -94,9 +124,11 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
     try {
       const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
       const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
-      const isStale = Date.now() - lastTime > REFRESH_INTERVAL_MS;
+      const now = Date.now();
+      const isStaleByTime = !lastTime || (now - lastTime > REFRESH_INTERVAL_MS);
+      const isStaleByDate = lastTime > 0 && (getMarketDateString(lastTime) !== getMarketDateString(now));
 
-      if (isStale || lastTime === 0) {
+      if (isStaleByTime || isStaleByDate || lastTime === 0) {
         // Fetch quotes in batch
         const topTickers = BASE_STOCKS.map(s => s.ticker);
         const { getMarketQuotes } = await import('@/app/actions/trading');
@@ -116,7 +148,7 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
               }
               return stock;
             });
-            saveToCache(updated);
+            saveToCache(updated, true);
             return updated;
           });
           setLastUpdated(Date.now());

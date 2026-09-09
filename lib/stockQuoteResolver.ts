@@ -97,6 +97,9 @@ async function fetchQuoteFromYahoo(symbol: string): Promise<QuoteData | null> {
   return null;
 }
 
+// In-flight single-flight request coalescing map
+const inFlightPromises = new Map<string, Promise<QuoteData>>();
+
 export async function resolveStockQuote(symbol: string): Promise<QuoteData> {
   const sym = symbol.toUpperCase().trim();
   if (!sym) return getMockPrice('SPY');
@@ -107,26 +110,48 @@ export async function resolveStockQuote(symbol: string): Promise<QuoteData> {
     return cached.data;
   }
 
-  const token = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
+  // Check if a request for this symbol is already in flight (request coalescing)
+  if (inFlightPromises.has(sym)) {
+    return await inFlightPromises.get(sym)!;
+  }
 
-  // Tier 1: Finnhub (if token configured)
-  if (token) {
-    const finnhubQuote = await fetchQuoteFromFinnhub(sym, token);
-    if (finnhubQuote) {
-      serverQuoteCache.set(sym, { data: finnhubQuote, timestamp: now });
-      return finnhubQuote;
+  const promise = (async () => {
+    try {
+      const token = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
+
+      // Tier 1: Finnhub (if token configured)
+      if (token) {
+        const finnhubQuote = await fetchQuoteFromFinnhub(sym, token);
+        if (finnhubQuote) {
+          serverQuoteCache.set(sym, { data: finnhubQuote, timestamp: Date.now() });
+          return finnhubQuote;
+        }
+      }
+
+      // Tier 2: Yahoo Finance API
+      const yahooQuote = await fetchQuoteFromYahoo(sym);
+      if (yahooQuote) {
+        serverQuoteCache.set(sym, { data: yahooQuote, timestamp: Date.now() });
+        return yahooQuote;
+      }
+
+      // Tier 3: Realistic metadata baseline
+      const mockQuote = getMockPrice(sym);
+      serverQuoteCache.set(sym, { data: mockQuote, timestamp: Date.now() });
+      return mockQuote;
+    } finally {
+      inFlightPromises.delete(sym);
     }
-  }
+  })();
 
-  // Tier 2: Yahoo Finance API
-  const yahooQuote = await fetchQuoteFromYahoo(sym);
-  if (yahooQuote) {
-    serverQuoteCache.set(sym, { data: yahooQuote, timestamp: now });
-    return yahooQuote;
+  inFlightPromises.set(sym, promise);
+  try {
+    return await promise;
+  } catch (err) {
+    inFlightPromises.delete(sym);
+    // Graceful fallback to guaranteed baseline quote on unhandled error
+    const fallbackQuote = getMockPrice(sym);
+    serverQuoteCache.set(sym, { data: fallbackQuote, timestamp: Date.now() });
+    return fallbackQuote;
   }
-
-  // Tier 3: Realistic metadata baseline
-  const mockQuote = getMockPrice(sym);
-  serverQuoteCache.set(sym, { data: mockQuote, timestamp: now });
-  return mockQuote;
 }

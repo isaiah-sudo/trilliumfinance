@@ -20,7 +20,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'Apple Inc.',
     ticker: 'AAPL',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/apple.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=apple.com&sz=128',
     weburl: 'https://www.apple.com',
     finnhubIndustry: 'Technology',
     marketCapitalization: 3100000,
@@ -31,7 +31,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'Microsoft Corporation',
     ticker: 'MSFT',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/microsoft.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=microsoft.com&sz=128',
     weburl: 'https://www.microsoft.com',
     finnhubIndustry: 'Technology',
     marketCapitalization: 3200000,
@@ -42,7 +42,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'NVIDIA Corporation',
     ticker: 'NVDA',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/nvidia.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=nvidia.com&sz=128',
     weburl: 'https://www.nvidia.com',
     finnhubIndustry: 'Technology',
     marketCapitalization: 2800000,
@@ -53,7 +53,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'Alphabet Inc.',
     ticker: 'GOOGL',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/google.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=google.com&sz=128',
     weburl: 'https://www.google.com',
     finnhubIndustry: 'Technology',
     marketCapitalization: 2200000,
@@ -64,7 +64,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'Amazon.com, Inc.',
     ticker: 'AMZN',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/amazon.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=amazon.com&sz=128',
     weburl: 'https://www.amazon.com',
     finnhubIndustry: 'Consumer',
     marketCapitalization: 1900000,
@@ -75,7 +75,7 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     name: 'Meta Platforms, Inc.',
     ticker: 'META',
     exchange: 'NASDAQ',
-    logo: 'https://icons.duckduckgo.com/ip3/meta.com.ico',
+    logo: 'https://www.google.com/s2/favicons?domain=meta.com&sz=128',
     weburl: 'https://www.meta.com',
     finnhubIndustry: 'Technology',
     marketCapitalization: 1200000,
@@ -90,7 +90,7 @@ function getFallbackProfile(symbol: string): CompanyProfile {
   const name = mock?.name || `${sym} Inc.`;
   const ticker = mock?.ticker || sym;
   const exchange = mock?.exchange || 'NASDAQ';
-  const logo = mock?.logo || `https://icons.duckduckgo.com/ip3/${sym.toLowerCase()}.com.ico`;
+  const logo = mock?.logo || `https://www.google.com/s2/favicons?domain=${sym.toLowerCase()}.com&sz=128`;
   const weburl = mock?.weburl || `https://www.${sym.toLowerCase()}.com`;
   const finnhubIndustry = mock?.finnhubIndustry || 'Technology';
   const marketCapitalization = mock?.marketCapitalization || 120000;
@@ -128,9 +128,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Symbol required' }, { status: 400 });
     }
 
+    const PROFILE_HEADERS = {
+      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800'
+    };
+
     const cached = profileCache.get(sym);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return NextResponse.json(cached.data);
+      return NextResponse.json(cached.data, { headers: PROFILE_HEADERS });
     }
 
     const token = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
@@ -147,7 +151,7 @@ export async function GET(request: NextRequest) {
               name: data.name || sym,
               ticker: data.ticker || sym,
               exchange: data.exchange || 'Major Exchange',
-              logo: data.logo || `https://icons.duckduckgo.com/ip3/${sym.toLowerCase()}.com.ico`,
+              logo: data.logo || `https://www.google.com/s2/favicons?domain=${sym.toLowerCase()}.com&sz=128`,
               weburl: data.weburl || '',
               finnhubIndustry: data.finnhubIndustry || 'General Sector',
               marketCapitalization: data.marketCapitalization || 0,
@@ -155,7 +159,7 @@ export async function GET(request: NextRequest) {
               description: `${data.name} (${sym}) is a premier corporation operating dynamically within the ${data.finnhubIndustry || 'global'} industry, listed on ${data.exchange || 'the market'}.`
             };
             profileCache.set(sym, { data: profile, timestamp: Date.now() });
-            return NextResponse.json(profile);
+            return NextResponse.json(profile, { headers: PROFILE_HEADERS });
           }
         }
       } catch {
@@ -165,8 +169,12 @@ export async function GET(request: NextRequest) {
 
     const fallback = getFallbackProfile(sym);
     profileCache.set(sym, { data: fallback, timestamp: Date.now() });
-    return NextResponse.json(fallback);
+    return NextResponse.json(fallback, { headers: PROFILE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json(getFallbackProfile('SPY'));
+    return NextResponse.json(getFallbackProfile('SPY'), {
+      headers: {
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800'
+      }
+    });
   }
 }

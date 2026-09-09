@@ -17,7 +17,6 @@ export const KNOWN_STOCKS_DATA: Record<string, StockMetadata> = {
   MSFT: { ticker: 'MSFT', name: 'Microsoft Corp.', category: 'Technology', domain: 'microsoft.com', basePrice: 514.90, baseChange: 3.64 },
   NVDA: { ticker: 'NVDA', name: 'NVIDIA Corp.', category: 'Technology', domain: 'nvidia.com', basePrice: 230.20, baseChange: 2.56 },
   GOOGL: { ticker: 'GOOGL', name: 'Alphabet Inc.', category: 'Technology', domain: 'google.com', basePrice: 342.60, baseChange: 1.62 },
-  GOOG: { ticker: 'GOOG', name: 'Alphabet Inc.', category: 'Technology', domain: 'google.com', basePrice: 342.60, baseChange: 1.62 },
   AMZN: { ticker: 'AMZN', name: 'Amazon.com Inc.', category: 'Technology', domain: 'amazon.com', basePrice: 259.40, baseChange: 1.73 },
   META: { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology', domain: 'meta.com', basePrice: 614.70, baseChange: 3.68 },
   TSLA: { ticker: 'TSLA', name: 'Tesla Inc.', category: 'Technology', domain: 'tesla.com', basePrice: 382.70, baseChange: 7.19 },
@@ -89,7 +88,7 @@ export function getStockLogo(ticker: string, customDomain?: string): string {
   const sym = ticker.toUpperCase();
   const meta = KNOWN_STOCKS_DATA[sym];
   const domain = customDomain || meta?.domain || `${sym.toLowerCase()}.com`;
-  return `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 }
 
 /**

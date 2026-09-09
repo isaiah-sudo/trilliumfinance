@@ -71,21 +71,29 @@ export function DashboardSettingsProvider({ children }: { children: React.ReactN
           if ((userRole === 'student' || userRole === 'teacher') && uClassId) {
             // Subscribe to classroom rules
             const classRef = doc(db, 'classrooms', uClassId);
-            const unsubscribeClass = onSnapshot(classRef, (classSnap) => {
-              if (classSnap.exists()) {
-                const classData = classSnap.data();
-                setClassName(classData.className || null);
-                if (classData.classCode) setClassCode(classData.classCode);
-                setSettings({
-                  startingBalance: classData.settings?.startingBalance ?? 10000,
-                  allowShortSelling: classData.settings?.allowShortSelling ?? true,
-                  allowOptions: classData.settings?.allowOptions ?? true,
-                  maxPositions: classData.settings?.maxPositions ?? 10,
-                  restrictedAssets: classData.settings?.restrictedAssets ?? [],
-                });
+            const unsubscribeClass = onSnapshot(
+              classRef,
+              (classSnap) => {
+                if (classSnap.exists()) {
+                  const classData = classSnap.data();
+                  setClassName(classData.className || null);
+                  if (classData.classCode) setClassCode(classData.classCode);
+                  setSettings({
+                    startingBalance: classData.settings?.startingBalance ?? 10000,
+                    allowShortSelling: classData.settings?.allowShortSelling ?? true,
+                    allowOptions: classData.settings?.allowOptions ?? true,
+                    maxPositions: classData.settings?.maxPositions ?? 10,
+                    restrictedAssets: classData.settings?.restrictedAssets ?? [],
+                  });
+                }
+                setLoading(false);
+              },
+              (err) => {
+                console.warn('Error fetching classroom settings snapshot:', err);
+                setSettings(defaultSettings);
+                setLoading(false);
               }
-              setLoading(false);
-            });
+            );
             return () => unsubscribeClass();
           } else {
             setSettings(defaultSettings);
