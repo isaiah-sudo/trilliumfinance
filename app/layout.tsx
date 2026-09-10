@@ -68,10 +68,23 @@ export default function RootLayout({ children }: PropsWithChildren) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(
                     function(registration) {
-                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                      registration.update();
+                      if (registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                      }
+                      registration.addEventListener('updatefound', function() {
+                        var newWorker = registration.installing;
+                        if (newWorker) {
+                          newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                          });
+                        }
+                      });
                     },
                     function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
+                      console.warn('ServiceWorker registration failed: ', err);
                     }
                   );
                 });

@@ -57,53 +57,52 @@ function getMarketDateString(ts: number): string {
 }
 
 export function StockMarketProvider({ children }: PropsWithChildren) {
-  const [stocks, setStocks] = useState<StockQuote[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
-        const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
-        const now = Date.now();
+  const [stocks, setStocks] = useState<StockQuote[]>(BASE_STOCKS);
+  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
 
-        const isExpiredByTime = !lastTime || (now - lastTime > CLIENT_CACHE_MAX_AGE_MS);
-        const isExpiredByDate = lastTime > 0 && (getMarketDateString(lastTime) !== getMarketDateString(now));
+  // Restore client cached quotes safely after hydration to avoid React error #418
+  useEffect(() => {
+    try {
+      const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
+      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+      const now = Date.now();
 
-        if (isExpiredByTime || isExpiredByDate) {
-          localStorage.removeItem(CACHE_KEY);
-          localStorage.removeItem(TIMESTAMP_KEY);
-          sessionStorage.removeItem(CACHE_KEY);
-          sessionStorage.removeItem(TIMESTAMP_KEY);
-          return BASE_STOCKS;
-        }
+      const isExpiredByTime = !lastTime || (now - lastTime > CLIENT_CACHE_MAX_AGE_MS);
+      const isExpiredByDate = lastTime > 0 && (getMarketDateString(lastTime) !== getMarketDateString(now));
 
-        const cached = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const parsed: StockQuote[] = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // Merge cached data with BASE_STOCKS and ensure realistic prices
-            return BASE_STOCKS.map(base => {
+      if (isExpiredByTime || isExpiredByDate) {
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(TIMESTAMP_KEY);
+        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(TIMESTAMP_KEY);
+        return;
+      }
+
+      const cached = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed: StockQuote[] = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setStocks((prev) =>
+            prev.map((base) => {
               const item = parsed.find((p: any) => p.ticker === base.ticker);
-              // Reject corrupted legacy cache prices that deviate wildly (> 4x or < 0.2x) from basePrice
               if (item && item.price > 0 && item.price > base.price * 0.2 && item.price < base.price * 5) {
                 return {
                   ...base,
                   price: item.price,
                   change: item.change ?? base.change,
                   logo: base.logo || item.logo,
-                  loading: false
+                  loading: false,
                 };
               }
               return base;
-            });
-          }
+            })
+          );
         }
-      } catch (e) {
-        console.error('Error loading stock cache:', e);
       }
+    } catch (e) {
+      console.error('Error loading stock cache:', e);
     }
-    return BASE_STOCKS;
-  });
-
-  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
+  }, []);
 
   // Function to persist stock state to cache
   const saveToCache = (updatedStocks: StockQuote[], isNetworkFetch = false) => {
