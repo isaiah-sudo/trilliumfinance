@@ -434,3 +434,49 @@ html.dark {
 [data-theme]:not([data-theme="theme-emerald"]) .text-emerald-600 {
   color: var(--theme-accent-light) !important;
 }
+
+/* ==========================================================================
+   Mobile, PWA & Viewport Enhancements
+   ========================================================================== */
+
+/* Safe area padding utilities for iOS / Android notches and home pills */
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pl-safe {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+}
+
+.pr-safe {
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Hide scrollbar utility for clean swipeable pill bars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Touch responsiveness optimization */
+button, a, input, select {
+  touch-action: manipulation;
+}
+
+/* Smooth tap highlighting on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+

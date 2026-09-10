@@ -1,5 +1,5 @@
 import '@/app/globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Playfair_Display, Montserrat } from 'next/font/google';
 import { PropsWithChildren } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
@@ -14,10 +14,27 @@ const montserrat = Montserrat({
   weight: ['300', '400', '500', '600', '700', '800', '900'],
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: '#050505',
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: 'Trillium Finance',
   description: 'Modern finance dashboard with realtime insights',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Trillium',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
@@ -32,8 +49,11 @@ export default function RootLayout({ children }: PropsWithChildren) {
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${montserrat.variable} dark`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="min-h-screen w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col">
+      <body className="min-h-[100dvh] w-full bg-[#050505] text-slate-100 font-sans antialiased flex flex-col overscroll-none selection:bg-emerald-500/30 selection:text-emerald-200">
         <AuthProvider>
           <SettingsProvider>
             <StockMarketProvider>

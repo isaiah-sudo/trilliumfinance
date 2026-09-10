@@ -78,6 +78,39 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     shareOutstanding: 2540,
     description: 'Meta Platforms, Inc. builds technologies that help people connect, find communities, and grow businesses. Its major social application offerings include Facebook, Instagram, WhatsApp, Messenger, and Threads, alongside advanced investments in virtual reality (Quest) and metaverse infrastructure.'
   },
+  TSLA: {
+    name: 'Tesla, Inc.',
+    ticker: 'TSLA',
+    exchange: 'NASDAQ',
+    logo: 'https://www.google.com/s2/favicons?sz=128&domain=tesla.com',
+    weburl: 'https://www.tesla.com',
+    finnhubIndustry: 'Technology',
+    marketCapitalization: 800000,
+    shareOutstanding: 3180,
+    description: 'Tesla, Inc. designs, develops, manufactures, sells, and leases electric vehicles, energy generation and storage systems, and offers services related to its sustainable energy products.'
+  },
+  XOM: {
+    name: 'Exxon Mobil Corp.',
+    ticker: 'XOM',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?sz=128&domain=exxonmobil.com',
+    weburl: 'https://www.exxonmobil.com',
+    finnhubIndustry: 'Energy',
+    marketCapitalization: 480000,
+    shareOutstanding: 3950,
+    description: 'Exxon Mobil Corporation explores for and produces crude oil and natural gas in the United States and internationally. It operates through Upstream, Energy Products, Chemical Products, and Specialty Products segments.'
+  },
+  V: {
+    name: 'Visa Inc.',
+    ticker: 'V',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?sz=128&domain=visa.com',
+    weburl: 'https://www.visa.com',
+    finnhubIndustry: 'Finance',
+    marketCapitalization: 570000,
+    shareOutstanding: 2020,
+    description: 'Visa Inc. operates the world\'s largest electronic payments network, facilitating digital payments and financial transaction processing across global financial institutions, consumers, and merchants.'
+  },
   TSM: {
     name: 'Taiwan Semiconductor Manufacturing Co.',
     ticker: 'TSM',

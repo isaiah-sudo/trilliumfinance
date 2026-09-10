@@ -44,18 +44,18 @@ export default function LeaderboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 border border-slate-700/50 shadow-2xl">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 text-blue-500/10">
-          <Trophy className="h-64 w-64" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-5 sm:p-8 border border-slate-700/50 shadow-2xl">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 text-blue-500/10 pointer-events-none">
+          <Trophy className="h-48 w-48 sm:h-64 sm:w-64" />
         </div>
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400 mb-4 ring-1 ring-inset ring-blue-500/20">
+          <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1 text-xs sm:text-sm font-medium text-blue-400 mb-3 sm:mb-4 ring-1 ring-inset ring-blue-500/20">
             <Star className="h-4 w-4" /> Global Rankings
           </div>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-4">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-2 sm:mb-4">
             Trader Leaderboard
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-400 text-sm sm:text-lg">
             Compete with the best. Climb the ranks by building your portfolio value and master the market.
           </p>
         </div>
@@ -116,8 +116,8 @@ export default function LeaderboardPage() {
 
       {/* Rest of Leaderboard */}
       <div className="rounded-2xl border border-slate-700/50 bg-[#1a2133]/50 backdrop-blur-xl overflow-hidden shadow-xl">
-        <div className="px-6 py-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
+          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-400" /> Global Rankings
           </h2>
         </div>
@@ -125,41 +125,41 @@ export default function LeaderboardPage() {
           {leaders.slice(3).map((leader) => (
             <div 
               key={leader.id} 
-              className={`flex items-center justify-between px-6 py-4 transition-colors group ${
+              className={`flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 transition-colors group ${
                 leader.isCurrentUser 
                   ? 'bg-blue-500/10 border-l-4 border-l-blue-500 hover:bg-blue-500/15' 
                   : 'hover:bg-slate-700/20'
               }`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
+                <div className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border text-xs sm:text-sm font-bold transition-colors shrink-0 ${
                   leader.isCurrentUser
                     ? 'bg-blue-600/30 border-blue-400 text-blue-300 shadow-md shadow-blue-500/20'
                     : 'bg-slate-800 border-slate-700 text-slate-400 group-hover:border-blue-500/30 group-hover:text-blue-400'
                 }`}>
                   {leader.rank}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-slate-200">{leader.displayName}</h4>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h4 className="font-semibold text-slate-200 text-sm truncate">{leader.displayName}</h4>
                     {leader.isCurrentUser && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30 shrink-0">
                         You
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500">{leader.isCurrentUser ? 'Your Active Account' : 'Trader Account'}</p>
+                  <p className="text-[11px] sm:text-xs text-slate-500 truncate">{leader.isCurrentUser ? 'Your Active Account' : 'Trader Account'}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className={`font-bold font-mono tracking-tight ${leader.isCurrentUser ? 'text-blue-400 text-base' : 'text-slate-200'}`}>
+              <div className="text-right shrink-0">
+                <div className={`font-bold font-mono tracking-tight text-sm sm:text-base ${leader.isCurrentUser ? 'text-blue-400' : 'text-slate-200'}`}>
                   {formatCurrency(leader.netWorth)}
                 </div>
               </div>
             </div>
           ))}
           {leaders.length === 0 && (
-            <div className="px-6 py-8 text-center text-slate-500">
+            <div className="px-4 sm:px-6 py-8 text-center text-slate-500 text-xs sm:text-sm">
               No traders found. Make a trade or visit your portfolio to be added!
             </div>
           )}

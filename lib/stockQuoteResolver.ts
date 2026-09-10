@@ -1,4 +1,5 @@
 import { getStockMetadata } from '@/lib/stockUtils';
+import { SlidingWindowRateLimiter } from '@/lib/rateLimitedBatchScheduler';
 
 export interface QuoteData {
   ticker: string;
@@ -11,6 +12,13 @@ export interface QuoteData {
 // Global in-memory cache for stock quotes on the server
 const serverQuoteCache = new Map<string, { data: QuoteData; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+
+// Server-side Rate Limiter ensuring hard limit of <= 50 requests per rolling 60s
+const finnhubRateLimiter = new SlidingWindowRateLimiter({
+  maxRequestsPerWindow: 50,
+  windowMs: 60000,
+  minDelayBetweenRequestsMs: 150
+});
 
 export function getMockPrice(symbol: string): QuoteData {
   const sym = symbol.toUpperCase();
@@ -39,12 +47,21 @@ export function getMockPrice(symbol: string): QuoteData {
   };
 }
 
+let finnhubRateLimitedUntil = 0;
+
 async function fetchQuoteFromFinnhub(symbol: string, token: string): Promise<QuoteData | null> {
-  if (!token) return null;
+  if (!token || Date.now() < finnhubRateLimitedUntil) return null;
   try {
+    // Acquire rate limit slot under rolling 60s window
+    await finnhubRateLimiter.acquire();
+
     const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${token}`, {
       signal: AbortSignal.timeout(3500)
     });
+    if (res.status === 429) {
+      finnhubRateLimitedUntil = Date.now() + 60000; // 60s cooldown
+      return null;
+    }
     if (!res.ok) return null;
     const data = await res.json();
     if (data && typeof data.c === 'number' && data.c > 0) {

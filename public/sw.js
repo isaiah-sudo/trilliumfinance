@@ -11,7 +11,6 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching core static assets');
       return cache.addAll(STATIC_ASSETS);
     }).then(() => {
       return self.skipWaiting();
@@ -26,7 +25,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -47,12 +45,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Skip API routes, Firebase Auth/Firestore, external APIs, and chrome extensions
+  // Skip API routes, Next.js dynamic assets, Firebase Auth/Firestore, and external financial feeds
   if (
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/_next/') ||
     url.hostname.includes('firebase') ||
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('finnhub.io') ||
+    url.hostname.includes('yahoo.com') ||
     url.hostname.includes('google.com')
   ) {
     return;

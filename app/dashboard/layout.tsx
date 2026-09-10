@@ -631,20 +631,65 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             </div>
           )}
 
-          <main className="w-full mt-6 pb-12 flex-1 flex flex-col">
+          <main className="w-full mt-4 sm:mt-6 pb-28 lg:pb-12 flex-1 flex flex-col">
             {children}
           </main>
         </div>
 
+        {/* Mobile & PWA Sleek Floating Bottom Navigation Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[85] bg-slate-950/90 dark:bg-[#0c0f18]/95 backdrop-blur-2xl border-t border-white/10 px-1.5 pt-1.5 pb-safe shadow-[0_-10px_35px_rgba(0,0,0,0.5)] select-none">
+          <nav className="flex items-center justify-around max-w-lg mx-auto">
+            {navLinks.slice(0, 6).map((link) => {
+              const icons: Record<string, any> = {
+                Dashboard: LayoutDashboard,
+                Explore: Compass,
+                News: Newspaper,
+                Chat: MessageSquare,
+                Rankings: Trophy,
+                Lesson: BookOpen,
+              };
+              const Icon = icons[link.name] || Sparkles;
+              const isActive = pathname === link.href;
+
+              return (
+                <Link
+                  key={`bottom-${link.name}`}
+                  href={link.href}
+                  onClick={triggerPulse}
+                  className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all duration-200 relative min-w-[50px] ${
+                    isActive
+                      ? 'text-[var(--theme-accent,#10b981)] font-black'
+                      : 'text-slate-400 hover:text-slate-200 font-semibold'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="bottomNavGlow"
+                      className="absolute -top-1.5 w-8 h-1 rounded-full bg-[var(--theme-accent,#10b981)] shadow-[0_0_10px_var(--theme-accent-glow,rgba(16,185,129,0.8))]"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <div className={`p-1 rounded-lg transition-transform ${isActive ? 'scale-110' : ''}`}>
+                    <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+                  </div>
+                  <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
+                    {link.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
         {/* Settings Popup Modal */}
         {isSettingsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <div className="bg-white dark:bg-[#1a2133] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 w-full max-w-xl shadow-2xl relative">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#1a2133] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-5 sm:p-6 w-full max-w-xl max-h-[88dvh] overflow-y-auto shadow-2xl relative">
               
               {/* Top Left Title and Clean X in top right */}
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-slate-900 dark:text-white font-extrabold text-2xl tracking-tight">
+                  <h2 className="text-slate-900 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight">
                     {activeTab}
                   </h2>
                 </div>
@@ -657,12 +702,12 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               </div>
 
               {/* Tab Navigation Buttons under the title */}
-              <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700/50 pb-3 overflow-x-auto">
+              <div className="flex gap-2 mb-4 sm:mb-6 border-b border-slate-200 dark:border-slate-700/50 pb-3 overflow-x-auto no-scrollbar">
                 {(['Graphics', 'Market', 'Filters', 'Linked'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+                    className={`px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold rounded-xl transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60'
@@ -674,9 +719,9 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               </div>
 
               {/* Content Panel */}
-              <div className="min-h-[220px] py-2">
+              <div className="min-h-[220px] py-1 sm:py-2">
                 {activeTab === 'Graphics' && (
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {/* Theme Mode Toggle */}
                     <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
                       <div>
@@ -698,12 +743,12 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                     </div>
 
                     {/* Font Changer for Text */}
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30 gap-2 sm:gap-0">
                       <div>
                         <div className="text-xs font-bold text-slate-800 dark:text-white">Text Font</div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose typeface for menus and descriptions</div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 self-start sm:self-auto">
                         {(['sans', 'serif', 'mono'] as const).map((font) => (
                           <button
                             key={`text-${font}`}
@@ -721,12 +766,12 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                     </div>
 
                     {/* Font Changer for Numbers */}
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30 gap-2 sm:gap-0">
                       <div>
                         <div className="text-xs font-bold text-slate-800 dark:text-white">Number Font</div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose layout style for prices and charts</div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 self-start sm:self-auto">
                         {(['sans', 'serif', 'mono'] as const).map((font) => (
                           <button
                             key={`num-${font}`}
@@ -780,45 +825,45 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
 
         {/* Trillium Customization Store Popup Modal */}
         {isShopOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-7 w-full max-w-4xl max-h-[85vh] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 md:p-7 w-full max-w-4xl max-h-[88dvh] flex flex-col justify-between shadow-2xl relative overflow-hidden">
               
               {/* Header section */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 sm:pb-5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2.5 rounded-2xl bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border border-[var(--theme-accent-border,rgba(16,185,129,0.25))] text-[var(--theme-accent,#10b981)]">
-                      <ShoppingBag className="h-5 w-5" />
+                    <div className="p-2 sm:p-2.5 rounded-2xl bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border border-[var(--theme-accent-border,rgba(16,185,129,0.25))] text-[var(--theme-accent,#10b981)]">
+                      <ShoppingBag className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                     </div>
-                    <h2 className="text-slate-900 dark:text-white font-black text-xl md:text-2xl tracking-tight">
-                      Trillium Store & Customization
+                    <h2 className="text-slate-900 dark:text-white font-black text-lg sm:text-xl md:text-2xl tracking-tight">
+                      Trillium Store
                     </h2>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                    Personalize your terminal with exclusive interface themes, leaderboard titles, and account boosters.
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 font-medium line-clamp-1 sm:line-clamp-none">
+                    Personalize your terminal with exclusive interface themes and titles.
                   </p>
                 </div>
                 
                 {/* Stats & Close Container */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   {/* Trilliums Balance Only */}
-                  <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-slate-800/90 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs">
-                    <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Your Balance</span>
+                  <div className="flex items-center gap-2 bg-slate-100/90 dark:bg-slate-800/90 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs">
+                    <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden xs:inline">Balance</span>
                     <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200 dark:border-slate-700/80">
                       <div className="text-[var(--theme-accent,#06b6d4)]">
                         <TrilliumLogoMark />
                       </div>
-                      <span className="text-sm font-black text-cyan-600 dark:text-cyan-400 font-num-sans">
+                      <span className="text-xs sm:text-sm font-black text-cyan-600 dark:text-cyan-400 font-num-sans">
                         {trilliums.toLocaleString()}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Trilliums</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500">Trilliums</span>
                     </div>
                   </div>
                   
                   {/* Close button */}
                   <button
                     onClick={() => setIsShopOpen(false)}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+                    className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
                     aria-label="Close Store"
                   >
                     <X className="h-5 w-5" />
@@ -827,18 +872,18 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
               </div>
 
               {/* Category Filter Tabs */}
-              <div className="flex items-center gap-2.5 my-4 shrink-0">
+              <div className="flex items-center gap-2 my-3 sm:my-4 overflow-x-auto no-scrollbar shrink-0">
                 {(['all', 'themes', 'titles', 'perks'] as const).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setShopCategory(cat)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
+                    className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black capitalize transition-all cursor-pointer whitespace-nowrap ${
                       shopCategory === cat
                         ? 'bg-[var(--theme-accent,#10b981)] text-slate-950 shadow-[0_0_15px_var(--theme-accent-glow,rgba(16,185,129,0.3))]'
                         : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/70 border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50'
                     }`}
                   >
-                    {cat === 'all' ? 'All Store Items' : cat}
+                    {cat === 'all' ? 'All Items' : cat}
                   </button>
                 ))}
               </div>

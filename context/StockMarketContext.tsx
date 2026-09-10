@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, PropsWithChildre
 import { fetchFinnhubQuote } from '@/app/actions/trading';
 import { KNOWN_STOCKS_DATA, getStockLogo, getStockMetadata } from '@/lib/stockUtils';
 
+import { StaggeredBatchScheduler } from '@/lib/rateLimitedBatchScheduler';
+
 export interface StockQuote {
   ticker: string;
   name: string;
@@ -37,8 +39,10 @@ const StockMarketContext = createContext<StockMarketContextValue>({
 
 const CACHE_KEY = 'trillium_global_stock_market_v2';
 const TIMESTAMP_KEY = 'trillium_global_stock_market_time_v2';
-const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds fresh cache sync
 const CLIENT_CACHE_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour maximum cache age
+
+// High priority items refreshed on fast-track
+const PRIORITY_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'SPY', 'QQQ'];
 
 /**
  * Formats a timestamp into US Eastern Trading Day string (America/New_York)
@@ -118,54 +122,56 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
     }
   };
 
-  // Sweep to fetch fresh quotes for stocks if cache is stale or on initial launch
-  const refreshCacheIfStale = async () => {
-    if (typeof window === 'undefined') return;
-    try {
-      const lastTimeStr = localStorage.getItem(TIMESTAMP_KEY) || sessionStorage.getItem(TIMESTAMP_KEY);
-      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
-      const now = Date.now();
-      const isStaleByTime = !lastTime || (now - lastTime > REFRESH_INTERVAL_MS);
-      const isStaleByDate = lastTime > 0 && (getMarketDateString(lastTime) !== getMarketDateString(now));
-
-      if (isStaleByTime || isStaleByDate || lastTime === 0) {
-        // Fetch quotes in batch
-        const topTickers = BASE_STOCKS.map(s => s.ticker);
-        const { getMarketQuotes } = await import('@/app/actions/trading');
-        const quotes = await getMarketQuotes(topTickers);
-        
-        if (quotes && quotes.length > 0) {
-          setStocks(prev => {
-            const updated = prev.map(stock => {
-              const quote = quotes.find(q => q.ticker === stock.ticker);
-              if (quote && quote.price > 0) {
-                return {
-                  ...stock,
-                  price: quote.price,
-                  change: quote.change,
-                  loading: false
-                };
-              }
-              return stock;
-            });
-            saveToCache(updated, true);
-            return updated;
-          });
-          setLastUpdated(Date.now());
-        }
-      }
-    } catch (err) {
-      console.warn('Daily cache refresh failed, continuing with current cached prices:', err);
-    }
-  };
-
   useEffect(() => {
     let mounted = true;
 
-    // Check and refresh cache on mount
-    refreshCacheIfStale();
+    // Initialize Staggered Batch Scheduler with Decoupled Priority Cadence:
+    // 1. High-priority core assets run on a dedicated 30s interval (6 tickers * 2x/min = 12 req/min)
+    // 2. Secondary universe (~38-44 tickers) is partitioned into 6 balanced groups of ~6-7 tickers
+    // 3. Spaced out by 10s per group (6 groups * ~6.5 tickers = 39 req/min)
+    // Total API consumption = 12 + 38 = 50 req/min (strictly within 50 safe cap / 60 hard limit)
+    const allTickers = BASE_STOCKS.map((s) => s.ticker);
 
-    // Local micro-fluctuation loop to keep charts and market tickers alive smoothly without network load
+    const scheduler = new StaggeredBatchScheduler<string>({
+      items: allTickers,
+      groupCount: 6,
+      staggerIntervalMs: 10000,
+      priorityItems: PRIORITY_TICKERS,
+      priorityIntervalMs: 30000,
+      onBatchExecute: async (batchTickers, groupIndex, isPriority) => {
+        if (!mounted || typeof window === 'undefined' || batchTickers.length === 0) return;
+        try {
+          const { getMarketQuotes } = await import('@/app/actions/trading');
+          const quotes = await getMarketQuotes(batchTickers);
+
+          if (mounted && quotes && quotes.length > 0) {
+            setStocks((prev) => {
+              const updated = prev.map((stock) => {
+                const quote = quotes.find((q) => q.ticker === stock.ticker);
+                if (quote && quote.price > 0) {
+                  return {
+                    ...stock,
+                    price: quote.price,
+                    change: quote.change,
+                    loading: false
+                  };
+                }
+                return stock;
+              });
+              saveToCache(updated, true);
+              return updated;
+            });
+            setLastUpdated(Date.now());
+          }
+        } catch (err) {
+          console.warn('[StockMarketContext] Staggered batch update failed:', err);
+        }
+      }
+    });
+
+    scheduler.start();
+
+    // Local micro-fluctuation loop to keep charts and market tickers alive smoothly between batch fetches
     let tickCounter = 0;
     const tickGlobalMarket = () => {
       if (!mounted) return;
@@ -177,13 +183,13 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
 
       if (targetStocks.length === 0) return;
 
-      setStocks(prev => {
+      setStocks((prev) => {
         let hasChange = false;
-        const updated = prev.map(stock => {
-          const isTarget = targetStocks.some(ts => ts.ticker === stock.ticker);
+        const updated = prev.map((stock) => {
+          const isTarget = targetStocks.some((ts) => ts.ticker === stock.ticker);
           if (isTarget) {
             // Tiny realistic micro-fluctuation (+/- 0.05% to 0.15%)
-            const deltaPercent = (Math.random() * 0.3 - 0.15);
+            const deltaPercent = Math.random() * 0.3 - 0.15;
             const newPrice = Number((stock.price * (1 + deltaPercent / 100)).toFixed(2));
             const newChange = Number((stock.change + deltaPercent * 0.1).toFixed(2));
             hasChange = true;
@@ -205,16 +211,13 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
       setLastUpdated(Date.now());
     };
 
-    // Micro-walk interval every 4 seconds (zero network requests)
-    const tickInterval = setInterval(tickGlobalMarket, 4000);
-
-    // Network cache sync every 60 seconds
-    const syncInterval = setInterval(refreshCacheIfStale, REFRESH_INTERVAL_MS);
+    // Micro-walk interval every 3 seconds (zero network requests)
+    const tickInterval = setInterval(tickGlobalMarket, 3000);
 
     return () => {
       mounted = false;
+      scheduler.stop();
       clearInterval(tickInterval);
-      clearInterval(syncInterval);
     };
   }, []);
 

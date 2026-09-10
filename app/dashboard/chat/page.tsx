@@ -263,6 +263,7 @@ function ChatInner() {
   const [newsList, setNewsList] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsSearch, setNewsSearch] = useState('');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'news'>('chat');
 
   // Stock details drawer state for interactive ticker clicks
   const [drawerSymbol, setDrawerSymbol] = useState('');
@@ -353,7 +354,7 @@ function ChatInner() {
 
   const handleAttachNews = (article: NewsArticle) => {
     setAttachedNews(article);
-    // Keep inputValue clean - do NOT inject full title into typing area
+    setMobileTab('chat');
   };
 
   const handleResetChat = () => {
@@ -502,20 +503,54 @@ function ChatInner() {
   );
 
   return (
-    <div className="w-full max-w-[2560px] mx-auto flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[620px]">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col h-[calc(100dvh-130px)] lg:h-[calc(100vh-140px)] min-h-[500px]">
       
-      {/* LEFT PANEL: Main Chat Container */}
-      <div 
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`flex-1 rounded-3xl border transition-all duration-300 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-2xl flex flex-col relative overflow-hidden ${
-          isDraggingOver 
-            ? 'border-[var(--theme-accent,#10b981)] ring-4 ring-[var(--theme-accent-border,rgba(16,185,129,0.25))] scale-[0.995]' 
-            : 'border-slate-200 dark:border-slate-700/60'
-        }`}
-      >
+      {/* Mobile Mode Switcher: AI Chat vs News Context */}
+      <div className="lg:hidden flex items-center justify-center p-1 bg-slate-200/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-300/60 dark:border-slate-800/80 mb-3 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            mobileTab === 'chat'
+              ? 'bg-[var(--theme-accent,#10b981)] text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+          }`}
+        >
+          AI Terminal Chat
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('news')}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            mobileTab === 'news'
+              ? 'bg-[var(--theme-accent,#10b981)] text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+          }`}
+        >
+          <span>News Hub</span>
+          {newsList.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${mobileTab === 'news' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+              {newsList.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0 overflow-hidden">
+        {/* LEFT PANEL: Main Chat Container */}
+        <div 
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`flex-1 rounded-2xl sm:rounded-3xl border transition-all duration-300 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-2xl flex-col relative overflow-hidden h-full ${
+            mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
+          } ${
+            isDraggingOver 
+              ? 'border-[var(--theme-accent,#10b981)] ring-4 ring-[var(--theme-accent-border,rgba(16,185,129,0.25))] scale-[0.995]' 
+              : 'border-slate-200 dark:border-slate-700/60'
+          }`}
+        >
         {/* Drop Overlay Banner */}
         {isDraggingOver && (
           <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 animate-in fade-in duration-200 pointer-events-none">
@@ -739,11 +774,13 @@ function ChatInner() {
 
       </div>
 
-      {/* RIGHT PANEL: News Context Hub */}
-      <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 rounded-3xl border border-slate-200 dark:border-slate-700/60 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-2xl flex flex-col h-full min-h-[500px] overflow-hidden">
-        
-        {/* News Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
+        {/* RIGHT PANEL: News Context Hub */}
+        <div className={`w-full lg:w-[380px] xl:w-[420px] shrink-0 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-700/60 bg-white/90 dark:bg-[#1a2133]/90 backdrop-blur-md shadow-2xl flex-col h-full min-h-[400px] overflow-hidden ${
+          mobileTab === 'news' ? 'flex' : 'hidden lg:flex'
+        }`}>
+          
+          {/* News Header */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-[var(--theme-accent-subtle,rgba(16,185,129,0.12))] border border-[var(--theme-accent-border,rgba(16,185,129,0.25))] text-[var(--theme-accent,#10b981)]">
               <Newspaper className="h-5 w-5" />
@@ -863,6 +900,8 @@ function ChatInner() {
             })
           )}
         </div>
+
+      </div>
 
       </div>
 

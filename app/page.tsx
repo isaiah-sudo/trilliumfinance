@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { getMarketQuotes } from '@/app/actions/trading';
 import { KNOWN_STOCKS_DATA } from '@/lib/stockUtils';
+import { useStockMarket } from '@/context/StockMarketContext';
 import LandingSimulatorSuite from '@/components/landing/LandingSimulatorSuite';
 import GameDashboardLoader from '@/components/dashboard/GameDashboardLoader';
 
@@ -59,13 +60,13 @@ function InteractiveDripDotGrid() {
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.offsetHeight || 1400);
+    let width = (canvas.width = Math.max(canvas.parentElement?.offsetWidth || (typeof window !== 'undefined' ? window.innerWidth : 800), 300));
+    let height = (canvas.height = Math.max(canvas.parentElement?.offsetHeight || (typeof window !== 'undefined' ? window.innerHeight : 1400), 400));
 
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.offsetWidth;
-      height = canvas.height = canvas.parentElement.offsetHeight;
+      width = canvas.width = Math.max(canvas.parentElement.offsetWidth || window.innerWidth || 800, 300);
+      height = canvas.height = Math.max(canvas.parentElement.offsetHeight || window.innerHeight || 1400, 400);
     };
 
     window.addEventListener('resize', handleResize);
@@ -410,10 +411,20 @@ export default function LandingPage() {
     return () => cancelAnimationFrame(frameId);
   }, [activeMilestone]);
 
-  // Ticker bar quotes state initialized with accurate baseline market prices
-  const [tickerQuotes, setTickerQuotes] = useState<Array<{ ticker: string; price: number; change: number }>>(() => {
-    const defaultTickers = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ'];
+  // Synchronize ticker bar quotes directly with global live stock market context
+  const { stocks } = useStockMarket();
+  const defaultTickers = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ'];
+
+  const tickerQuotes = useMemo(() => {
     return defaultTickers.map((t) => {
+      const live = stocks.find((s) => s.ticker === t);
+      if (live && live.price > 0) {
+        return {
+          ticker: live.ticker,
+          price: live.price,
+          change: live.change
+        };
+      }
       const meta = KNOWN_STOCKS_DATA[t];
       return {
         ticker: t,
@@ -421,31 +432,7 @@ export default function LandingPage() {
         change: meta?.baseChange ?? 1.2
       };
     });
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchTickerData() {
-      try {
-        const quotes = await getMarketQuotes(['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ']);
-        if (isMounted && quotes && quotes.length > 0) {
-          const validQuotes = quotes.filter(q => q.price > 0);
-          if (validQuotes.length > 0) {
-            setTickerQuotes(validQuotes);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch Finnhub ticker quotes for landing page bar:', err);
-      }
-    }
-
-    fetchTickerData();
-    const interval = setInterval(fetchTickerData, 30000); // refresh every 30 seconds
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  }, [stocks]);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 font-sans text-slate-100 select-none">
@@ -657,17 +644,17 @@ export default function LandingPage() {
         <InteractiveDripDotGrid />
 
         {/* Hero Section - Robinhood Editorial Aesthetic with Dynamic Visuals & Ambient Lighting */}
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14 sm:py-16 md:py-20 lg:py-22 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-10 sm:py-16 md:py-20 lg:py-22 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
           {/* Ambient Dark Radial Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] bg-emerald-500/[0.06] blur-[160px] pointer-events-none rounded-full" />
 
-          <div className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-6">
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-4 sm:space-y-6">
             <motion.h1
               id="hero-headline"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-white font-serif-editorial leading-[1.08]"
+              className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white font-serif-editorial leading-[1.12] sm:leading-[1.08]"
             >
               Master the Markets with Zero Risk
             </motion.h1>
@@ -676,7 +663,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-slate-300 text-lg sm:text-xl max-w-2xl mt-4 font-normal leading-relaxed text-center mx-auto"
+              className="text-slate-300 text-sm sm:text-lg md:text-xl max-w-2xl mt-2 sm:mt-4 font-normal leading-relaxed text-center mx-auto px-2"
             >
               Practice trading stocks and ETFs with live market data and gamified quests—100% free with zero real cash at risk.
             </motion.p>
@@ -685,27 +672,27 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="pt-4 flex justify-center w-full"
+              className="pt-2 sm:pt-4 flex justify-center w-full"
             >
               {user ? (
                 <button
                   onClick={handleGoToDashboard}
                   onMouseDown={handlePulse}
                   style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-9 py-4 rounded-2xl text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
+                  className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-6 sm:px-9 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
                 >
                   <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Go to Dashboard</span>
-                  <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 relative z-10 transition-transform group-hover:translate-x-1" />
                 </button>
               ) : (
                 <Link href="/signup">
                   <button
                     onMouseDown={handlePulse}
                     style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                    className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-9 py-4 rounded-2xl text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
+                    className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-6 sm:px-9 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
                   >
                     <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Start Paper Trading</span>
-                    <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 relative z-10 transition-transform group-hover:translate-x-1" />
                   </button>
                 </Link>
               )}
@@ -714,32 +701,32 @@ export default function LandingPage() {
         </main>
 
         {/* Sleek Section Divider 1 (Hero -> Simulator) */}
-        <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+        <div className="w-full max-w-full px-4 md:px-12 py-4 sm:py-6 relative z-20 flex items-center justify-center">
           <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
           <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
         </div>
 
         {/* Overhauled Glassmorphic Interactive Simulator Suite */}
-        <section id="simulator" className="relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-16 pt-4 pb-16">
+        <section id="simulator" className="relative z-10 w-full px-3 sm:px-6 md:px-12 lg:px-16 pt-2 sm:pt-4 pb-12 sm:pb-16">
           <LandingSimulatorSuite />
         </section>
       </div>
 
       {/* Sleek Section Divider 2 (Simulator -> Chart Timeline) */}
-      <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+      <div className="w-full max-w-full px-4 md:px-12 py-4 sm:py-6 relative z-20 flex items-center justify-center">
         <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
         <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
       </div>
 
       {/* Stock Market Graph Container (Polished Animated Chart Timeline) */}
-      <div className="relative w-full px-4 md:px-8 lg:px-12 mb-16 mt-4">
+      <div className="relative w-full px-3 sm:px-6 md:px-8 lg:px-12 mb-12 sm:mb-16 mt-2 sm:mt-4">
         <motion.div
           id="graph-card-container"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}
-          className="relative w-full min-h-[60vh] p-8 md:p-16 rounded-[40px] bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/20 backdrop-blur-xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.2)] group flex flex-col justify-between"
+          className="relative w-full min-h-[460px] sm:min-h-[520px] md:min-h-[60vh] p-5 sm:p-8 md:p-14 rounded-3xl sm:rounded-[40px] bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/20 backdrop-blur-xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.2)] group flex flex-col justify-between"
         >
           {/* Container background glow */}
           <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 via-teal-500/15 to-blue-500/10 rounded-[40px] opacity-100 group-hover:opacity-150 blur-2xl transition-all duration-500 pointer-events-none" />
@@ -1003,19 +990,19 @@ export default function LandingPage() {
       </div>
 
       {/* 3 Pillars Section (Between Sliding Graph and FAQ) */}
-      <section id="features" className="relative z-10 w-full px-4 md:px-8 lg:px-12 mb-20">
-        <div className="text-center max-w-xl mx-auto mb-12">
-          <h2 className="text-xs font-black uppercase text-emerald-400 tracking-widest mb-3">
+      <section id="features" className="relative z-10 w-full px-3 sm:px-8 lg:px-12 mb-12 sm:mb-20">
+        <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+          <h2 className="text-[11px] sm:text-xs font-black uppercase text-emerald-400 tracking-widest mb-2 sm:mb-3">
             ALL-IN-ONE EDUCATION
           </h2>
-          <p className="text-3xl font-black text-white tracking-tight">
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Our Key Financial Literacy Pillars
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-[2000px] mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8 max-w-[1600px] mx-auto">
           {/* Card 1: Virtual Trading Feed */}
-          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
+          <div className="group relative overflow-hidden p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-300 backdrop-blur-xl">
             {/* Center Watermark Logo starting off-container and animating to top-right */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
               <svg
@@ -1038,49 +1025,49 @@ export default function LandingPage() {
               </svg>
             </div>
 
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300">
-              <TrendingUp className="h-6 w-6" />
+            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-block mb-4 sm:mb-6 relative z-10 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300">
+              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
+            <h3 className="text-base sm:text-lg font-black text-white tracking-tight mb-2 sm:mb-3 relative z-10">
               Virtual Trading Feed
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
+            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed relative z-10">
               Practice trading AAPL, MSFT, and other popular instruments with real-time price feeds using virtual starting cash. Zero risk, high reward.
             </p>
           </div>
 
           {/* Card 2: Gamified Quizzes */}
-          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.15)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-xl">
+          <div className="group relative overflow-hidden p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(59,130,246,0.15)] hover:border-blue-500/30 transition-all duration-300 backdrop-blur-xl">
             {/* Center Watermark Logo - Fully Filling Container */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
               <GraduationCap className="w-full h-full max-w-[300px] max-h-[300px] p-2 text-blue-400 stroke-[1.25] opacity-0 scale-75 group-hover:opacity-10 group-hover:scale-100 transition-all duration-500 ease-out" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300">
-              <GraduationCap className="h-6 w-6" />
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 inline-block mb-4 sm:mb-6 relative z-10 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300">
+              <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
+            <h3 className="text-base sm:text-lg font-black text-white tracking-tight mb-2 sm:mb-3 relative z-10">
               Gamified Quizzes
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
+            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed relative z-10">
               Complete structured lessons on compounding interest, stock indices, and macroeconomics. Build streaks to earn daily XP boosts.
             </p>
           </div>
 
           {/* Card 3: Badges & Achievements */}
-          <div className="group relative overflow-hidden p-8 rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-xl">
+          <div className="group relative overflow-hidden p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-white/[0.08] shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-300 backdrop-blur-xl">
             {/* Center Watermark Logo - Fully Filling Container */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
               <Trophy className="w-full h-full max-w-[300px] max-h-[300px] p-2 text-purple-400 stroke-[1.25] opacity-0 scale-75 group-hover:opacity-10 group-hover:scale-100 transition-all duration-500 ease-out" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-6 relative z-10 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
-              <Trophy className="h-6 w-6" />
+            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 inline-block mb-4 sm:mb-6 relative z-10 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <h3 className="text-lg font-black text-white tracking-tight mb-3 relative z-10">
+            <h3 className="text-base sm:text-lg font-black text-white tracking-tight mb-2 sm:mb-3 relative z-10">
               Badges & Achievements
             </h3>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed relative z-10">
+            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed relative z-10">
               Unlock trophies as you execute smart trades, master quizzes, and rise through the global leaderboards. Showcase achievements to the community.
             </p>
           </div>
@@ -1088,23 +1075,23 @@ export default function LandingPage() {
       </section>
 
       {/* Sleek Section Divider 4 (3 Pillars Features -> FAQ) */}
-      <div className="w-full max-w-full px-4 md:px-12 py-6 relative z-20 flex items-center justify-center">
+      <div className="w-full max-w-full px-4 md:px-12 py-4 sm:py-6 relative z-20 flex items-center justify-center">
         <div className="h-px w-full bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.35)_15%,rgba(16,185,129,0.35)_85%,transparent_100%)]" />
         <div className="absolute h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
       </div>
 
       {/* FAQ / Questions & Answers Section (Clean In-Place Expanding Accordion) */}
-      <section id="faq" className="relative z-10 w-full px-4 md:px-8 lg:px-12 py-20">
-        <div className="text-center max-w-xl mx-auto mb-12">
-          <h2 className="text-xs font-black uppercase text-emerald-400 tracking-widest mb-3">
+      <section id="faq" className="relative z-10 w-full px-3 sm:px-8 lg:px-12 py-12 sm:py-20">
+        <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+          <h2 className="text-[11px] sm:text-xs font-black uppercase text-emerald-400 tracking-widest mb-2 sm:mb-3">
             QUESTIONS & ANSWERS
           </h2>
-          <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
+          <p className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight">
             Frequently Asked Questions
           </p>
         </div>
 
-        <div className="max-w-4xl 2xl:max-w-5xl mx-auto space-y-4">
+        <div className="max-w-4xl 2xl:max-w-5xl mx-auto space-y-3 sm:space-y-4">
           {faqs.map((faq, index) => {
             const isOpen = openFaq === index;
             return (
@@ -1117,19 +1104,19 @@ export default function LandingPage() {
               >
                 <button
                   onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                  className="w-full flex items-center justify-between p-5 sm:p-6 text-left cursor-pointer group"
+                  className="w-full flex items-center justify-between p-4 sm:p-5 md:p-6 text-left cursor-pointer group"
                 >
-                  <span className={`text-base sm:text-lg font-bold tracking-tight pr-4 transition-colors ${isOpen ? 'text-emerald-400' : 'text-white group-hover:text-emerald-300'
+                  <span className={`text-sm sm:text-base md:text-lg font-bold tracking-tight pr-3 transition-colors ${isOpen ? 'text-emerald-400' : 'text-white group-hover:text-emerald-300'
                     }`}>
                     {faq.q}
                   </span>
                   <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-300 ${isOpen
+                    className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-300 ${isOpen
                         ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/30'
                         : 'bg-white/5 text-slate-400 border-white/10 group-hover:bg-white/10 group-hover:text-white'
                       }`}
                   >
-                    <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
 
@@ -1141,7 +1128,7 @@ export default function LandingPage() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     >
-                      <div className="px-6 pb-6 pt-2 text-slate-300 text-sm sm:text-base leading-relaxed border-t border-white/5 font-normal">
+                      <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-1 sm:pt-2 text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed border-t border-white/5 font-normal">
                         {faq.a}
                       </div>
                     </motion.div>
@@ -1154,7 +1141,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 py-10 border-t border-white/5 bg-slate-950 text-center text-xs text-slate-500 font-bold">
+      <footer className="relative z-10 py-8 sm:py-10 border-t border-white/5 bg-slate-950 text-center text-[11px] sm:text-xs text-slate-500 font-bold px-4 pb-safe">
         <p>© 2026 Trillium Finance. Safe sandbox environment for education purposes only.</p>
       </footer>
 

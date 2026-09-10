@@ -81,6 +81,61 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     marketCapitalization: 1200000,
     shareOutstanding: 2540,
     description: 'Meta Platforms, Inc. builds social technologies connecting billions across Facebook, Instagram, WhatsApp, Messenger, and Threads.'
+  },
+  TSLA: {
+    name: 'Tesla, Inc.',
+    ticker: 'TSLA',
+    exchange: 'NASDAQ',
+    logo: 'https://www.google.com/s2/favicons?domain=tesla.com&sz=128',
+    weburl: 'https://www.tesla.com',
+    finnhubIndustry: 'Automobiles & Components',
+    marketCapitalization: 800000,
+    shareOutstanding: 3180,
+    description: 'Tesla, Inc. designs, develops, manufactures, sells, and leases electric vehicles, energy storage systems, solar panels, and solar roofs worldwide.'
+  },
+  XOM: {
+    name: 'Exxon Mobil Corporation',
+    ticker: 'XOM',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?domain=exxonmobil.com&sz=128',
+    weburl: 'https://www.exxonmobil.com',
+    finnhubIndustry: 'Energy',
+    marketCapitalization: 480000,
+    shareOutstanding: 3950,
+    description: 'Exxon Mobil Corporation explores for and produces crude oil and natural gas in the United States and internationally. It is one of the largest publicly traded energy providers in the world.'
+  },
+  V: {
+    name: 'Visa Inc.',
+    ticker: 'V',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?domain=visa.com&sz=128',
+    weburl: 'https://www.visa.com',
+    finnhubIndustry: 'Financial Services',
+    marketCapitalization: 570000,
+    shareOutstanding: 2020,
+    description: 'Visa Inc. operates the world\'s largest retail electronic payments network. It facilitates global digital commerce across consumers, merchants, financial institutions, and government entities.'
+  },
+  JPM: {
+    name: 'JPMorgan Chase & Co.',
+    ticker: 'JPM',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?domain=jpmorganchase.com&sz=128',
+    weburl: 'https://www.jpmorganchase.com',
+    finnhubIndustry: 'Banking',
+    marketCapitalization: 640000,
+    shareOutstanding: 2840,
+    description: 'JPMorgan Chase & Co. is a leading financial services firm with assets of $3.9 trillion and operations worldwide, providing investment banking, consumer financial services, and commercial banking.'
+  },
+  TSM: {
+    name: 'Taiwan Semiconductor Manufacturing Co.',
+    ticker: 'TSM',
+    exchange: 'NYSE',
+    logo: 'https://www.google.com/s2/favicons?domain=tsmc.com&sz=128',
+    weburl: 'https://www.tsmc.com',
+    finnhubIndustry: 'Semiconductors',
+    marketCapitalization: 950000,
+    shareOutstanding: 5180,
+    description: 'Taiwan Semiconductor Manufacturing Company is the premier dedicated pure-play semiconductor foundry in the world, manufacturing advanced chips for global technology giants.'
   }
 };
 
@@ -163,7 +218,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch {
-        // Fallback gracefully
+        // Fallback gracefully without throwing
       }
     }
 

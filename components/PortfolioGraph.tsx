@@ -303,7 +303,7 @@ export default function PortfolioGraph({
             Awaiting live portfolio snapshots...
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={220} debounce={50}>
             <AreaChart
               data={chartData}
               onMouseMove={handleMouseMove}

@@ -111,18 +111,44 @@ export function WatchlistWidget({ portfolio, numberFont, onOpenTradeModal }: Wid
                     </td>
                     <td className={`py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-white font-num-${numberFont}`}>{h.qty}</td>
                     <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
-                      ${(h.currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <AnimatedNumber 
+                        value={h.currentPrice || 0} 
+                        formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                      />
                     </td>
                     <td className={`py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-num-${numberFont}`}>
-                      ${(h.marketValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <AnimatedNumber 
+                        value={h.marketValue || 0} 
+                        formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                      />
                     </td>
                     <td className={`py-2.5 px-3 text-right font-bold font-num-${numberFont} ${dayPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
-                      <div>{dayPl >= 0 ? '+' : ''}${dayPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div className="text-[10px]">{dayPlPercent >= 0 ? '+' : ''}{dayPlPercent.toFixed(2)}%</div>
+                      <div>
+                        <AnimatedNumber 
+                          value={dayPl} 
+                          formatter={(v) => `${v >= 0 ? '+' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                        />
+                      </div>
+                      <div className="text-[10px]">
+                        <AnimatedNumber 
+                          value={dayPlPercent} 
+                          formatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} 
+                        />
+                      </div>
                     </td>
                     <td className={`py-2.5 pl-3 text-right font-bold font-num-${numberFont} ${totalPl >= 0 ? 'text-teal-500' : 'text-rose-500'}`}>
-                      <div>{totalPl >= 0 ? '+' : ''}${totalPl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div className="text-[10px]">{totalPlPercent >= 0 ? '+' : ''}{totalPlPercent.toFixed(2)}%</div>
+                      <div>
+                        <AnimatedNumber 
+                          value={totalPl} 
+                          formatter={(v) => `${v >= 0 ? '+' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                        />
+                      </div>
+                      <div className="text-[10px]">
+                        <AnimatedNumber 
+                          value={totalPlPercent} 
+                          formatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} 
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -255,18 +281,18 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
           {viewMode === 'portfolio' ? 'Total Portfolio Market Value' : 'Total Positions Value'}
         </div>
         <div className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white font-num-sans">
-          ${(viewMode === 'portfolio' ? totalPortfolioValue : totalMarketValue).toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+          <AnimatedNumber 
+            value={viewMode === 'portfolio' ? totalPortfolioValue : totalMarketValue} 
+            formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+          />
         </div>
       </div>
 
       {/* Pie Chart Canvas: dynamically scales with widget dimensions */}
-      <div className="flex-1 w-full min-h-[140px] relative flex items-center justify-center my-auto">
+      <div className="flex-1 w-full h-[150px] min-h-[140px] relative flex items-center justify-center my-auto">
         {isMounted ? (
           <>
-            <ResponsiveContainer width="100%" height="100%" minWidth={140} minHeight={140}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={140} debounce={50}>
               <PieChart>
                 <Pie
                   data={activeData}
@@ -887,18 +913,18 @@ export function MarketMoversWidget() {
   const movers = useMemo(() => {
     if (!stocks || stocks.length === 0) {
       return [
-        { ticker: 'AAPL', name: 'Apple Inc.', price: '$228.50', change: '+1.45%', positive: true, logo: getStockLogo('AAPL') },
-        { ticker: 'NVDA', name: 'NVIDIA Corp.', price: '$128.54', change: '+3.12%', positive: true, logo: getStockLogo('NVDA') },
-        { ticker: 'TSLA', name: 'Tesla Inc.', price: '$238.50', change: '-1.25%', positive: false, logo: getStockLogo('TSLA') },
-        { ticker: 'AMZN', name: 'Amazon.com', price: '$186.40', change: '+1.15%', positive: true, logo: getStockLogo('AMZN') },
+        { ticker: 'AAPL', name: 'Apple Inc.', price: 228.50, change: 1.45, positive: true, logo: getStockLogo('AAPL') },
+        { ticker: 'NVDA', name: 'NVIDIA Corp.', price: 128.54, change: 3.12, positive: true, logo: getStockLogo('NVDA') },
+        { ticker: 'TSLA', name: 'Tesla Inc.', price: 238.50, change: -1.25, positive: false, logo: getStockLogo('TSLA') },
+        { ticker: 'AMZN', name: 'Amazon.com', price: 186.40, change: 1.15, positive: true, logo: getStockLogo('AMZN') },
       ];
     }
     const sorted = [...stocks].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
     return sorted.slice(0, 4).map(s => ({
       ticker: s.ticker,
       name: s.name,
-      price: `$${(s.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: `${(s.change || 0) >= 0 ? '+' : ''}${(s.change || 0).toFixed(2)}%`,
+      price: s.price || 0,
+      change: s.change || 0,
       positive: (s.change || 0) >= 0,
       logo: s.logo || getStockLogo(s.ticker)
     }));
@@ -933,8 +959,18 @@ export function MarketMoversWidget() {
             </div>
           </div>
           <div className="text-right">
-            <div className="font-bold text-slate-900 dark:text-white">{m.price}</div>
-            <div className={`text-[10px] font-black ${m.positive ? 'text-teal-400' : 'text-rose-400'}`}>{m.change}</div>
+            <div className="font-bold text-slate-900 dark:text-white">
+              <AnimatedNumber 
+                value={m.price} 
+                formatter={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+              />
+            </div>
+            <div className={`text-[10px] font-black ${m.positive ? 'text-teal-400' : 'text-rose-400'}`}>
+              <AnimatedNumber 
+                value={m.change} 
+                formatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} 
+              />
+            </div>
           </div>
         </div>
       ))}
@@ -968,7 +1004,14 @@ export function PortfolioGoalsWidget({ portfolio }: WidgetComponentProps) {
       </div>
 
       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex justify-between items-center">
-        <span>Current Net Worth: <strong>${Math.max(0, current).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
+        <span>
+          Current Net Worth: <strong>
+            <AnimatedNumber 
+              value={Math.max(0, current)} 
+              formatter={(v) => `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`} 
+            />
+          </strong>
+        </span>
         <span>Target: <strong>$25,000</strong></span>
       </div>
     </div>

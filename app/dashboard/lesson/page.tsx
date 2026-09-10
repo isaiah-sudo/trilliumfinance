@@ -387,17 +387,17 @@ export default function LessonsPage() {
       {/* Streak Commitment Selector Modal */}
       <AnimatePresence>
         {showCommitmentModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 sm:p-8 w-full max-w-xl shadow-2xl space-y-6"
+              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-5 sm:p-8 w-full max-w-xl max-h-[88dvh] overflow-y-auto shadow-2xl space-y-5 sm:space-y-6"
             >
-              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <Flame className="h-6 w-6 text-amber-500" />
+              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3 sm:pb-4 shrink-0">
+                <div className="pr-2">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500 shrink-0" />
                     Commit to Your Streak Goal
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -406,7 +406,7 @@ export default function LessonsPage() {
                 </div>
                 <button
                   onClick={() => setShowCommitmentModal(false)}
-                  className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                  className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0"
                 >
                   ✕
                 </button>
@@ -582,28 +582,28 @@ export default function LessonsPage() {
       {/* Interactive Duolingo Lesson Modal */}
       <AnimatePresence>
         {activeLesson && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-hidden">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[88vh] shadow-2xl relative my-auto flex flex-col overflow-hidden space-y-5"
+              className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-4 sm:p-8 w-full max-w-2xl max-h-[90dvh] shadow-2xl relative my-auto flex flex-col overflow-hidden space-y-4 sm:space-y-5"
             >
               {/* Header: Lesson Title & Progress Bar */}
-              <div className="space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4 shrink-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{activeLesson.icon}</span>
-                    <div>
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white">{activeLesson.title}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{activeLesson.subtitle}</p>
+              <div className="space-y-2.5 sm:space-y-3 border-b border-slate-200 dark:border-slate-800 pb-3 sm:pb-4 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xl sm:text-2xl shrink-0">{activeLesson.icon}</span>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">{activeLesson.title}</h3>
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{activeLesson.subtitle}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveLesson(null)}
-                    className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 </div>
 

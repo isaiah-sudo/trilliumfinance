@@ -25,6 +25,7 @@ import {
   Sliders,
   Palette
 } from 'lucide-react';
+import { useStockMarket } from '@/context/StockMarketContext';
 
 export type ThemeKey = 'emerald' | 'sapphire' | 'violet' | 'gold';
 export type WidgetSize = 'S' | 'M' | 'L';
@@ -166,6 +167,7 @@ const THEME_CONFIG: Record<
 };
 
 export default function CustomizableDashboardSimulator() {
+  const { stocks } = useStockMarket();
   const [widgets, setWidgets] = useState<DashboardWidget[]>(PRESET_LAYOUTS.trader);
   const [theme, setTheme] = useState<ThemeKey>('emerald');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -265,11 +267,21 @@ export default function CustomizableDashboardSimulator() {
       }
 
       case 'watchlist': {
-        const miniQuotes = [
-          { sym: 'NVDA', name: 'Nvidia', price: 230.20, chg: 2.56 },
-          { sym: 'AAPL', name: 'Apple', price: 327.30, chg: 0.73 },
-          { sym: 'TSLA', name: 'Tesla', price: 382.70, chg: 7.19 }
+        const watchlistSymbols = [
+          { sym: 'NVDA', name: 'Nvidia' },
+          { sym: 'AAPL', name: 'Apple' },
+          { sym: 'TSLA', name: 'Tesla' }
         ];
+
+        const miniQuotes = watchlistSymbols.map((item) => {
+          const live = stocks.find((s) => s.ticker === item.sym);
+          return {
+            sym: item.sym,
+            name: item.name,
+            price: live && live.price > 0 ? live.price : (item.sym === 'NVDA' ? 230.20 : item.sym === 'AAPL' ? 327.30 : 382.70),
+            chg: live ? live.change : (item.sym === 'NVDA' ? 2.56 : item.sym === 'AAPL' ? 0.73 : 7.19)
+          };
+        });
 
         return (
           <div className="space-y-1.5">

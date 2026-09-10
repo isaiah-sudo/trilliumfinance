@@ -1017,13 +1017,13 @@ export default function DashboardPage() {
           </div>
         </div>
         
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
           {/* Top Layer: Net Worth */}
-          <div className="p-4 md:p-6 lg:p-8 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 shadow-md transition-all duration-300">
+          <div className="p-4 sm:p-6 lg:p-8 rounded-2xl bg-slate-50/50 dark:bg-[#0f111a]/40 border border-slate-200 dark:border-slate-800/50 shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-                <div className={`text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
+                <div className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={displayPortfolio?.totalValue ?? 0} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
@@ -1031,34 +1031,34 @@ export default function DashboardPage() {
           </div>
 
           {/* Supporting Stats */}
-          <div className="p-4 md:p-6 lg:p-8 rounded-xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative w-full">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800/30">
-              <div className="pb-4 md:pb-0 md:pr-6 w-full flex-1">
-                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Available Cash</div>
-                <div className={`text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
+          <div className="p-4 sm:p-6 lg:p-8 rounded-2xl bg-slate-50/50 dark:bg-[#0f111a]/30 border border-slate-200 dark:border-slate-800/40 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-100/50 dark:hover:bg-[#0f111a]/40 duration-200 pet-container-target relative w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800/30">
+              <div className="pb-3 sm:pb-0 sm:pr-4 md:pr-6 w-full flex-1">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Available Cash</div>
+                <div className={`text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={displayPortfolio?.cash ?? 0} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
 
-              <div className="py-4 md:py-0 md:px-6 w-full flex-1">
-                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Total Performance</div>
+              <div className="py-3 sm:py-0 sm:px-4 md:px-6 w-full flex-1">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.totalPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                  <div className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.totalPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     <AnimatedNumber value={displayPortfolio?.totalPerformanceUSD ?? 0} formatter={formatSignedCurrency} />
                   </div>
-                  <div className={`text-[11px] md:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                  <div className={`text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
                     <AnimatedNumber value={displayPortfolio?.totalPerformancePercent ?? 0} formatter={formatSignedPercent} />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 md:pt-0 md:pl-6 w-full flex-1">
-                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">Day Performance</div>
+              <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6 w-full flex-1">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Day Performance</div>
                 <div className="flex flex-col">
-                  <div className={`text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.dayPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
+                  <div className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight font-num-${numberFont} ${(displayPortfolio?.dayPerformanceUSD ?? 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-500'}`}>
                     <AnimatedNumber value={displayPortfolio?.dayPerformanceUSD ?? 0} formatter={formatSignedCurrency} />
                   </div>
-                  <div className={`text-[11px] md:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
+                  <div className={`text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5 font-num-${numberFont}`}>
                     <AnimatedNumber value={displayPortfolio?.dayPerformancePercent ?? 0} formatter={formatSignedPercent} />
                   </div>
                 </div>
@@ -1488,7 +1488,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl backdrop-blur-md"
+              className="bg-white/95 dark:bg-[#121622]/95 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 w-full max-w-sm max-h-[88dvh] overflow-y-auto shadow-2xl backdrop-blur-md"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-slate-900 dark:text-white font-bold text-lg">New Order</h3>

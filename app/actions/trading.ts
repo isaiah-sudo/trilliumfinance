@@ -142,18 +142,13 @@ async function fetchFinnhubProfile(symbol: string) {
   const reliableLogo = getStockLogo(sym, meta.domain);
 
   try {
-    const token = getFinnhubToken();
-    if (token) {
-      const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${token}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.name) {
-          return {
-            name: data.name || meta.name,
-            logo: data.logo || reliableLogo
-          };
-        }
-      }
+    const { getCompanyProfile } = await import('./stockDetails');
+    const profile = await getCompanyProfile(sym);
+    if (profile && profile.name) {
+      return {
+        name: profile.name || meta.name,
+        logo: profile.logo || reliableLogo
+      };
     }
   } catch (err) {
     // Continue with metadata fallback

@@ -380,7 +380,7 @@ export async function POST(request: Request) {
     ];
 
     // 7. Retrieve OpenRouter API Key
-    const apiKey = process.env.OPENROUTER_API_KEY || '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';
+    const apiKey = process.env.OPENROUTER_API_KEY || '';
 
     // If an OpenRouter key is available, attempt live LLM call across candidate models
     if (apiKey && apiKey !== 'your_openrouter_api_key_here') {

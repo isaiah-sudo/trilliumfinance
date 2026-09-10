@@ -1,12 +1,31 @@
 {
   "name": "Trillium Finance",
   "short_name": "Trillium",
-  "description": "Modern finance dashboard with realtime insights",
-  "start_url": "/",
+  "description": "Modern finance dashboard with realtime insights and interactive simulations",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
   "background_color": "#050505",
   "theme_color": "#050505",
+  "categories": [
+    "finance",
+    "education",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",

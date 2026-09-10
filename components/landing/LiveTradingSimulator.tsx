@@ -19,6 +19,9 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { useStockMarket } from '@/context/StockMarketContext';
+import { KNOWN_STOCKS_DATA } from '@/lib/stockUtils';
+
 interface AssetData {
   symbol: string;
   name: string;
@@ -97,6 +100,7 @@ const INITIAL_ASSETS: AssetData[] = [
 ];
 
 export default function LiveTradingSimulator() {
+  const { stocks } = useStockMarket();
   const [assets, setAssets] = useState<AssetData[]>(INITIAL_ASSETS);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('AAPL');
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
@@ -109,6 +113,43 @@ export default function LiveTradingSimulator() {
   const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<{ index: number; value: number; x: number; y: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const prevPriceRef = useRef<Record<string, number>>({});
+
+  // Synchronize assets state with global live stock prices whenever stocks update
+  useEffect(() => {
+    if (!stocks || stocks.length === 0) return;
+
+    setAssets((prev) =>
+      prev.map((asset) => {
+        const liveStock = stocks.find((s) => s.ticker === asset.symbol);
+        if (liveStock && liveStock.price > 0) {
+          const oldPrice = prevPriceRef.current[asset.symbol] ?? asset.price;
+          const newPrice = liveStock.price;
+          const delta = newPrice - oldPrice;
+          prevPriceRef.current[asset.symbol] = newPrice;
+
+          if (asset.symbol === selectedSymbol && Math.abs(delta) > 0.001) {
+            setPriceFlash(delta >= 0 ? 'up' : 'down');
+            setTimeout(() => setPriceFlash(null), 800);
+          }
+
+          const high24h = Math.max(asset.high24h, newPrice);
+          const low24h = Math.min(asset.low24h, newPrice);
+          const newSparkline = [...asset.sparkline.slice(1), newPrice];
+
+          return {
+            ...asset,
+            price: newPrice,
+            change: liveStock.change,
+            high24h,
+            low24h,
+            sparkline: newSparkline
+          };
+        }
+        return asset;
+      })
+    );
+  }, [stocks, selectedSymbol]);
 
   const activeAsset = useMemo(
     () => assets.find((a) => a.symbol === selectedSymbol) || assets[0],
@@ -119,38 +160,6 @@ export default function LiveTradingSimulator() {
     () => holdings.find((h) => h.symbol === activeAsset.symbol),
     [holdings, activeAsset.symbol]
   );
-
-  // Live Micro-Tick Engine to simulate authentic market pulsation
-  useEffect(() => {
-    const tickInterval = setInterval(() => {
-      setAssets((prev) =>
-        prev.map((asset) => {
-          if (Math.random() > 0.4) {
-            const variancePercent = (Math.random() * 0.4 - 0.19) / 100;
-            const delta = asset.price * variancePercent;
-            const newPrice = Math.max(1, +(asset.price + delta).toFixed(2));
-            const newChange = +(asset.change + variancePercent * 10).toFixed(2);
-            const newSparkline = [...asset.sparkline.slice(1), newPrice];
-
-            if (asset.symbol === selectedSymbol) {
-              setPriceFlash(delta >= 0 ? 'up' : 'down');
-              setTimeout(() => setPriceFlash(null), 800);
-            }
-
-            return {
-              ...asset,
-              price: newPrice,
-              change: newChange,
-              sparkline: newSparkline
-            };
-          }
-          return asset;
-        })
-      );
-    }, 2800);
-
-    return () => clearInterval(tickInterval);
-  }, [selectedSymbol]);
 
   // Order Calculations
   const maxBuyShares = Math.max(0, Math.floor(virtualCash / activeAsset.price));
