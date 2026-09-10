@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
     // Run ESLint during `next lint`
     ignoreDuringBuilds: false,
   },
+  webpack: (config) => {
+    // Suppress harmless critical dependency warning from protobufjs / gRPC dynamic require expressions
+    config.module.exprContextCritical = false;
+    return config;
+  },
   async headers() {
     return [
       {
