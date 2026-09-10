@@ -142,9 +142,9 @@ function parseFormattedStringToTokens(str: string): Token[] {
 
 function DigitColumn({ digit }: { digit: number }) {
   return (
-    <span className="inline-block relative overflow-hidden h-[1.15em] leading-none align-baseline">
+    <span className="inline-block relative overflow-hidden h-[1em] leading-none align-baseline text-current">
       {/* Ghost digit to guarantee exact font metric width, height, and alignment */}
-      <span className="invisible opacity-0 pointer-events-none select-none">
+      <span className="invisible opacity-0 pointer-events-none select-none leading-none">
         0
       </span>
       <motion.span
@@ -161,7 +161,7 @@ function DigitColumn({ digit }: { digit: number }) {
         {DIGITS.map((d) => (
           <span
             key={d}
-            className="h-[1.15em] leading-none flex items-center justify-center w-full select-none"
+            className="h-[1em] leading-none flex items-center justify-center w-full select-none"
           >
             {d}
           </span>

@@ -1023,7 +1023,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">Net Worth</div>
-                <div className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 tracking-tight font-num-${numberFont}`}>
+                <div className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight font-num-${numberFont}`}>
                   <AnimatedNumber value={displayPortfolio?.totalValue ?? 0} formatter={formatCurrency} startOffset={borrowedAmountJustNow} />
                 </div>
               </div>
