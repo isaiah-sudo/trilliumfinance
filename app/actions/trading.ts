@@ -714,40 +714,64 @@ export async function capturePortfolioSnapshot(userIdOverride?: string, summary?
   }
 }
 
-export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
+export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y' | 'ALL') {
   const userId = await getAuthenticatedUserId();
 
-  // Get live portfolio summary to guarantee graph matches actual current net worth & day performance
+  // Get live portfolio summary to guarantee graph matches actual current net worth & performance
   let currentNetWorth = 10000;
   let dayPerformanceUSD = 0;
+  let totalPerformanceUSD = 0;
   try {
     const summary = await getPortfolioSummary();
     currentNetWorth = summary.totalValue || 10000;
     dayPerformanceUSD = summary.dayPerformanceUSD || 0;
+    totalPerformanceUSD = summary.totalPerformanceUSD || 0;
   } catch (e) {
     console.error('Failed to get portfolio summary for graph:', e);
   }
   const startOfDayNetWorth = currentNetWorth - dayPerformanceUSD;
+  const initialDeposit = 10000;
   
-  // Calculate timestamps
+  // Calculate timestamps using accurate Eastern Time
   const now = new Date();
-  let start = new Date();
-  
+  const { getMarketOpenAndClose } = await import('@/lib/portfolioTransformation');
+  const { openUtcMs, closeUtcMs, isSessionActive } = getMarketOpenAndClose(now);
+
+  let startTimestamp: number;
+  let endTimestamp: number;
+
   if (timeRange === '1D') {
-    start.setHours(9, 30, 0, 0); // start of today market open
-    if (now.getHours() < 9 || (now.getHours() === 9 && now.getMinutes() < 30)) {
-      start.setDate(start.getDate() - 1);
-    }
+    startTimestamp = Math.floor(openUtcMs / 1000);
+    // If market session is currently active, end at now; if closed, end at close
+    endTimestamp = isSessionActive ? Math.floor(now.getTime() / 1000) : Math.floor(closeUtcMs / 1000);
   } else if (timeRange === '1W') {
-    start.setDate(now.getDate() - 7);
+    startTimestamp = Math.floor((now.getTime() - 7 * 24 * 3600 * 1000) / 1000);
+    endTimestamp = Math.floor(now.getTime() / 1000);
   } else if (timeRange === '1M') {
-    start.setMonth(now.getMonth() - 1);
+    startTimestamp = Math.floor((now.getTime() - 30 * 24 * 3600 * 1000) / 1000);
+    endTimestamp = Math.floor(now.getTime() / 1000);
   } else if (timeRange === '1Y') {
-    start.setFullYear(now.getFullYear() - 1);
+    startTimestamp = Math.floor((now.getTime() - 365 * 24 * 3600 * 1000) / 1000);
+    endTimestamp = Math.floor(now.getTime() / 1000);
+  } else {
+    // ALL (All Time)
+    startTimestamp = Math.floor((now.getTime() - 90 * 24 * 3600 * 1000) / 1000);
+    endTimestamp = Math.floor(now.getTime() / 1000);
   }
 
-  const startTimestamp = Math.floor(start.getTime() / 1000);
-  const endTimestamp = Math.floor(now.getTime() / 1000);
+  // Fetch SPY quote for realistic benchmark baseline and movement
+  let liveSpyQuote = { c: 512.50, pc: 510.25 };
+  try {
+    const q = await fetchFinnhubQuote('SPY');
+    if (q && q.c > 0) {
+      liveSpyQuote = q;
+    }
+  } catch (e) {
+    // Fallback to defaults
+  }
+
+  const startSpyPrice = timeRange === '1D' ? (liveSpyQuote.pc || 510.25) : (liveSpyQuote.c * 0.985);
+  const endSpyPrice = liveSpyQuote.c || 512.50;
 
   // Fetch from portfolio_snapshots (new schema) and fallback to portfolio_history (old schema)
   let rawPoints: { time: number; value: number; spyValue?: number }[] = [];
@@ -756,7 +780,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     const colRef = collection(db, 'users', userId, collectionName);
     const q = query(
       colRef,
-      where('timestamp', '>=', new Date(start.getTime())),
+      where('timestamp', '>=', new Date(startTimestamp * 1000)),
       orderBy('timestamp', 'asc')
     );
     const snap = await getDocs(q);
@@ -767,7 +791,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
         if (data && data.timestamp) {
           pts.push({
             time: Math.floor(data.timestamp.toDate().getTime() / 1000),
-            value: data.totalValue !== undefined ? data.totalValue : 10000,
+            value: data.totalValue !== undefined ? data.totalValue : currentNetWorth,
             spyValue: data.spyValue,
           });
         }
@@ -779,44 +803,47 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
   try {
     rawPoints = await fetchCollectionData('portfolio_snapshots');
     if (rawPoints.length === 0) {
-      // Fallback to legacy portfolio_history
       rawPoints = await fetchCollectionData('portfolio_history');
     }
   } catch (err) {
     console.error('Failed to fetch snapshot data:', err);
   }
 
-  if (timeRange === '1D') {
-    // Ensure baseline starting point at 9:30 AM exists
-    const hasStartPoint = rawPoints.some((p) => Math.abs(p.time - startTimestamp) <= 300);
-    if (!hasStartPoint) {
-      rawPoints.unshift({
-        time: startTimestamp,
-        value: startOfDayNetWorth,
-        spyValue: 510.25,
-      });
-    }
+  // Define starting net worth baseline based on timeframe
+  const periodStartNetWorth = timeRange === '1D' 
+    ? startOfDayNetWorth 
+    : (timeRange === 'ALL' ? initialDeposit : (rawPoints[0]?.value || (currentNetWorth - totalPerformanceUSD)));
+
+  // Ensure baseline starting point exists
+  const hasStartPoint = rawPoints.some((p) => Math.abs(p.time - startTimestamp) <= 300);
+  if (!hasStartPoint) {
+    rawPoints.unshift({
+      time: startTimestamp,
+      value: periodStartNetWorth,
+      spyValue: startSpyPrice,
+    });
   }
 
   // Always append current live net worth as the final point
   rawPoints.push({
     time: endTimestamp,
     value: currentNetWorth,
-    spyValue: 510.25,
+    spyValue: endSpyPrice,
   });
 
-  // Sort by time
+  // Sort chronologically
   rawPoints.sort((a, b) => a.time - b.time);
 
   // If points are sparse or all have identical values (flat line), generate organic realistic market trajectory
   const allSameValue = rawPoints.every((p) => Math.abs(p.value - rawPoints[0].value) < 0.01);
   if (rawPoints.length <= 2 || allSameValue) {
-    const startVal = timeRange === '1D' ? startOfDayNetWorth : (rawPoints[0]?.value || 10000);
+    const startVal = periodStartNetWorth;
     const endVal = currentNetWorth;
     const pointCount = 26;
     const syntheticPoints = [];
     
     const diff = endVal - startVal;
+    const spyDiff = endSpyPrice - startSpyPrice;
     
     for (let i = 0; i < pointCount; i++) {
       const t = i / (pointCount - 1);
@@ -824,14 +851,17 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
       
       // Micro market wave variation
       const sineWave = Math.sin(i * 0.45) * 0.15 + Math.cos(i * 0.25) * 0.1;
-      const waveAmplitude = Math.max(10, Math.abs(diff) * 0.25);
+      const waveAmplitude = Math.max(8, Math.abs(diff) * 0.2);
       
       let val = startVal + t * diff;
       if (i > 0 && i < pointCount - 1) {
         val += sineWave * waveAmplitude;
       }
       
-      const spyVal = 510.25 * (1 + t * 0.012 + sineWave * 0.004);
+      let spyVal = startSpyPrice + t * spyDiff;
+      if (i > 0 && i < pointCount - 1) {
+        spyVal += Math.sin(i * 0.35) * (Math.abs(spyDiff) * 0.25 || 0.8);
+      }
 
       syntheticPoints.push({
         time,
@@ -842,26 +872,19 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y') {
     rawPoints = syntheticPoints;
   }
 
-  // Import market hours filter helper
-  const { filterMarketHoursOnly } = await import('@/lib/portfolioTransformation');
-  const marketOnlyPoints = filterMarketHoursOnly(rawPoints);
-  if (marketOnlyPoints.length > 0) {
-    rawPoints = marketOnlyPoints;
-  }
-
-  // Generate fallback/mock SPY data if it's missing from snapshots
-  const baselineSpy = 510.25;
+  // Generate fallback SPY data if any points are missing it
   rawPoints = rawPoints.map((pt, index) => {
     if (pt.spyValue !== undefined && pt.spyValue > 0) {
       return pt;
     }
-    // Random walk fallback for SPY if not recorded in snapshot
-    const pctChange = (index / Math.max(1, rawPoints.length - 1)) * 0.02 - 0.01;
+    const t = index / Math.max(1, rawPoints.length - 1);
     return {
       ...pt,
-      spyValue: Number((baselineSpy * (1 + pctChange)).toFixed(2))
+      spyValue: Number((startSpyPrice + t * (endSpyPrice - startSpyPrice)).toFixed(2))
     };
   });
+
+  const baselineSpy = startSpyPrice;
 
   // Resample helper to guarantee clean 26 target points evenly distributed
   function resampleData(data: typeof rawPoints, targetCount = 26): { time: number; value: number; spyValue: number }[] {

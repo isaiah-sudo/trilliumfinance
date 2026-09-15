@@ -21,7 +21,7 @@ export const KNOWN_STOCKS_DATA: Record<string, StockMetadata> = {
   META: { ticker: 'META', name: 'Meta Platforms Inc.', category: 'Technology', domain: 'meta.com', basePrice: 614.70, baseChange: 3.68 },
   TSLA: { ticker: 'TSLA', name: 'Tesla Inc.', category: 'Technology', domain: 'tesla.com', basePrice: 382.70, baseChange: 7.19 },
   TSM: { ticker: 'TSM', name: 'Taiwan Semiconductor', category: 'Technology', domain: 'tsmc.com', basePrice: 198.50, baseChange: 1.88 },
-  AVGO: { ticker: 'AVGO', name: 'Broadcom Inc.', category: 'Technology', domain: 'broadcom.com', basePrice: 215.30, baseChange: 1.45 },
+  AVGO: { ticker: 'AVGO', name: 'Broadcom Inc.', category: 'Technology', domain: 'broadcom.com', basePrice: 339.30, baseChange: -1.58 },
   ASML: { ticker: 'ASML', name: 'ASML Holding', category: 'Technology', domain: 'asml.com', basePrice: 945.10, baseChange: 0.95 },
   ORCL: { ticker: 'ORCL', name: 'Oracle Corp.', category: 'Technology', domain: 'oracle.com', basePrice: 168.50, baseChange: 1.12 },
   AMD: { ticker: 'AMD', name: 'Advanced Micro Devices', category: 'Technology', domain: 'amd.com', basePrice: 164.40, baseChange: 0.85 },
@@ -76,8 +76,8 @@ export const KNOWN_STOCKS_DATA: Record<string, StockMetadata> = {
   // Index ETFs
   SPY: { ticker: 'SPY', name: 'SPDR S&P 500 ETF', category: 'Index', domain: 'ssga.com', basePrice: 773.80, baseChange: 1.13 },
   QQQ: { ticker: 'QQQ', name: 'Invesco QQQ Trust', category: 'Index', domain: 'invesco.com', basePrice: 718.70, baseChange: 1.34 },
-  DIA: { ticker: 'DIA', name: 'SPDR Dow Jones Industrial', category: 'Index', domain: 'ssga.com', basePrice: 438.00, baseChange: 0.40 },
-  IWM: { ticker: 'IWM', name: 'iShares Russell 2000 ETF', category: 'Index', domain: 'ishares.com', basePrice: 232.00, baseChange: 1.10 }
+  IWM: { ticker: 'IWM', name: 'iShares Russell 2000 ETF', category: 'Index', domain: 'ishares.com', basePrice: 232.00, baseChange: 1.10 },
+  SOX: { ticker: 'SOX', name: 'PHLX Semiconductor Index', category: 'Index', domain: 'nasdaq.com', basePrice: 11175.50, baseChange: 1.25 }
 };
 
 /**

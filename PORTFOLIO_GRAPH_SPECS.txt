@@ -64,42 +64,42 @@ The portfolio graph ecosystem is composed of the following core files:
 --------------------------------------------------------------------------------
 A. Canvas & Dimensions:
    - Built on Recharts ResponsiveContainer (width: 100%, height: 100%, minHeight: 220px).
-   - SVG Linear Gradients for fill underneath the area curve:
-     * Positive Gain: 'portfolioGainGradient' (Stop 0%: #10B981 opacity 0.35 -> Stop 100%: opacity 0.0)
-     * Negative Loss: 'portfolioLossGradient' (Stop 0%: #F43F5E opacity 0.35 -> Stop 100%: opacity 0.0)
+   - Minimalist dark aesthetic inspired by modern Robinhood trading charts.
+   - SVG Linear Gradients for subtle under-curve fill:
+     * Positive Gain: 'robinhoodGainGradient' (Stop 0%: #10B981 opacity 0.18 -> Stop 100%: opacity 0.0)
+     * Negative Loss: 'robinhoodLossGradient' (Stop 0%: #F43F5E opacity 0.18 -> Stop 100%: opacity 0.0)
 
 B. Line Styling:
    - Portfolio Curve:
      * Type: 'monotone' (smooth cubic spline)
-     * Stroke Width: 2.5px
-     * Color: Emerald (#10B981) when total return >= 0, Crimson (#F43F5E) when total return < 0
-     * Active Dot: Radius 6px, stroke #0F172A (2.5px), fill matching line color
+     * Stroke Width: 2.25px
+     * Color: Emerald (#10B981) when return >= 0, Crimson (#F43F5E) when return < 0
+     * Active Dot: Radius 5px, stroke #0F172A (2px), fill matching line color
    - Benchmark Line (SPY/DJI/NASDAQ):
      * Type: 'monotone'
-     * Stroke Width: 1.5px
-     * Stroke Dasharray: '4 4' (dashed line)
-     * Color: Slate (#64748B)
+     * Stroke Width: 1.75px
+     * Color: Sky Blue (#38BDF8), matching the header benchmark return indicator
      * Animation: Static / false for fast rendering
 
 C. Milestone Pin Rendering ('renderCustomDot'):
    - Points with unlocked achievements render an interactive dual-circle milestone dot:
-     * Outer circle: Radius 7px, Fill #F59E0B (Amber Gold), Stroke #0F172A (2px width)
-     * Inner circle: Radius 3px, Fill #FFFFFF, CSS 'animate-ping' pulse animation
+     * Outer circle: Radius 6px, Fill #F59E0B (Amber Gold), Stroke #0F172A (2px width)
+     * Inner circle: Radius 2.5px, Fill #FFFFFF, CSS 'animate-ping' pulse animation
      * Interaction: Clicking or hovering focuses the achievement card.
 
 D. Axes & Grid:
-   - CartesianGrid: Minimal horizontal dashed grid (#334155 opacity 0.4), vertical grid disabled.
-   - X-Axis: Text fill #94A3B8, font size 11px, font-weight 500. Formats time labels based on range.
-   - Y-Axis: Hidden for minimalist aesthetic. Domain auto-computes with dynamic 8% top/bottom padding:
+   - Clean, borderless, zero-grid layout matching Robinhood.
+   - Reference Line: Subtle horizontal dashed baseline at the start value (stroke: #475569, strokeDasharray: '3 3', strokeOpacity: 0.4).
+   - X-Axis & Y-Axis: Hidden for sleek minimalist aesthetic. Domain auto-computes with dynamic 12% top/bottom padding:
      Domain = [Math.max(0, min - padding), max + padding]
 
-E. Floating TradingView Tooltip ('CustomTooltip'):
-   - Container: Rounded-xl, bg-white/95 (light) or bg-[#0F172A]/95 (dark), backdrop-blur-md, border border-slate-800.
-   - Cursor: Vertical dashed line matching the active theme color (strokeOpacity: 0.6).
-   - Content:
-     * Formatted Time (EST timezone: e.g., 'Mon, Sep 7, 2:40 PM').
-     * Portfolio Value ($USD) + percentage change from period baseline.
-     * Benchmark Value ($USD scaled to portfolio starting value) + relative percentage change.
+E. Dynamic Header Scrubbing & Tooltip:
+   - Instead of a bulky floating box obscuring the chart curves, mouse movement across the chart triggers interactive scrubbing:
+     * Large bold Net Worth display updates live to the hovered point's dollar value.
+     * Change row displays relative dollar change, percentage change, and precise timestamp.
+     * Benchmark return indicator updates to the benchmark's return at that time point.
+     * Vertical dashed crosshair line follows the mouse cursor with an active dot anchored on the curve.
+     * Upon mouse leave, values smoothly revert to the current net worth and selected timeframe change.
 
 --------------------------------------------------------------------------------
 4. LIVE MARKET COUNTDOWN ENGINE

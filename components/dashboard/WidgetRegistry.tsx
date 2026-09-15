@@ -12,11 +12,13 @@ import { getStockLogo } from '@/lib/stockUtils';
 import { useStockMarket } from '@/context/StockMarketContext';
 import { getDailyThreeNews, NewsArticle } from '@/app/actions/news';
 
+import { TimeRange } from '@/lib/portfolioTransformation';
+
 export interface WidgetComponentProps {
   portfolio: any;
   chartData: { portfolio: any[]; benchmark: any[] } | null;
-  timeRange: '1D' | '1W' | '1M' | '1Y';
-  setTimeRange: (tr: '1D' | '1W' | '1M' | '1Y') => void;
+  timeRange: TimeRange;
+  setTimeRange: (tr: TimeRange) => void;
   hoveredData: any;
   setHoveredData: (d: any) => void;
   handleLookAchievement: (id: string) => void;
@@ -27,20 +29,24 @@ export interface WidgetComponentProps {
 
 // 1. Portfolio Performance Graph Widget
 export function PortfolioGraphWidget({
+  portfolio,
   chartData,
   timeRange,
   setTimeRange,
   setHoveredData,
   handleLookAchievement,
+  numberFont,
 }: WidgetComponentProps) {
   return (
     <div className="h-full flex flex-col justify-between">
       <PortfolioChart
+        portfolio={portfolio}
         data={chartData || { portfolio: [], benchmark: [] }}
         timeRange={timeRange}
         onTimeRangeChange={setTimeRange}
         onHover={setHoveredData}
         onLookAchievement={handleLookAchievement}
+        numberFont={numberFont}
       />
     </div>
   );

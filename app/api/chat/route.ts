@@ -22,7 +22,8 @@ LIVE MARKET & SITE DATA ACCESS:
 - You have access to real-time market data feeds, company profile metrics, and the user's active Trillium Finance portfolio.
 - Whenever live market data or user portfolio information is provided in the prompt context below, you MUST use the exact live numbers (price, daily % change, market cap, cash balance, holdings, P/L) in your response.
 - NEVER invent fictitious prices or outdated valuation figures when real-time site data is provided. Reference the current live price and market cap as your baseline anchor.
-- Format ticker symbols clearly with dollar signs (e.g. $NVDA, $AAPL) so they render as interactive buttons for the user.
+- NEVER claim or state "Without a live quote feed attached to this chat" or that you cannot cite live prices. Trillium Finance streams live market quotes directly to your prompt context.
+- Format ticker symbols clearly with dollar signs (e.g. $AVGO, $SOX, $NVDA, $AAPL) so they render as interactive clickable buttons for the user to open the Trillium Stock Chart and News.
 
 STRICT BOUNDARY & SAFETY RULES:
 1. You ONLY answer questions related to financial markets, stock analysis, macroeconomics, interest rates, valuation metrics, corporate earnings, personal finance, investing, portfolio strategy, and the Trillium Finance platform.
@@ -53,9 +54,26 @@ function extractTickers(text: string): string[] {
   // 2. Known popular stock symbols matching standalone words
   const KNOWN_SYMBOLS = new Set([
     'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA',
-    'TSM', 'JPM', 'V', 'MA', 'AMD', 'INTC', 'NFLX', 'SPY', 'QQQ', 'DIA',
-    'IWM', 'BAC', 'WMT', 'PG', 'UNH', 'HD', 'DIS', 'BA', 'NKE'
+    'TSM', 'AVGO', 'SOX', 'SOXX', 'JPM', 'V', 'MA', 'AMD', 'INTC', 'NFLX',
+    'SPY', 'QQQ', 'DIA', 'IWM', 'ASML', 'ORCL', 'CRM', 'ADBE', 'BAC',
+    'WMT', 'PG', 'UNH', 'HD', 'DIS', 'BA', 'NKE', 'LLY', 'XOM', 'CVX',
+    'COST', 'KO', 'GS', 'MS', 'BLK'
   ]);
+
+  // 3. Common company names to ticker mapping
+  const COMPANY_ALIASES: Record<string, string> = {
+    'BROADCOM': 'AVGO',
+    'NVIDIA': 'NVDA',
+    'APPLE': 'AAPL',
+    'MICROSOFT': 'MSFT',
+    'TESLA': 'TSLA',
+    'AMAZON': 'AMZN',
+    'GOOGLE': 'GOOGL',
+    'ALPHABET': 'GOOGL',
+    'NETFLIX': 'NFLX',
+    'SEMICONDUCTOR': 'SOX',
+    'PHILADELPHIA SEMICONDUCTOR': 'SOX',
+  };
 
   const cleanText = text.toUpperCase().replace(/[^A-Z0-9\s]/g, ' ');
   const words = cleanText.split(/\s+/);
@@ -63,6 +81,13 @@ function extractTickers(text: string): string[] {
     if (KNOWN_SYMBOLS.has(word)) {
       tickers.add(word);
     }
+    if (COMPANY_ALIASES[word]) {
+      tickers.add(COMPANY_ALIASES[word]);
+    }
+  }
+
+  if (cleanText.includes('PHILADELPHIA SEMICONDUCTOR') || cleanText.includes('SOX INDEX')) {
+    tickers.add('SOX');
   }
 
   return Array.from(tickers);

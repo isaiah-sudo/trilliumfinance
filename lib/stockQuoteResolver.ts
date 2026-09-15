@@ -84,7 +84,8 @@ async function fetchQuoteFromFinnhub(symbol: string, token: string): Promise<Quo
 
 async function fetchQuoteFromYahoo(symbol: string): Promise<QuoteData | null> {
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d`, {
+    const yahooSymbol = symbol.toUpperCase() === 'SOX' ? '^SOX' : symbol;
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },

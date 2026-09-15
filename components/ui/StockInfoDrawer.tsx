@@ -2,10 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Cpu, Coins, Globe, Landmark, TrendingUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, ExternalLink, Cpu, Coins, Globe, Landmark, TrendingUp, Newspaper, Sparkles, Clock, ArrowRight } from 'lucide-react';
 import { getCompanyProfile, CompanyProfile } from '@/app/actions/stockDetails';
 import { getStockLogo } from '@/lib/stockUtils';
 import { Spinner } from './Spinner';
+import { StockPriceChart } from './StockPriceChart';
+
+interface StockNewsItem {
+  id: string;
+  headline: string;
+  summary: string;
+  source: string;
+  url: string;
+  image: string;
+  datetime: number;
+  timeAgo: string;
+}
 
 interface StockInfoDrawerProps {
   symbol: string;
@@ -18,9 +31,12 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
   isOpen,
   onClose,
 }) => {
+  const router = useRouter();
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [news, setNews] = useState<StockNewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState<boolean>(false);
 
   // Trigger loader whenever drawer opens or symbol changes
   useEffect(() => {
@@ -30,7 +46,10 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
     setLoading(true);
     setError(null);
     setProfile(null);
+    setNewsLoading(true);
+    setNews([]);
 
+    // 1. Fetch Profile
     getCompanyProfile(symbol)
       .then((data) => {
         if (active) {
@@ -45,6 +64,26 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
       .finally(() => {
         if (active) {
           setLoading(false);
+        }
+      });
+
+    // 2. Fetch Stock News
+    fetch(`/api/stocks/news?symbol=${encodeURIComponent(symbol)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch stock news');
+        return res.json();
+      })
+      .then((resData) => {
+        if (active && Array.isArray(resData?.articles)) {
+          setNews(resData.articles);
+        }
+      })
+      .catch(() => {
+        // News failure is non-blocking
+      })
+      .finally(() => {
+        if (active) {
+          setNewsLoading(false);
         }
       });
 
@@ -171,6 +210,11 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                     </div>
                   </div>
 
+                  {/* Interactive Trillium Price Chart */}
+                  <div className="space-y-2">
+                    <StockPriceChart symbol={symbol} />
+                  </div>
+
                   {/* Company Profile paragraph */}
                   <div className="space-y-3">
                     <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Company Profile</h4>
@@ -243,6 +287,87 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                       </div>
 
                     </div>
+                  </div>
+
+                  {/* Latest Headlines & Catalysts */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Newspaper className="h-3.5 w-3.5 text-blue-400" /> Latest Headlines & Catalysts
+                      </h4>
+                      {news.length > 0 && (
+                        <span className="text-[10px] font-mono font-bold text-slate-500">
+                          {news.length} {news.length === 1 ? 'Article' : 'Articles'}
+                        </span>
+                      )}
+                    </div>
+
+                    {newsLoading && (
+                      <div className="flex items-center justify-center p-8 bg-[#141925]/60 border border-slate-800/60 rounded-3xl">
+                        <Spinner className="h-5 w-5 text-blue-400 mr-2" />
+                        <span className="text-xs text-slate-400 font-bold animate-pulse">Loading stock catalysts...</span>
+                      </div>
+                    )}
+
+                    {!newsLoading && news.length === 0 && (
+                      <div className="p-5 text-center text-xs text-slate-500 bg-[#141925]/60 border border-slate-800/60 rounded-3xl">
+                        No recent headlines found for this asset.
+                      </div>
+                    )}
+
+                    {!newsLoading && news.length > 0 && (
+                      <div className="space-y-3">
+                        {news.map((item) => (
+                          <div
+                            key={item.id}
+                            className="bg-[#141925]/80 border border-slate-800/70 hover:border-slate-700/90 rounded-2xl p-4 space-y-2.5 transition-all shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-extrabold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                {item.source}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> {item.timeAgo}
+                              </span>
+                            </div>
+
+                            <h5 className="text-xs font-bold text-white leading-snug group-hover:text-blue-300 transition-colors">
+                              {item.headline}
+                            </h5>
+
+                            {item.summary && (
+                              <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed font-normal">
+                                {item.summary}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between pt-1.5 gap-2 border-t border-slate-800/50">
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] font-bold text-slate-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+                              >
+                                <span>Read full story</span>
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onClose();
+                                  router.push(`/dashboard/chat?q=${encodeURIComponent(`Analyze the recent catalyst for $${symbol}: "${item.headline}". What are the impacts on corporate guidance, margins, and market positioning?`)}`);
+                                }}
+                                className="text-[10px] font-extrabold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1 rounded-lg border border-blue-500/20 transition-all inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Sparkles className="h-2.5 w-2.5 text-blue-400" />
+                                <span>Analyze in Chat</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

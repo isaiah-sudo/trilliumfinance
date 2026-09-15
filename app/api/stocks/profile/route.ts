@@ -136,6 +136,28 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     marketCapitalization: 950000,
     shareOutstanding: 5180,
     description: 'Taiwan Semiconductor Manufacturing Company is the premier dedicated pure-play semiconductor foundry in the world, manufacturing advanced chips for global technology giants.'
+  },
+  AVGO: {
+    name: 'Broadcom Inc.',
+    ticker: 'AVGO',
+    exchange: 'NASDAQ',
+    logo: 'https://www.google.com/s2/favicons?domain=broadcom.com&sz=128',
+    weburl: 'https://www.broadcom.com',
+    finnhubIndustry: 'Semiconductors & AI Infrastructure',
+    marketCapitalization: 1580000,
+    shareOutstanding: 4680,
+    description: 'Broadcom Inc. is a global technology leader designing and supplying semiconductor and enterprise software solutions, including custom AI ASICs/XPUs, Ethernet switching silicon, and VMware virtualization.'
+  },
+  SOX: {
+    name: 'PHLX Semiconductor Sector Index',
+    ticker: 'SOX',
+    exchange: 'NASDAQ / PHLX',
+    logo: 'https://www.google.com/s2/favicons?domain=nasdaq.com&sz=128',
+    weburl: 'https://www.nasdaq.com/market-activity/index/sox',
+    finnhubIndustry: 'Semiconductor Benchmark Index',
+    marketCapitalization: 4500000,
+    shareOutstanding: 0,
+    description: 'The PHLX Semiconductor Sector Index (SOX) is the premier global benchmark tracking the 30 largest publicly traded companies involved in the design, distribution, manufacture, and sale of semiconductors worldwide.'
   }
 };
 

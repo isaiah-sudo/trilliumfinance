@@ -132,6 +132,28 @@ const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
     marketCapitalization: 570000,
     shareOutstanding: 2870,
     description: 'JPMorgan Chase & Co. is a preeminent global financial services firm and the largest banking institution in the United States. It provides consumer banking, investment banking, commercial banking, financial transaction processing, and asset management services across global markets.'
+  },
+  AVGO: {
+    name: 'Broadcom Inc.',
+    ticker: 'AVGO',
+    exchange: 'NASDAQ',
+    logo: 'https://www.google.com/s2/favicons?sz=128&domain=broadcom.com',
+    weburl: 'https://www.broadcom.com',
+    finnhubIndustry: 'Semiconductors & AI Infrastructure',
+    marketCapitalization: 1580000,
+    shareOutstanding: 4680,
+    description: 'Broadcom Inc. is a global technology leader that designs, develops, and supplies semiconductor and enterprise software solutions. Broadcom is a cornerstone of generative AI infrastructure through custom AI ASICs (XPUs for hyperscalers like Google and Meta), Ethernet switching silicon (Tomahawk and Jericho), and enterprise cloud virtualization (VMware).'
+  },
+  SOX: {
+    name: 'PHLX Semiconductor Sector Index',
+    ticker: 'SOX',
+    exchange: 'NASDAQ / PHLX',
+    logo: 'https://www.google.com/s2/favicons?sz=128&domain=nasdaq.com',
+    weburl: 'https://www.nasdaq.com/market-activity/index/sox',
+    finnhubIndustry: 'Semiconductor Benchmark Index',
+    marketCapitalization: 4500000,
+    shareOutstanding: 0,
+    description: 'The PHLX Semiconductor Sector Index (SOX) is the premier global benchmark tracking the 30 largest publicly traded companies involved in the design, distribution, manufacture, and sale of semiconductors worldwide, including NVIDIA, Broadcom, TSMC, AMD, ASML, and Intel.'
   }
 };
 

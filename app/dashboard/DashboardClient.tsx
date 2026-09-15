@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
+import { TimeRange } from '@/lib/portfolioTransformation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { ACHIEVEMENTS, getUserAchievements } from '@/app/actions/achievements';
 import { useSettings } from '@/context/SettingsContext';
@@ -316,7 +317,7 @@ export default function DashboardPage() {
   const { getStock, lastUpdated } = useStockMarket();
 
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
-  const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | '1Y'>('1D');
+  const [timeRange, setTimeRange] = useState<TimeRange>('1D');
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
@@ -474,6 +475,13 @@ export default function DashboardPage() {
         label: 'Today'
       };
     }
+    if (timeRange === 'ALL') {
+      return {
+        usd: portfolio?.totalPerformanceUSD ?? 0,
+        percent: portfolio?.totalPerformancePercent ?? 0,
+        label: 'All Time'
+      };
+    }
     
     const chartPortfolio = chartData?.portfolio || [];
     if (chartPortfolio.length < 2) {
@@ -485,10 +493,11 @@ export default function DashboardPage() {
     const usd = endVal - startVal;
     const percent = startVal > 0 ? (usd / startVal) * 100 : 0;
     
-    const labelMap = {
+    const labelMap: Record<string, string> = {
       '1W': 'Past Week',
       '1M': 'Past Month',
-      '1Y': 'Past Year'
+      '1Y': 'Past Year',
+      'ALL': 'All Time'
     };
     
     return {

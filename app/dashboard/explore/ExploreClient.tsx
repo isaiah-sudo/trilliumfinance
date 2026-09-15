@@ -10,7 +10,7 @@ import { AnimatedNumber } from '@/components/ui';
 import { useStockMarket, StockQuote } from '@/context/StockMarketContext';
 import { getStockLogo } from '@/lib/stockUtils';
 
-const CATEGORIES = ['All', 'Technology', 'Healthcare', 'Energy', 'Finance', 'Consumer'];
+const CATEGORIES = ['All', 'Technology', 'Healthcare', 'Energy', 'Finance', 'Consumer', 'Index'];
 
 export default function MarketExplorer() {
   const { user } = useAuth();
@@ -193,6 +193,7 @@ export default function MarketExplorer() {
                     stock.category === 'Finance' ? 'bg-indigo-500/10 text-indigo-400' :
                     stock.category === 'Consumer' ? 'bg-orange-500/10 text-orange-400' :
                     stock.category === 'Energy' ? 'bg-yellow-500/10 text-yellow-400' :
+                    stock.category === 'Index' ? 'bg-purple-500/10 text-purple-400' :
                     'bg-teal-500/10 text-teal-400'
                   }`}>
                     {stock.category}

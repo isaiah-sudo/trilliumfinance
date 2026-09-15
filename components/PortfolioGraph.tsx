@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
   ReferenceLine,
 } from 'recharts';
 import {
@@ -18,23 +17,17 @@ import {
   ChartPoint26,
   TimeRange,
   transformPortfolioData,
+  getESTDateInfo,
 } from '@/lib/portfolioTransformation';
 
 function getMarketStatus(): { isOpen: boolean; label: string } {
-  const now = new Date();
-  const estStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
-  const estDate = new Date(estStr);
-  const estDay = estDate.getDay(); // 0 = Sun, 6 = Sat
+  const est = getESTDateInfo(new Date());
 
-  const hours = estDate.getHours();
-  const minutes = estDate.getMinutes();
-  const seconds = estDate.getSeconds();
-  const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
-
+  const currentTotalSeconds = est.hours * 3600 + est.minutes * 60 + est.seconds;
   const marketOpenSec = 9 * 3600 + 30 * 60; // 9:30 AM EST
   const marketCloseSec = 16 * 3600;         // 4:00 PM EST
 
-  const isWeekday = estDay >= 1 && estDay <= 5;
+  const isWeekday = !est.isWeekend;
   const isOpen = isWeekday && currentTotalSeconds >= marketOpenSec && currentTotalSeconds < marketCloseSec;
 
   if (isOpen) {
@@ -44,16 +37,14 @@ function getMarketStatus(): { isOpen: boolean; label: string } {
     const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
     return { isOpen: true, label: `Closes in ${timeStr}` };
   } else {
-    let daysUntilOpen = 0;
+    let daysUntilOpen = 1;
     if (isWeekday && currentTotalSeconds < marketOpenSec) {
       daysUntilOpen = 0;
-    } else if (estDay === 5 && currentTotalSeconds >= marketCloseSec) {
+    } else if (est.weekday === 'Fri' && currentTotalSeconds >= marketCloseSec) {
       daysUntilOpen = 3;
-    } else if (estDay === 6) {
+    } else if (est.weekday === 'Sat') {
       daysUntilOpen = 2;
-    } else if (estDay === 0) {
-      daysUntilOpen = 1;
-    } else {
+    } else if (est.weekday === 'Sun') {
       daysUntilOpen = 1;
     }
 
@@ -78,27 +69,31 @@ function getMarketStatus(): { isOpen: boolean; label: string } {
 }
 
 export interface PortfolioGraphProps {
+  portfolio?: any;
   data: { portfolio: RawSnapshot[]; benchmark: RawSnapshot[] };
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
   onHover?: (data: { portfolio: number; spy: number; time: number; achievements?: any[] } | null) => void;
   onLookAchievement?: (achievementId: string) => void;
   showBenchmark?: boolean;
+  numberFont?: string;
 }
 
 export default function PortfolioGraph({
+  portfolio,
   data,
   timeRange,
   onTimeRangeChange,
   onHover,
   onLookAchievement,
   showBenchmark = true,
+  numberFont = 'sans',
 }: PortfolioGraphProps) {
-  const [isHovering, setIsHovering] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<'SPY' | 'DJI' | 'NASDAQ'>('SPY');
   const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; label: string }>({ isOpen: false, label: '' });
   const [isMounted, setIsMounted] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState<ChartPoint26 | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -113,35 +108,134 @@ export default function PortfolioGraph({
     return () => clearInterval(interval);
   }, []);
 
-  // Transform raw data into dataset
+  // Transform raw snapshots into 26-slot dataset
   const chartData = useMemo(() => {
     return transformPortfolioData(data, timeRange);
   }, [data, timeRange]);
 
-  // Valid non-null data points for calculation
+  // Valid non-null data points
   const activePoints = useMemo(() => {
     return chartData.filter((p) => p.portfolioValue !== null) as (ChartPoint26 & { portfolioValue: number })[];
   }, [chartData]);
 
-  // Positive vs Negative performance determination
-  const isPositive = useMemo(() => {
-    if (activePoints.length < 2) return true;
-    const startVal = activePoints[0].portfolioValue;
-    const endVal = activePoints[activePoints.length - 1].portfolioValue;
-    return endVal >= startVal;
+  // Baseline starting values
+  const startPortVal = useMemo(() => {
+    if (activePoints.length > 0) return activePoints[0].portfolioValue;
+    if (portfolio?.totalValue !== undefined && portfolio?.dayPerformanceUSD !== undefined) {
+      return portfolio.totalValue - portfolio.dayPerformanceUSD;
+    }
+    return 10000;
+  }, [activePoints, portfolio]);
+
+  const currentPortVal = useMemo(() => {
+    if (portfolio?.totalValue !== undefined) return portfolio.totalValue;
+    if (portfolio?.netWorth !== undefined) return portfolio.netWorth;
+    if (activePoints.length > 0) return activePoints[activePoints.length - 1].portfolioValue;
+    return 10000;
+  }, [portfolio, activePoints]);
+
+  const startSpyVal = useMemo(() => {
+    return activePoints[0]?.spyValue ?? 510;
   }, [activePoints]);
 
-  // Modern Robinhood / TradingView aesthetic palette
-  const strokeColor = isPositive ? '#10B981' : '#F43F5E';
-  const gradientId = isPositive ? 'portfolioGainGradient' : 'portfolioLossGradient';
-  const spyColor = '#64748B';
+  const currentSpyVal = useMemo(() => {
+    return activePoints[activePoints.length - 1]?.spyValue ?? startSpyVal;
+  }, [activePoints, startSpyVal]);
 
-  // Custom Mouse Move Handler for smooth tooltips and parent callbacks
+  // Determine performance change & display metrics
+  const { displayValue, displayDiff, displayPercent, displayTimeLabel, benchReturn, isPositive } = useMemo(() => {
+    if (hoveredPoint && hoveredPoint.portfolioValue !== null) {
+      const hVal = hoveredPoint.portfolioValue;
+      const hDiff = hVal - startPortVal;
+      const hPct = startPortVal > 0 ? (hDiff / startPortVal) * 100 : 0;
+      
+      let tLabel = hoveredPoint.timeLabel;
+      if (hoveredPoint.time) {
+        const d = new Date(hoveredPoint.time * 1000);
+        if (timeRange === '1D') {
+          tLabel = d.toLocaleTimeString('en-US', {
+            timeZone: 'America/New_York',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+        } else {
+          tLabel = d.toLocaleDateString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+        }
+      }
+
+      let bRet = 0;
+      if (hoveredPoint.spyValue !== null && startSpyVal > 0) {
+        bRet = ((hoveredPoint.spyValue - startSpyVal) / startSpyVal) * 100;
+      }
+
+      return {
+        displayValue: hVal,
+        displayDiff: hDiff,
+        displayPercent: hPct,
+        displayTimeLabel: tLabel,
+        benchReturn: bRet,
+        isPositive: hDiff >= 0,
+      };
+    }
+
+    // Default (unhovered) metrics: prioritize accurate values from portfolio store
+    let diff = currentPortVal - startPortVal;
+    let pct = startPortVal > 0 ? (diff / startPortVal) * 100 : 0;
+    let tLabel = 'Today';
+
+    if (timeRange === '1D') {
+      if (portfolio?.dayPerformanceUSD !== undefined) {
+        diff = portfolio.dayPerformanceUSD;
+        pct = portfolio.dayPerformancePercent ?? (startPortVal > 0 ? (diff / startPortVal) * 100 : 0);
+      }
+      tLabel = 'Today';
+    } else if (timeRange === 'ALL') {
+      if (portfolio?.totalPerformanceUSD !== undefined) {
+        diff = portfolio.totalPerformanceUSD;
+        pct = portfolio.totalPerformancePercent ?? ((diff / 10000) * 100);
+      }
+      tLabel = 'All Time';
+    } else if (timeRange === '1W') {
+      tLabel = 'Past Week';
+    } else if (timeRange === '1M') {
+      tLabel = 'Past Month';
+    } else if (timeRange === '1Y') {
+      tLabel = 'Past Year';
+    }
+
+    let bRet = 0;
+    if (startSpyVal > 0 && currentSpyVal > 0) {
+      bRet = ((currentSpyVal - startSpyVal) / startSpyVal) * 100;
+    }
+
+    return {
+      displayValue: currentPortVal,
+      displayDiff: diff,
+      displayPercent: pct,
+      displayTimeLabel: tLabel,
+      benchReturn: bRet,
+      isPositive: diff >= 0,
+    };
+  }, [hoveredPoint, startPortVal, currentPortVal, startSpyVal, currentSpyVal, timeRange, portfolio]);
+
+  // Chart styling colors
+  const strokeColor = isPositive ? '#10B981' : '#F43F5E';
+  const gradientId = isPositive ? 'robinhoodGainGradient' : 'robinhoodLossGradient';
+  const spyColor = '#38BDF8'; // Sky blue for benchmark line
+
+  // Interactive mouse scrubbing
   const handleMouseMove = (state: any) => {
     if (state && state.activePayload && state.activePayload.length > 0) {
       const activePoint = state.activePayload[0].payload as ChartPoint26;
       if (activePoint.portfolioValue !== null) {
-        setIsHovering(true);
+        setHoveredPoint(activePoint);
         if (onHover) {
           onHover({
             portfolio: activePoint.portfolioValue,
@@ -155,22 +249,26 @@ export default function PortfolioGraph({
   };
 
   const handleMouseLeave = () => {
-    setIsHovering(false);
+    setHoveredPoint(null);
     if (onHover) {
       onHover(null);
     }
   };
 
-  // Milestone dot custom renderer for unlocked achievements
+  // Milestone dot renderer for unlocked achievements
   const renderCustomDot = (props: any) => {
     const { cx, cy, payload } = props;
     if (payload && payload.achievements && payload.achievements.length > 0) {
       return (
-        <g key={`achievement-dot-${payload.slotIndex}`} className="cursor-pointer">
+        <g
+          key={`achievement-dot-${payload.slotIndex}`}
+          className="cursor-pointer"
+          onClick={() => onLookAchievement && onLookAchievement(payload.achievements[0].id)}
+        >
           <circle
             cx={cx}
             cy={cy}
-            r={7}
+            r={6}
             fill="#F59E0B"
             stroke="#0F172A"
             strokeWidth={2}
@@ -179,7 +277,7 @@ export default function PortfolioGraph({
           <circle
             cx={cx}
             cy={cy}
-            r={3}
+            r={2.5}
             fill="#FFFFFF"
             className="animate-ping"
             style={{ transformOrigin: `${cx}px ${cy}px` }}
@@ -190,7 +288,7 @@ export default function PortfolioGraph({
     return null;
   };
 
-  // Y-Axis domain padding computation
+  // Y-Axis domain with padding
   const yDomain = useMemo(() => {
     if (activePoints.length === 0) return ['auto', 'auto'];
     const values = activePoints.flatMap((p) => [
@@ -199,57 +297,44 @@ export default function PortfolioGraph({
     ]);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const padding = (max - min) * 0.08 || min * 0.02 || 10;
+    const padding = Math.max((max - min) * 0.12, 10);
     return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
   }, [activePoints, showBenchmark]);
 
-  // Starting & Current values for header & percentage calculation
-  const startPortVal = activePoints[0]?.portfolioValue ?? 0;
-  const currentPortVal = activePoints[activePoints.length - 1]?.portfolioValue ?? 0;
-  const usdDiff = currentPortVal - startPortVal;
-  const percentDiff = startPortVal > 0 ? (usdDiff / startPortVal) * 100 : 0;
-
-  const startSpyVal = activePoints[0]?.spyValue ?? 0;
-
   return (
     <div className="w-full h-full flex flex-col justify-between font-sans select-none">
-      {/* Performance Header & Timeframe Control Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-        {/* Header Stats & Benchmark Dropdown */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-baseline gap-1.5">
-            <span className={`text-xl font-extrabold tracking-tight ${usdDiff >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-              {usdDiff >= 0 ? '+' : ''}${usdDiff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            <span className={`text-xs font-bold ${usdDiff >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-              ({percentDiff >= 0 ? '+' : ''}{percentDiff.toFixed(2)}%)
-            </span>
-          </div>
+      {/* Top Header Section (Robinhood Aesthetic) */}
+      <div className="flex flex-col gap-1.5 mb-2">
+        {/* Row 1: Subtitle & Controls */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Investing
+          </span>
 
-          <div className="flex items-center gap-2.5 sm:border-l border-slate-300 dark:border-slate-800 sm:pl-3">
-            {/* Market Countdown Timer */}
-            <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-2">
+            {/* Market Countdown Status */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#161B26] border border-slate-200 dark:border-slate-800/80 text-[11px] font-semibold">
               <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${marketStatus.isOpen ? 'bg-rose-400' : 'bg-emerald-400'}`} />
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${marketStatus.isOpen ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${marketStatus.isOpen ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${marketStatus.isOpen ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </span>
-              <span className={`font-bold ${marketStatus.isOpen ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'}`}>
+              <span className={marketStatus.isOpen ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}>
                 {marketStatus.label}
               </span>
             </div>
 
-            {/* Benchmark Selector Button */}
+            {/* Benchmark Selector */}
             <div className="relative">
               <button
                 onClick={() => setIsBenchmarkMenuOpen(!isBenchmarkMenuOpen)}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-[#161B26] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg bg-slate-100 dark:bg-[#161B26] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-sm"
               >
                 <span>{selectedBenchmark}</span>
                 <ChevronDown className="h-3 w-3 text-slate-400" />
               </button>
 
               {isBenchmarkMenuOpen && (
-                <div className="absolute left-0 mt-1 w-28 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xl py-1 z-30 font-sans">
+                <div className="absolute right-0 mt-1 w-28 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xl py-1 z-30 font-sans">
                   {(['SPY', 'DJI', 'NASDAQ'] as const).map((bm) => (
                     <button
                       key={bm}
@@ -271,29 +356,40 @@ export default function PortfolioGraph({
           </div>
         </div>
 
-        {/* Timeframe Control Tabs */}
-        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-          {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
-            const isActive = timeRange === range;
-            return (
-              <button
-                key={range}
-                onClick={() => onTimeRangeChange(range)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)] dark:bg-emerald-500/15'
-                    : 'bg-slate-100 dark:bg-[#161B26]/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800/80 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                {range}
-              </button>
-            );
-          })}
+        {/* Row 2: Large Net Worth Display (Dynamically scrubs on hover) */}
+        <div className={`text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white font-num-${numberFont}`}>
+          ${displayValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
+
+        {/* Row 3: Primary Portfolio Change & Timestamp */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className={`flex items-center gap-1 text-xs sm:text-sm font-bold ${isPositive ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+            <span>{isPositive ? '▲' : '▼'}</span>
+            <span>
+              ${Math.abs(displayDiff).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span>
+              ({Math.abs(displayPercent).toFixed(2)}%)
+            </span>
+          </div>
+
+          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+            {displayTimeLabel}
+          </span>
+        </div>
+
+        {/* Row 4: Benchmark Return Indicator (Sky Blue) */}
+        {showBenchmark && (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-sky-500 dark:text-sky-400 mt-0.5">
+            <span>{benchReturn >= 0 ? '▲' : '▼'}</span>
+            <span>{Math.abs(benchReturn).toFixed(2)}%</span>
+            <span className="uppercase tracking-wider">{selectedBenchmark}</span>
+          </div>
+        )}
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="w-full flex-1 h-full min-h-[220px] relative">
+      <div className="w-full flex-1 h-full min-h-[220px] relative mt-1">
         {!isMounted ? (
           <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">
             Loading chart...
@@ -308,74 +404,56 @@ export default function PortfolioGraph({
               data={chartData}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
-              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+              margin={{ top: 10, right: 4, left: 4, bottom: 2 }}
             >
               <defs>
                 {/* Emerald Gain Gradient */}
-                <linearGradient id="portfolioGainGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.35} />
-                  <stop offset="60%" stopColor="#10B981" stopOpacity={0.05} />
+                <linearGradient id="robinhoodGainGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.18} />
+                  <stop offset="60%" stopColor="#10B981" stopOpacity={0.03} />
                   <stop offset="100%" stopColor="#10B981" stopOpacity={0.0} />
                 </linearGradient>
 
                 {/* Crimson Loss Gradient */}
-                <linearGradient id="portfolioLossGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#F43F5E" stopOpacity={0.35} />
-                  <stop offset="60%" stopColor="#F43F5E" stopOpacity={0.05} />
+                <linearGradient id="robinhoodLossGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F43F5E" stopOpacity={0.18} />
+                  <stop offset="60%" stopColor="#F43F5E" stopOpacity={0.03} />
                   <stop offset="100%" stopColor="#F43F5E" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
 
-              {/* Minimalist Background Grid */}
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="currentColor"
-                className="text-slate-200/40 dark:text-slate-800/40"
-              />
+              {/* Horizontal Reference Line at starting baseline */}
+              {startPortVal > 0 && (
+                <ReferenceLine
+                  y={startPortVal}
+                  stroke="#475569"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.4}
+                />
+              )}
 
-              {/* X & Y Axes */}
-              <XAxis
-                dataKey="timeLabel"
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-                tickFormatter={(value: string, index: number) => {
-                  if (!chartData || index === undefined) return value;
-                  if (timeRange === '1W' || timeRange === '1M' || timeRange === '1Y') {
-                    if (index > 0 && chartData[index - 1]?.timeLabel === value) {
-                      return '';
-                    }
-                  }
-                  return value;
-                }}
-                tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
-                dy={6}
-              />
-              <YAxis
-                domain={yDomain}
-                hide={true}
-              />
+              {/* Clean invisible axes for pure minimalist aesthetic */}
+              <XAxis dataKey="timeLabel" hide={true} />
+              <YAxis domain={yDomain} hide={true} />
 
-              {/* TradingView Tooltip Overlay */}
+              {/* Crosshair cursor - header smoothly handles value readouts */}
               <Tooltip
-                content={<CustomTooltip timeRange={timeRange} selectedBenchmark={selectedBenchmark} startPortVal={startPortVal} startSpyVal={startSpyVal} />}
                 cursor={{
                   stroke: strokeColor,
-                  strokeWidth: 1,
-                  strokeDasharray: '4 4',
-                  strokeOpacity: 0.6,
+                  strokeWidth: 1.5,
+                  strokeDasharray: '3 3',
+                  strokeOpacity: 0.7,
                 }}
+                content={() => null}
               />
 
-              {/* Benchmark Line (SPY) */}
+              {/* Benchmark Line (Sky Blue) */}
               {showBenchmark && (
                 <Line
                   type="monotone"
                   dataKey="spyValue"
                   stroke={spyColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
+                  strokeWidth={1.75}
                   dot={false}
                   activeDot={false}
                   connectNulls={false}
@@ -383,95 +461,52 @@ export default function PortfolioGraph({
                 />
               )}
 
-              {/* Primary Portfolio Performance Line & Fill */}
+              {/* Primary Portfolio Performance Curve & Fill */}
               <Area
                 type="monotone"
                 dataKey="portfolioValue"
                 stroke={strokeColor}
-                strokeWidth={2.5}
+                strokeWidth={2.25}
                 fill={`url(#${gradientId})`}
                 dot={renderCustomDot}
                 activeDot={{
-                  r: 6,
+                  r: 5,
                   fill: strokeColor,
                   stroke: '#0F172A',
-                  strokeWidth: 2.5,
+                  strokeWidth: 2,
                 }}
                 connectNulls={false}
                 isAnimationActive={true}
-                animationDuration={600}
+                animationDuration={500}
               />
             </AreaChart>
           </ResponsiveContainer>
         )}
       </div>
-    </div>
-  );
-}
 
-/**
- * Custom Floating Tooltip with Values & Percentage Changes
- */
-function CustomTooltip({ active, payload, timeRange, selectedBenchmark = 'SPY', startPortVal, startSpyVal }: any) {
-  if (!active || !payload || !payload.length) return null;
-
-  const data: ChartPoint26 = payload[0].payload;
-  if (data.portfolioValue === null) return null;
-
-  const portVal = data.portfolioValue;
-  const portDiff = portVal - (startPortVal || portVal);
-  const portPct = startPortVal > 0 ? (portDiff / startPortVal) * 100 : 0;
-
-  const spyVal = data.spyValue;
-  const spyDiff = spyVal !== null ? spyVal - (startSpyVal || spyVal) : 0;
-  const spyPct = startSpyVal > 0 ? (spyDiff / startSpyVal) * 100 : 0;
-
-  let displayTime = data.timeLabel;
-  if (data.time && (timeRange === '1W' || timeRange === '1M' || timeRange === '1Y')) {
-    const d = new Date(data.time * 1000);
-    displayTime = d.toLocaleDateString('en-US', {
-      timeZone: 'America/New_York',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
-
-  return (
-    <div className="rounded-xl bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 shadow-xl text-xs font-sans">
-      <div className="text-slate-400 font-medium mb-1.5">{displayTime}</div>
-      
-      {/* Portfolio Value + Percentage */}
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-        <span className="text-slate-600 dark:text-slate-300 font-semibold">Portfolio:</span>
-        <div className="ml-auto flex items-baseline gap-1">
-          <span className="text-slate-900 dark:text-white font-bold">
-            ${portVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className={`text-[10px] font-bold ${portPct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-            ({portPct >= 0 ? '+' : ''}{portPct.toFixed(2)}%)
-          </span>
+      {/* Bottom Timeframe Selector Bar (Matching Reference Photo 2) */}
+      <div className="pt-2.5 pb-1 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {(['1D', '1W', '1M', '1Y', 'ALL'] as const).map((range) => {
+            const isActive = timeRange === range;
+            return (
+              <button
+                key={range}
+                onClick={() => onTimeRangeChange(range)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all duration-150 cursor-pointer ${
+                  isActive
+                    ? (isPositive
+                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                        : 'bg-rose-500 text-white shadow-sm shadow-rose-500/30')
+                    : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                {range}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      {/* SPY / Benchmark Value + Percentage */}
-      {spyVal !== null && (
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="w-2 h-2 rounded-full bg-slate-400" />
-          <span className="text-slate-600 dark:text-slate-400 font-medium">{selectedBenchmark} Benchmark:</span>
-          <div className="ml-auto flex items-baseline gap-1">
-            <span className="text-slate-700 dark:text-slate-300 font-semibold">
-              ${spyVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            <span className={`text-[10px] font-bold ${spyPct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-              ({spyPct >= 0 ? '+' : ''}{spyPct.toFixed(2)}%)
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
