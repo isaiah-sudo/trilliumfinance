@@ -91,12 +91,12 @@ export async function POST(req: NextRequest) {
     const articleId = `art-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const tags = determineMacroTags(headline, summary);
 
-    let executiveSummary: string[] | undefined = undefined;
+    let keyTakeaways: string[] | undefined = undefined;
     if (isPaywalled || parsedParagraphs.length < 2) {
-      executiveSummary = [
-        `Executive briefing on ${headline}.`,
+      keyTakeaways = [
+        `Reporting overview for ${headline}.`,
         summary,
-        `Key Macro Drivers: Extracted from ${siteName} covering monetary policy, market indices, and treasury bond dynamics.`
+        `Coverage reported by ${siteName} on financial markets and macroeconomic trends.`
       ];
     }
 
@@ -112,7 +112,8 @@ export async function POST(req: NextRequest) {
       datetime: Math.floor(Date.now() / 1000),
       tags,
       isRestricted: isPaywalled,
-      executiveSummary,
+      executiveSummary: keyTakeaways,
+      keyTakeaways,
       content: processedContent,
       convertedAt: Date.now(),
     };

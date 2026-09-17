@@ -99,14 +99,18 @@ function InteractiveDripDotGrid() {
       const rows = Math.ceil(height / spacing);
 
       let heroCenterX = width / 2;
-      let heroCenterY = 360;
+      let heroCenterY = 320;
+      let textRadiusX = Math.min(width * 0.44, 560);
+      let textRadiusY = 160;
 
-      const heroEl = document.getElementById('hero-headline');
+      const heroEl = document.getElementById('hero-text-container') || document.getElementById('hero-headline');
       if (heroEl && canvas) {
         const canvasRect = canvas.getBoundingClientRect();
         const heroRect = heroEl.getBoundingClientRect();
         heroCenterX = (heroRect.left + heroRect.width / 2) - canvasRect.left;
-        heroCenterY = (heroRect.top + heroRect.height / 2) - canvasRect.top + 95;
+        heroCenterY = (heroRect.top + heroRect.height / 2) - canvasRect.top;
+        textRadiusX = Math.min(width * 0.46, Math.max(heroRect.width * 0.54, 280));
+        textRadiusY = Math.max(heroRect.height * 0.68, 120);
       }
 
       for (let i = 0; i < cols; i++) {
@@ -120,9 +124,9 @@ function InteractiveDripDotGrid() {
 
           if (fadeMultiplier <= 0) continue;
 
-          // Check proximity to "Master the Markets with Zero Risk" headline
-          const normDx = (x - heroCenterX) / Math.min(width * 0.44, 600);
-          const normDy = (y - heroCenterY) / 220;
+          // Check proximity to hero text headline and subtitle
+          const normDx = (x - heroCenterX) / textRadiusX;
+          const normDy = (y - heroCenterY) / textRadiusY;
           const distSq = normDx * normDx + normDy * normDy;
 
           // Headline text region boost factor (dots behind headline are always slightly activated)
@@ -504,11 +508,12 @@ export default function LandingPage() {
               </div>
 
               {/* Primary Button */}
-              <Link href="/dashboard">
-                <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 sm:px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap">
-                  Dashboard
-                </button>
-              </Link>
+              <button
+                onClick={handleGoToDashboard}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 sm:px-4 py-1.5 rounded-full text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+              >
+                Dashboard
+              </button>
 
               {/* Secondary Action */}
               <button
@@ -644,11 +649,14 @@ export default function LandingPage() {
         <InteractiveDripDotGrid />
 
         {/* Hero Section - Robinhood Editorial Aesthetic with Dynamic Visuals & Ambient Lighting */}
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-10 sm:py-16 md:py-20 lg:py-22 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14 sm:py-20 md:py-24 lg:py-28 flex flex-col items-center justify-center text-center overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]">
           {/* Ambient Dark Radial Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] bg-emerald-500/[0.06] blur-[160px] pointer-events-none rounded-full" />
 
-          <div className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-4 sm:space-y-6">
+          <div
+            id="hero-text-container"
+            className="flex flex-col items-center text-center max-w-4xl mx-auto relative z-10 space-y-4 sm:space-y-6"
+          >
             <motion.h1
               id="hero-headline"
               initial={{ opacity: 0, y: 30 }}
@@ -667,36 +675,6 @@ export default function LandingPage() {
             >
               Practice trading stocks and ETFs with live market data and gamified quests—100% free with zero real cash at risk.
             </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="pt-2 sm:pt-4 flex justify-center w-full"
-            >
-              {user ? (
-                <button
-                  onClick={handleGoToDashboard}
-                  onMouseDown={handlePulse}
-                  style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                  className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-6 sm:px-9 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
-                >
-                  <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Go to Dashboard</span>
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 relative z-10 transition-transform group-hover:translate-x-1" />
-                </button>
-              ) : (
-                <Link href="/signup">
-                  <button
-                    onMouseDown={handlePulse}
-                    style={{ '--pulse-ring-color': 'rgba(16, 185, 129, 0.4)' } as React.CSSProperties}
-                    className="relative bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 font-black px-6 sm:px-9 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg transition-all duration-300 backdrop-blur-md border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.35),0_10px_30px_rgba(16,185,129,0.45)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-4px_8px_rgba(0,0,0,0.4),0_15px_40px_rgba(16,185,129,0.65)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),inset_0_2px_6px_rgba(0,0,0,0.4)] cursor-pointer inline-flex items-center justify-center gap-2.5 group overflow-hidden"
-                  >
-                    <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">Start Paper Trading</span>
-                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 relative z-10 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </Link>
-              )}
-            </motion.div>
           </div>
         </main>
 

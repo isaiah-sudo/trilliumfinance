@@ -433,7 +433,7 @@ function ChatInner() {
   };
 
   const searchParams = useSearchParams();
-  const promptParam = searchParams.get('prompt');
+  const promptParam = searchParams.get('prompt') || searchParams.get('q');
   const lastProcessedPromptRef = useRef<string | null>(null);
 
   useEffect(() => {

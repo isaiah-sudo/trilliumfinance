@@ -45,13 +45,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             console.error('Background auth cookie synchronization failed:', error);
           });
         } else {
-          // Only clear the cookie if this is NOT the initial initialization check,
-          // or if we had a logged-in user previously (which indicates a real logout).
-          if (!isFirstCall || previousUser !== null) {
-            removeAuthCookie().catch((error) => {
-              console.error('Background auth cookie removal failed:', error);
-            });
-          }
+          // Clear any stale session cookie on the server
+          removeAuthCookie().catch((error) => {
+            console.error('Background auth cookie removal failed:', error);
+          });
           previousUser = null;
           isFirstCall = false;
         }

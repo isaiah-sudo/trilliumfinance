@@ -298,6 +298,15 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
       <div className="flex-1 w-full h-[150px] min-h-[140px] relative flex items-center justify-center my-auto">
         {isMounted ? (
           <>
+            {/* Continuous Ambient Halo Animation - never stops on hover */}
+            <div
+              className="absolute inset-0 m-auto w-28 h-28 rounded-full pointer-events-none -z-0 opacity-20 dark:opacity-30 blur-md"
+              style={{
+                background: 'conic-gradient(from 0deg, #3b82f6, #2dd4bf, #a855f7, #3b82f6)',
+                animation: 'spin 12s linear infinite',
+              }}
+            />
+
             <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={140} debounce={50}>
               <PieChart>
                 <Pie
@@ -308,6 +317,7 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
                   outerRadius="78%"
                   paddingAngle={activeData.length > 1 ? 3 : 0}
                   dataKey="value"
+                  isAnimationActive={false}
                   onMouseEnter={(_, index) => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                 >
@@ -347,8 +357,8 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
               </PieChart>
             </ResponsiveContainer>
 
-            {/* Centered slice detail in donut center on hover */}
-            {activeIndex !== null && activeData[activeIndex] && (
+            {/* Continuous center pulse when idle, slice detail on hover */}
+            {activeIndex !== null && activeData[activeIndex] ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 max-w-[90px] truncate">
                   {activeData[activeIndex].name}
@@ -357,6 +367,16 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
                   {displayUnit === 'percent'
                     ? `${((activeData[activeIndex].value / activeTotalValue) * 100).toFixed(1)}%`
                     : `$${activeData[activeIndex].value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                </span>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                <span className="relative flex h-2 w-2 mb-1">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                  {viewMode === 'portfolio' ? 'Live' : 'Active'}
                 </span>
               </div>
             )}

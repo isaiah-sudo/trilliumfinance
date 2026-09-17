@@ -8,6 +8,7 @@ export interface AnimatedNumberProps {
   formatter?: (val: number) => string;
   className?: string;
   startOffset?: number;
+  gradient?: 'up' | 'down';
 }
 
 interface Token {
@@ -140,7 +141,7 @@ function parseFormattedStringToTokens(str: string): Token[] {
   }
 }
 
-function DigitColumn({ digit }: { digit: number }) {
+function DigitColumn({ digit, gradientStyle }: { digit: number; gradientStyle?: React.CSSProperties }) {
   return (
     <span className="inline-block relative overflow-hidden h-[1em] leading-none align-baseline text-current">
       {/* Ghost digit to guarantee exact font metric width, height, and alignment */}
@@ -162,6 +163,7 @@ function DigitColumn({ digit }: { digit: number }) {
           <span
             key={d}
             className="h-[1em] leading-none flex items-center justify-center w-full select-none"
+            style={gradientStyle}
           >
             {d}
           </span>
@@ -171,7 +173,7 @@ function DigitColumn({ digit }: { digit: number }) {
   );
 }
 
-export function AnimatedNumber({ value, formatter, className = '' }: AnimatedNumberProps) {
+export function AnimatedNumber({ value, formatter, className = '', gradient }: AnimatedNumberProps) {
   const formattedStr = useMemo(() => {
     if (typeof value === 'number') {
       return formatter
@@ -187,14 +189,32 @@ export function AnimatedNumber({ value, formatter, className = '' }: AnimatedNum
 
   const tokens = useMemo(() => parseFormattedStringToTokens(formattedStr), [formattedStr]);
 
+  const gradientStyle: React.CSSProperties | undefined = useMemo(() => {
+    if (gradient === 'up') {
+      return {
+        backgroundImage: 'linear-gradient(to top, #34d399 0%, #6ee7b7 30%, #ffffff 65%, #ffffff 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      };
+    }
+    if (gradient === 'down') {
+      return {
+        backgroundImage: 'linear-gradient(to bottom, #f43f5e 0%, #fda4af 30%, #ffffff 65%, #ffffff 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      };
+    }
+    return undefined;
+  }, [gradient]);
+
   return (
     <span className={`inline-flex items-baseline tabular-nums ${className}`}>
       {tokens.map((token) => {
         if (token.isDigit && typeof token.digit === 'number') {
-          return <DigitColumn key={token.key} digit={token.digit} />;
+          return <DigitColumn key={token.key} digit={token.digit} gradientStyle={gradientStyle} />;
         }
         return (
-          <span key={token.key} className="inline-block select-none leading-none">
+          <span key={token.key} className="inline-block select-none leading-none" style={gradientStyle}>
             {token.char}
           </span>
         );

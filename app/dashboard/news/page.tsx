@@ -40,7 +40,7 @@ export default async function NewsPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-400 shadow-sm">
               <Newspaper className="h-3.5 w-3.5 text-blue-400" />
-              Market Intelligence
+              Market News
             </div>
             
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
@@ -57,7 +57,7 @@ export default async function NewsPage() {
             <div className="text-base sm:text-lg font-extrabold text-white tracking-tight">{todayFormatted}</div>
             
             <Link
-              href="/news-catalog"
+              href="/dashboard/news/catalog"
               className="px-3.5 sm:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center gap-1.5"
             >
               Browse News Catalog <ChevronRight className="h-4 w-4" />
@@ -118,17 +118,17 @@ export default async function NewsPage() {
                 {/* Action Buttons */}
                 <div className="pt-3 flex gap-2 sm:gap-2.5 shrink-0">
                   <Link
-                    href={`/news-catalog/${article.id}`}
+                    href={`/dashboard/news/${article.id}`}
                     className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95"
                   >
-                    <BookOpen className="h-3.5 w-3.5" /> Read Article
+                    <BookOpen className="h-3.5 w-3.5" /> Read Story
                   </Link>
                   <a
                     href={article.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 sm:px-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 active:scale-95"
-                    title="Read Raw Article Source"
+                    title="Read Original Publication"
                   >
                     Source <ExternalLink className="h-3 w-3" />
                   </a>

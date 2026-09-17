@@ -734,7 +734,7 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y' | 'ALL')
   
   // Calculate timestamps using accurate Eastern Time
   const now = new Date();
-  const { getMarketOpenAndClose } = await import('@/lib/portfolioTransformation');
+  const { getMarketOpenAndClose, generateOrganicMarketFluctuation } = await import('@/lib/portfolioTransformation');
   const { openUtcMs, closeUtcMs, isSessionActive } = getMarketOpenAndClose(now);
 
   let startTimestamp: number;
@@ -844,24 +844,17 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y' | 'ALL')
     
     const diff = endVal - startVal;
     const spyDiff = endSpyPrice - startSpyPrice;
+    const seed = (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()) % 10000;
     
     for (let i = 0; i < pointCount; i++) {
       const t = i / (pointCount - 1);
       const time = Math.round(startTimestamp + t * (endTimestamp - startTimestamp));
       
-      // Micro market wave variation
-      const sineWave = Math.sin(i * 0.45) * 0.15 + Math.cos(i * 0.25) * 0.1;
-      const waveAmplitude = Math.max(8, Math.abs(diff) * 0.2);
-      
-      let val = startVal + t * diff;
-      if (i > 0 && i < pointCount - 1) {
-        val += sineWave * waveAmplitude;
-      }
-      
-      let spyVal = startSpyPrice + t * spyDiff;
-      if (i > 0 && i < pointCount - 1) {
-        spyVal += Math.sin(i * 0.35) * (Math.abs(spyDiff) * 0.25 || 0.8);
-      }
+      const portWave = generateOrganicMarketFluctuation(t, startVal, diff, seed, 1.0);
+      const val = startVal + t * diff + portWave;
+
+      const spyWave = generateOrganicMarketFluctuation(t, startSpyPrice, spyDiff, seed + 37, 0.6);
+      const spyVal = startSpyPrice + t * spyDiff + spyWave;
 
       syntheticPoints.push({
         time,

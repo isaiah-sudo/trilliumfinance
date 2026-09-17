@@ -1000,9 +1000,6 @@ export default function DashboardPage() {
               <h2 className="text-slate-900 dark:text-white text-lg md:text-xl lg:text-2xl font-black tracking-tight">
                 Portfolio Overview
               </h2>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--theme-accent-bg,rgba(59,130,246,0.1))] border border-[var(--theme-accent-border,rgba(59,130,246,0.3))] text-[10px] font-extrabold text-[var(--theme-accent,#3b82f6)] uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-accent,#3b82f6)] animate-pulse" /> Live
-              </span>
             </div>
           </div>
           
@@ -1078,19 +1075,7 @@ export default function DashboardPage() {
       </motion.div>
       </div>
 
-      {/* Seamless Underglow Connector Bridge: Softly connects underglows between Portfolio Overview and Widgets Grid */}
-      <div 
-        className="relative w-full -my-3 sm:-my-4 h-6 sm:h-7 pointer-events-none z-0 overflow-visible flex items-center justify-center" 
-        aria-hidden="true"
-      >
-        {/* Soft, dim ambient glow puddle */}
-        <div
-          className="w-full h-full rounded-full blur-2xl opacity-20 transition-opacity duration-700"
-          style={{
-            background: 'radial-gradient(ellipse 80% 100% at 50% 50%, var(--theme-accent-glow, rgba(168, 85, 247, 0.15)) 0%, transparent 70%)',
-          }}
-        />
-      </div>
+
 
       {/* Dynamic Grid Layout Engine */}
       <div ref={gridWrapperCallbackRef} className="relative w-full overflow-visible min-h-[400px]">

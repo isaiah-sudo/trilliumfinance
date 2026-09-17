@@ -72,11 +72,13 @@ export default function CockpitPerimeterTrace({
     const maxRow = widgets.reduce((acc, w) => Math.max(acc, w.y + w.h), 0);
     if (maxRow <= 0) return { pathDataA: '', pathDataB: '', closedPath: '', maxRow: 0 };
 
+    const totalCols = effectiveW >= 1200 ? 12 : effectiveW >= 996 ? 10 : 6;
+
     // 1. Build discrete 2D occupancy grid [row][col]
-    const grid: boolean[][] = Array.from({ length: maxRow }, () => Array(12).fill(false));
+    const grid: boolean[][] = Array.from({ length: maxRow }, () => Array(totalCols).fill(false));
     widgets.forEach((w) => {
       for (let r = w.y; r < w.y + w.h && r < maxRow; r++) {
-        for (let c = w.x; c < w.x + w.w && c < 12; c++) {
+        for (let c = w.x; c < w.x + w.w && c < totalCols; c++) {
           grid[r][c] = true;
         }
       }
@@ -85,18 +87,18 @@ export default function CockpitPerimeterTrace({
     // 2. Map grid coordinates to pixel bounds
     // Inset stroke by 1px so neon line sits squarely on top of card borders with zero clipping
     const pad = 1.0;
-    const colW = effectiveW / 12;
+    const colW = effectiveW / totalCols;
     const rowH = 90;
 
     const pxX = (c: number) => {
       if (c === 0) return pad;
-      if (c === 12) return effectiveW - pad;
+      if (c >= totalCols) return effectiveW - pad;
       return Math.round(c * colW);
     };
 
     const pxY = (r: number) => {
       if (r === 0) return pad;
-      if (r === maxRow) return Math.round(maxRow * rowH) - pad;
+      if (r >= maxRow) return Math.round(maxRow * rowH) - pad;
       return Math.round(r * rowH);
     };
 
@@ -108,7 +110,7 @@ export default function CockpitPerimeterTrace({
     if (rMin >= maxRow) return { pathDataA: '', pathDataB: '', closedPath: '', maxRow: 0 };
 
     let cStart = 0;
-    while (cStart < 12 && !grid[rMin][cStart]) {
+    while (cStart < totalCols && !grid[rMin][cStart]) {
       cStart++;
     }
 
@@ -117,7 +119,7 @@ export default function CockpitPerimeterTrace({
     while (rMax >= 0 && !grid[rMax].some(Boolean)) {
       rMax--;
     }
-    let cEnd = 11;
+    let cEnd = totalCols - 1;
     while (cEnd >= 0 && !grid[rMax][cEnd]) {
       cEnd--;
     }
@@ -130,8 +132,8 @@ export default function CockpitPerimeterTrace({
 
     // Top profile: for each column c from cStart to the right-most column of top widgets
     // Find column ranges for the top-most boundary
-    const topRowPerCol: (number | null)[] = Array(12).fill(null);
-    for (let c = 0; c < 12; c++) {
+    const topRowPerCol: (number | null)[] = Array(totalCols).fill(null);
+    for (let c = 0; c < totalCols; c++) {
       for (let r = 0; r < maxRow; r++) {
         if (grid[r][c]) {
           topRowPerCol[c] = r;
@@ -142,7 +144,7 @@ export default function CockpitPerimeterTrace({
 
     const rightColPerRow: (number | null)[] = Array(maxRow).fill(null);
     for (let r = 0; r < maxRow; r++) {
-      for (let c = 11; c >= 0; c--) {
+      for (let c = totalCols - 1; c >= 0; c--) {
         if (grid[r][c]) {
           rightColPerRow[r] = c + 1;
           break;
@@ -154,7 +156,7 @@ export default function CockpitPerimeterTrace({
     let curC = cStart;
     let curR = rMin;
 
-    while (curC < 12 && topRowPerCol[curC] !== null) {
+    while (curC < totalCols && topRowPerCol[curC] !== null) {
       const nextR = topRowPerCol[curC]!;
       if (nextR !== curR) {
         // Vertical step in top profile
@@ -193,7 +195,7 @@ export default function CockpitPerimeterTrace({
 
     const leftColPerRow: (number | null)[] = Array(maxRow).fill(null);
     for (let r = 0; r < maxRow; r++) {
-      for (let c = 0; c < 12; c++) {
+      for (let c = 0; c < totalCols; c++) {
         if (grid[r][c]) {
           leftColPerRow[r] = c;
           break;
@@ -201,8 +203,8 @@ export default function CockpitPerimeterTrace({
       }
     }
 
-    const bottomRowPerCol: (number | null)[] = Array(12).fill(null);
-    for (let c = 0; c < 12; c++) {
+    const bottomRowPerCol: (number | null)[] = Array(totalCols).fill(null);
+    for (let c = 0; c < totalCols; c++) {
       for (let r = maxRow - 1; r >= 0; r--) {
         if (grid[r][c]) {
           bottomRowPerCol[c] = r + 1;
@@ -254,7 +256,7 @@ export default function CockpitPerimeterTrace({
 
     // Helper: Convert point sequence to SVG path with rounded corners
     const buildRoundedPath = (pts: Point[], close = false): string => {
-      // Remove consecutive duplicates or collinear points
+      // Remove consecutive duplicates
       const clean: Point[] = [];
       pts.forEach((pt) => {
         if (clean.length === 0) {
@@ -266,37 +268,134 @@ export default function CockpitPerimeterTrace({
         clean.push(pt);
       });
 
+      if (close && clean.length > 2) {
+        const first = clean[0];
+        const last = clean[clean.length - 1];
+        if (Math.abs(last.x - first.x) < 2 && Math.abs(last.y - first.y) < 2) {
+          clean.pop();
+        }
+      }
+
       // Filter collinear points
-      const filtered: Point[] = [];
-      const n = clean.length;
-      for (let i = 0; i < n; i++) {
-        if (i > 0 && i < n - 1) {
-          const prev = clean[i - 1];
-          const curr = clean[i];
-          const next = clean[i + 1];
+      let filtered: Point[] = [...clean];
+      let changed = true;
+      let iters = 0;
+      while (changed && iters < 10) {
+        iters++;
+        changed = false;
+        const nextFiltered: Point[] = [];
+        const n = filtered.length;
+        for (let i = 0; i < n; i++) {
+          if (!close && (i === 0 || i === n - 1)) {
+            nextFiltered.push(filtered[i]);
+            continue;
+          }
+          const prev = filtered[(i - 1 + n) % n];
+          const curr = filtered[i];
+          const next = filtered[(i + 1) % n];
           const dx1 = curr.x - prev.x;
           const dy1 = curr.y - prev.y;
           const dx2 = next.x - curr.x;
           const dy2 = next.y - curr.y;
-          // Collinear if both horizontal or both vertical
-          if ((dx1 === 0 && dx2 === 0) || (dy1 === 0 && dy2 === 0)) {
+          if ((dx1 === 0 && dx2 === 0 && dy1 * dy2 > 0) || (dy1 === 0 && dy2 === 0 && dx1 * dx2 > 0)) {
+            changed = true;
             continue;
           }
+          nextFiltered.push(filtered[i]);
         }
-        filtered.push(clean[i]);
+        filtered = nextFiltered;
       }
 
-      if (filtered.length < 2) return '';
+      const n = filtered.length;
+      if (n < 2) return '';
 
-      const R = 24; // 24px corner radius matching rounded-3xl / rounded-2xl
+      // 16px corner radius matching rounded-2xl on DashboardWidgetCard outer corners exactly
+      const R = 16;
+
+      if (close) {
+        if (n < 3) return '';
+
+        // Precompute arc geometry for each vertex i in [0..n-1]
+        const arcs: {
+          startX: number;
+          startY: number;
+          endX: number;
+          endY: number;
+          radius: number;
+          sweep: number;
+          isPoint: boolean;
+        }[] = [];
+
+        for (let i = 0; i < n; i++) {
+          const p0 = filtered[(i - 1 + n) % n];
+          const p1 = filtered[i];
+          const p2 = filtered[(i + 1) % n];
+
+          const ux = p1.x - p0.x;
+          const uy = p1.y - p0.y;
+          const lenU = Math.hypot(ux, uy);
+
+          const vx = p2.x - p1.x;
+          const vy = p2.y - p1.y;
+          const lenV = Math.hypot(vx, vy);
+
+          if (lenU < 1 || lenV < 1) {
+            arcs.push({ startX: p1.x, startY: p1.y, endX: p1.x, endY: p1.y, radius: 0, sweep: 0, isPoint: true });
+            continue;
+          }
+
+          const cross = ux * vy - uy * vx;
+          const radius = Math.min(R, lenU / 2, lenV / 2);
+
+          if (radius < 3) {
+            arcs.push({ startX: p1.x, startY: p1.y, endX: p1.x, endY: p1.y, radius: 0, sweep: 0, isPoint: true });
+            continue;
+          }
+
+          const startX = p1.x - (ux / lenU) * radius;
+          const startY = p1.y - (uy / lenU) * radius;
+
+          const endX = p1.x + (vx / lenV) * radius;
+          const endY = p1.y + (vy / lenV) * radius;
+
+          const sweep = cross > 0 ? 1 : 0;
+          arcs.push({ startX, startY, endX, endY, radius, sweep, isPoint: false });
+        }
+
+        // Start path at the exit of vertex 0's rounded corner arc (along edge toward vertex 1)
+        const a0 = arcs[0];
+        let d = `M ${a0.endX.toFixed(1)},${a0.endY.toFixed(1)}`;
+
+        // Traverse through subsequent vertices 1..n-1
+        for (let i = 1; i < n; i++) {
+          const a = arcs[i];
+          if (a.isPoint) {
+            d += ` L ${a.startX.toFixed(1)},${a.startY.toFixed(1)}`;
+          } else {
+            d += ` L ${a.startX.toFixed(1)},${a.startY.toFixed(1)}`;
+            d += ` A ${a.radius.toFixed(1)},${a.radius.toFixed(1)} 0 0,${a.sweep} ${a.endX.toFixed(1)},${a.endY.toFixed(1)}`;
+          }
+        }
+
+        // Connect back to vertex 0 and complete vertex 0's rounded corner arc smoothly
+        if (a0.isPoint) {
+          d += ` L ${a0.startX.toFixed(1)},${a0.startY.toFixed(1)}`;
+        } else {
+          d += ` L ${a0.startX.toFixed(1)},${a0.startY.toFixed(1)}`;
+          d += ` A ${a0.radius.toFixed(1)},${a0.radius.toFixed(1)} 0 0,${a0.sweep} ${a0.endX.toFixed(1)},${a0.endY.toFixed(1)}`;
+        }
+
+        d += ' Z';
+        return d;
+      }
+
+      // Open path: start at vertex 0, round intermediate vertices 1..n-2, end at vertex n-1
       let d = `M ${filtered[0].x.toFixed(1)},${filtered[0].y.toFixed(1)}`;
 
-      const total = close ? filtered.length : filtered.length - 1;
-
-      for (let i = 1; i < total; i++) {
+      for (let i = 1; i < n - 1; i++) {
         const p0 = filtered[i - 1];
         const p1 = filtered[i];
-        const p2 = filtered[(i + 1) % filtered.length];
+        const p2 = filtered[i + 1];
 
         const ux = p1.x - p0.x;
         const uy = p1.y - p0.y;
@@ -331,44 +430,8 @@ export default function CockpitPerimeterTrace({
         d += ` A ${radius.toFixed(1)},${radius.toFixed(1)} 0 0,${sweep} ${endX.toFixed(1)},${endY.toFixed(1)}`;
       }
 
-      if (close) {
-        // Handle closing corner between last point and first point
-        const lastIdx = filtered.length - 1;
-        const p0 = filtered[lastIdx - 1];
-        const p1 = filtered[lastIdx];
-        const p2 = filtered[0];
-
-        const ux = p1.x - p0.x;
-        const uy = p1.y - p0.y;
-        const lenU = Math.hypot(ux, uy);
-
-        const vx = p2.x - p1.x;
-        const vy = p2.y - p1.y;
-        const lenV = Math.hypot(vx, vy);
-
-        if (lenU >= 1 && lenV >= 1) {
-          const cross = ux * vy - uy * vx;
-          const radius = Math.min(R, lenU / 2, lenV / 2);
-          if (radius >= 3) {
-            const startX = p1.x - (ux / lenU) * radius;
-            const startY = p1.y - (uy / lenU) * radius;
-            const endX = p1.x + (vx / lenV) * radius;
-            const endY = p1.y + (vy / lenV) * radius;
-            const sweep = cross > 0 ? 1 : 0;
-            d += ` L ${startX.toFixed(1)},${startY.toFixed(1)}`;
-            d += ` A ${radius.toFixed(1)},${radius.toFixed(1)} 0 0,${sweep} ${endX.toFixed(1)},${endY.toFixed(1)}`;
-          } else {
-            d += ` L ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
-          }
-        } else {
-          d += ` L ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
-        }
-        d += ' Z';
-      } else {
-        const lastPt = filtered[filtered.length - 1];
-        d += ` L ${lastPt.x.toFixed(1)},${lastPt.y.toFixed(1)}`;
-      }
-
+      const lastPt = filtered[n - 1];
+      d += ` L ${lastPt.x.toFixed(1)},${lastPt.y.toFixed(1)}`;
       return d;
     };
 
@@ -530,31 +593,17 @@ export default function CockpitPerimeterTrace({
         >
           {closedPath && (
             <>
-              {/* Layer 1A: Soft subtle ambient whisper path (Dim and barely noticeable) */}
+              {/* Layer 1A: Soft subtle ambient whisper path strictly hugging the widget perimeter */}
               <path
                 d={closedPath}
                 fill="none"
                 stroke="var(--theme-accent-glow, rgba(168, 85, 247, 0.15))"
-                strokeWidth="16"
+                strokeWidth="14"
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 style={{
-                  filter: 'blur(16px)',
+                  filter: 'blur(14px)',
                   opacity: 0.22,
-                }}
-              />
-
-              {/* Layer 1B: Unified 3D Silhouette with Dim, Subtle CSS Drop-Shadows */}
-              <path
-                d={closedPath}
-                className="fill-white/95 dark:fill-[#121622]/95"
-                stroke="none"
-                style={{
-                  filter: [
-                    'drop-shadow(0px 12px 24px rgba(0, 0, 0, 0.45))',
-                    'drop-shadow(0px 14px 28px var(--theme-accent-glow, rgba(168, 85, 247, 0.12)))',
-                    'drop-shadow(0px -4px 12px var(--theme-accent-glow, rgba(168, 85, 247, 0.08)))',
-                  ].join(' '),
                 }}
               />
             </>

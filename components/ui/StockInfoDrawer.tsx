@@ -356,7 +356,7 @@ export const StockInfoDrawer: React.FC<StockInfoDrawerProps> = ({
                                 type="button"
                                 onClick={() => {
                                   onClose();
-                                  router.push(`/dashboard/chat?q=${encodeURIComponent(`Analyze the recent catalyst for $${symbol}: "${item.headline}". What are the impacts on corporate guidance, margins, and market positioning?`)}`);
+                                  router.push(`/dashboard/chat?prompt=${encodeURIComponent(`Analyze the recent catalyst for $${symbol}: "${item.headline}". ${item.summary ? `Summary: "${item.summary}". ` : ''}What are the market implications, corporate guidance impacts, and positioning?`)}`);
                                 }}
                                 className="text-[10px] font-extrabold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1 rounded-lg border border-blue-500/20 transition-all inline-flex items-center gap-1 cursor-pointer"
                               >

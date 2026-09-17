@@ -11,19 +11,25 @@ export function middleware(request: NextRequest) {
 
   if (isNewsSubdomain) {
     if (pathname === '/') {
-      return NextResponse.rewrite(new URL('/news-catalog', request.url));
+      return NextResponse.rewrite(new URL('/dashboard/news/catalog', request.url));
     }
     if (pathname.startsWith('/article/')) {
       const articleId = pathname.replace('/article/', '');
-      return NextResponse.rewrite(new URL(`/news-catalog/${articleId}`, request.url));
+      return NextResponse.rewrite(new URL(`/dashboard/news/${articleId}`, request.url));
     }
+  }
+
+  // Seamlessly redirect legacy news catalog paths to dashboard news catalog
+  if (pathname === '/news-catalog') {
+    return NextResponse.redirect(new URL('/dashboard/news/catalog', request.url));
+  }
+  if (pathname.startsWith('/news-catalog/')) {
+    const articleId = pathname.replace('/news-catalog/', '');
+    return NextResponse.redirect(new URL(`/dashboard/news/${articleId}`, request.url));
   }
 
   // Protect dashboard and education routes
   const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/edu');
-  
-  // Auth routing: redirect authenticated users away from login/signup
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
 
   if (isProtectedRoute && !token) {
     // Bypass redirects for client-side prefetching or data routing to prevent navigation layout breakage
@@ -39,10 +45,6 @@ export function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();

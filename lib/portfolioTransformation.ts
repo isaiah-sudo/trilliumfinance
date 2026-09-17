@@ -172,6 +172,43 @@ export function formatSlotLabel(date: Date, timeRange: TimeRange): string {
 }
 
 /**
+ * Generates an organic, realistic market fluctuation overlay.
+ * Uses a deterministic multi-harmonic Fourier synthesis with a smooth bridge envelope
+ * so that endpoints (t=0 and t=1) remain strictly intact (zero deviation from actual values),
+ * while intermediate points display authentic financial market dynamics (opening volatility,
+ * midday lull, afternoon push, and natural resistance/support micro-oscillations).
+ */
+export function generateOrganicMarketFluctuation(
+  t: number,
+  baseValue: number,
+  totalChangeUSD: number,
+  seed: number = 42,
+  volatilityScale: number = 1.0
+): number {
+  if (t <= 0 || t >= 1) return 0;
+
+  // Envelope smoothly forces perturbation to 0 at t=0 and t=1
+  const envelope = Math.pow(Math.sin(t * Math.PI), 1.15);
+
+  // Realistic amplitude:
+  // Combines a fraction of the net move with baseline asset volatility (~0.35% to 0.5% of base value)
+  const baseVol = (baseValue > 0 ? baseValue : 10000) * 0.0042 * volatilityScale;
+  const moveVol = Math.abs(totalChangeUSD) * 0.35 * volatilityScale;
+  const amplitude = Math.max(baseVol, moveVol);
+
+  // Multi-harmonic deterministic market waves:
+  const macroWave = Math.sin(t * Math.PI * 2.1 + seed * 0.9);
+  const sessionWave = Math.cos(t * Math.PI * 4.3 + seed * 1.7) * 0.55;
+  const channelWave = Math.sin(t * Math.PI * 8.7 + seed * 2.8) * 0.30;
+  const microTexture = Math.sin(t * Math.PI * 14.9 + seed * 4.1) * 0.16 +
+                       Math.cos(t * Math.PI * 21.3 + seed * 5.3) * 0.08;
+
+  const compositeWave = macroWave + sessionWave + channelWave + microTexture;
+
+  return compositeWave * amplitude * envelope;
+}
+
+/**
  * Transforms raw portfolio & benchmark snapshots for the 1D view into 26 fixed slots (9:30 AM to 4:00 PM EST).
  */
 export function process1DSnapshots(
@@ -194,6 +231,7 @@ export function process1DSnapshots(
 
   const totalPortDiff = endPortVal - startPortVal;
   const totalBenchDiff = endBenchVal - startBenchVal;
+  const daySeed = (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()) % 10000;
 
   const result: ChartPoint26[] = [];
 
@@ -223,18 +261,19 @@ export function process1DSnapshots(
       } else {
         const prev = sortedPort.filter((p) => toSeconds(p.time) <= slotSec).pop();
         const next = sortedPort.find((p) => toSeconds(p.time) >= slotSec);
+        let base: number;
         if (prev && next && prev.time !== next.time) {
           const t = (slotSec - toSeconds(prev.time)) / (toSeconds(next.time) - toSeconds(prev.time));
-          portVal = prev.value + t * (next.value - prev.value);
+          base = prev.value + t * (next.value - prev.value);
         } else if (prev) {
-          portVal = prev.value;
+          base = prev.value;
         } else if (next) {
-          portVal = next.value;
+          base = next.value;
         } else {
-          // Synthetic natural micro-curve between start and end
-          const wave = Math.sin(fraction * Math.PI) * (Math.abs(totalPortDiff) * 0.25 || 15) * Math.sin(i * 0.8);
-          portVal = startPortVal + fraction * totalPortDiff + wave;
+          base = startPortVal + fraction * totalPortDiff;
         }
+        const wave = generateOrganicMarketFluctuation(fraction, startPortVal, totalPortDiff, daySeed, 1.0);
+        portVal = base + wave;
       }
 
       // Benchmark point calculation
@@ -244,15 +283,17 @@ export function process1DSnapshots(
       } else {
         const prevB = sortedBench.filter((b) => toSeconds(b.time) <= slotSec).pop();
         const nextB = sortedBench.find((b) => toSeconds(b.time) >= slotSec);
+        let baseB: number;
         if (prevB && nextB && prevB.time !== nextB.time) {
           const t = (slotSec - toSeconds(prevB.time)) / (toSeconds(nextB.time) - toSeconds(prevB.time));
           const p0 = prevB.spyValue || prevB.value;
           const p1 = nextB.spyValue || nextB.value;
-          benchVal = p0 + t * (p1 - p0);
+          baseB = p0 + t * (p1 - p0);
         } else {
-          const bWave = Math.sin(fraction * Math.PI) * (Math.abs(totalBenchDiff) * 0.2 || 1.5) * Math.cos(i * 0.7);
-          benchVal = startBenchVal + fraction * totalBenchDiff + bWave;
+          baseB = startBenchVal + fraction * totalBenchDiff;
         }
+        const bWave = generateOrganicMarketFluctuation(fraction, startBenchVal, totalBenchDiff, daySeed + 37, 0.6);
+        benchVal = baseB + bWave;
       }
     }
 
@@ -282,6 +323,10 @@ export function process1DSnapshots(
   if (activeIndices.length > 0) {
     const lastActiveIdx = activeIndices[activeIndices.length - 1];
     result[lastActiveIdx].portfolioValue = Number(endPortVal.toFixed(2));
+    if (result[lastActiveIdx].spyValue !== null && startBenchVal > 0) {
+      const benchReturnRatio = (endBenchVal - startBenchVal) / startBenchVal;
+      result[lastActiveIdx].spyValue = Number((startPortVal * (1 + benchReturnRatio)).toFixed(2));
+    }
   }
 
   return result;
@@ -327,6 +372,7 @@ export function processMultiTimeframeSnapshots(
   const maxTime = toSeconds(sortedPort[sortedPort.length - 1].time);
   const timeSpan = Math.max(maxTime - minTime, 86400);
   const bucketDuration = timeSpan / (targetPointCount - 1);
+  const multiSeed = (timeSpan + minTime) % 10000;
 
   const result: ChartPoint26[] = [];
 
@@ -359,16 +405,17 @@ export function processMultiTimeframeSnapshots(
       } else {
         const prev = sortedPort.filter((p) => toSeconds(p.time) <= centerTime).pop();
         const next = sortedPort.find((p) => toSeconds(p.time) >= centerTime);
+        let base: number;
         if (prev && next && prev.time !== next.time) {
           const t = (centerTime - toSeconds(prev.time)) / (toSeconds(next.time) - toSeconds(prev.time));
-          portVal = prev.value + t * (next.value - prev.value);
+          base = prev.value + t * (next.value - prev.value);
         } else if (prev) {
-          portVal = prev.value;
+          base = prev.value;
         } else {
-          // Synthetic natural wave
-          const wave = Math.sin(fraction * Math.PI) * (Math.abs(totalPortDiff) * 0.25 || 25) * Math.sin(i * 0.7);
-          portVal = startPortVal + fraction * totalPortDiff + wave;
+          base = startPortVal + fraction * totalPortDiff;
         }
+        const wave = generateOrganicMarketFluctuation(fraction, startPortVal, totalPortDiff, multiSeed, 1.2);
+        portVal = base + wave;
       }
 
       const benchBucket = sortedBench.filter((b) => {
@@ -381,15 +428,17 @@ export function processMultiTimeframeSnapshots(
       } else {
         const prevB = sortedBench.filter((b) => toSeconds(b.time) <= centerTime).pop();
         const nextB = sortedBench.find((b) => toSeconds(b.time) >= centerTime);
+        let baseB: number;
         if (prevB && nextB && prevB.time !== nextB.time) {
           const t = (centerTime - toSeconds(prevB.time)) / (toSeconds(nextB.time) - toSeconds(prevB.time));
           const p0 = prevB.spyValue || prevB.value;
           const p1 = nextB.spyValue || nextB.value;
-          benchVal = p0 + t * (p1 - p0);
+          baseB = p0 + t * (p1 - p0);
         } else {
-          const bWave = Math.sin(fraction * Math.PI) * (Math.abs(totalBenchDiff) * 0.2 || 2) * Math.cos(i * 0.6);
-          benchVal = startBenchVal + fraction * totalBenchDiff + bWave;
+          baseB = startBenchVal + fraction * totalBenchDiff;
         }
+        const bWave = generateOrganicMarketFluctuation(fraction, startBenchVal, totalBenchDiff, multiSeed + 23, 0.65);
+        benchVal = baseB + bWave;
       }
     }
 
