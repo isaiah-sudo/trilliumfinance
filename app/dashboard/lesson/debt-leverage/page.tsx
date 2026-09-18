@@ -1018,7 +1018,7 @@ export default function DebtLeverageLessonPage() {
                   The Cost of Daily Compounding
                 </h3>
                 <p>
-                  {formatTextWithGlossary("Daily Compounding")} calculates interest charges every single day. Instead of simple annual rates, each day's interest fee is computed as:
+                  {formatTextWithGlossary("Daily Compounding")} calculates interest charges every single day. Instead of simple annual rates, each day&apos;s interest fee is computed as:
                   Daily Fee = Current Balance * (Rate / 365)
                   This fee is appended to your liability balance. Over time, you begin paying interest on top of accumulated interest fees, driving debt growth exponentially higher.
                 </p>
@@ -1030,7 +1030,7 @@ export default function DebtLeverageLessonPage() {
                   Why Lenders Use Dynamic Pricing
                 </h3>
                 <p>
-                  A {formatTextWithGlossary("Dynamic Interest Rate")} is scale-dependent. If you borrow more capital, lenders face a higher risk that you won't be able to pay it back. To compensate for this elevated portfolio default risk, the interest rate automatically increases as the borrowed sum goes up.
+                  A {formatTextWithGlossary("Dynamic Interest Rate")} is scale-dependent. If you borrow more capital, lenders face a higher risk that you won&apos;t be able to pay it back. To compensate for this elevated portfolio default risk, the interest rate automatically increases as the borrowed sum goes up.
                 </p>
               </div>
 

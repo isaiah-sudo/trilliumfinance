@@ -676,7 +676,7 @@ export default function LiveTradingSimulator() {
 
         {holdings.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 text-center text-xs text-slate-400 italic">
-            No active positions yet. Select a stock above and click "Execute BUY Order" to practice!
+            No active positions yet. Select a stock above and click &quot;Execute BUY Order&quot; to practice!
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">

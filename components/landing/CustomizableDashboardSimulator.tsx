@@ -724,7 +724,7 @@ export default function CustomizableDashboardSimulator() {
             <Layers className="h-8 w-8 text-slate-500 mx-auto" />
             <div className="text-sm font-bold text-slate-300">All widgets removed from canvas</div>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Click "+ Add Widget" above or select a preset layout to restore your customizable workstation.
+              Click &quot;+ Add Widget&quot; above or select a preset layout to restore your customizable workstation.
             </p>
             <button
               onClick={() => setWidgets(PRESET_LAYOUTS.trader)}
