@@ -60,6 +60,39 @@ function getMarketStatus(): { isOpen: boolean; label: string } {
   }
 }
 
+const MarketStatusBadge = React.memo(function MarketStatusBadge() {
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; label: string }>({ isOpen: false, label: '' });
+
+  useEffect(() => {
+    const updateStatus = () => {
+      setMarketStatus(getMarketStatus());
+    };
+    updateStatus();
+    const interval = setInterval(updateStatus, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-900/80 border border-slate-800 text-[11px] font-mono font-medium">
+      <span className="relative flex h-2 w-2">
+        <span
+          className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+            !marketStatus.isOpen ? 'bg-emerald-400' : 'bg-rose-400'
+          }`}
+        />
+        <span
+          className={`relative inline-flex rounded-full h-2 w-2 ${
+            !marketStatus.isOpen ? 'bg-emerald-500' : 'bg-rose-500'
+          }`}
+        />
+      </span>
+      <span className={!marketStatus.isOpen ? 'text-emerald-400' : 'text-rose-400'}>
+        {marketStatus.label}
+      </span>
+    </div>
+  );
+});
+
 function getSplineSvgPath(coords: [number, number][]): string {
   if (coords.length === 0) return '';
   if (coords.length === 1) return `M ${coords[0][0].toFixed(1)} ${coords[0][1].toFixed(1)}`;
@@ -105,17 +138,7 @@ export default function PortfolioGraph({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selectedBenchmark, setSelectedBenchmark] = useState<'SPY' | 'DJI' | 'NASDAQ'>('SPY');
   const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
-  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; label: string }>({ isOpen: false, label: '' });
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    const updateStatus = () => {
-      setMarketStatus(getMarketStatus());
-    };
-    updateStatus();
-    const interval = setInterval(updateStatus, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Transform raw snapshots into 26-slot dataset
   const chartData = useMemo(() => {
@@ -384,23 +407,7 @@ export default function PortfolioGraph({
 
           <div className="flex items-center gap-2">
             {/* Market Countdown Status (Green until it opens, Red until it closes) */}
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-900/80 border border-slate-800 text-[11px] font-mono font-medium">
-              <span className="relative flex h-2 w-2">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    !marketStatus.isOpen ? 'bg-emerald-400' : 'bg-rose-400'
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${
-                    !marketStatus.isOpen ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`}
-                />
-              </span>
-              <span className={!marketStatus.isOpen ? 'text-emerald-400' : 'text-rose-400'}>
-                {marketStatus.label}
-              </span>
-            </div>
+            <MarketStatusBadge />
 
             {/* Benchmark Selector */}
             <div className="relative">

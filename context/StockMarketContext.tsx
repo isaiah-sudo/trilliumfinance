@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, PropsWithChildren } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, PropsWithChildren } from 'react';
 import { fetchFinnhubQuote } from '@/app/actions/trading';
 import { KNOWN_STOCKS_DATA, getStockLogo, getStockMetadata } from '@/lib/stockUtils';
 
@@ -202,15 +202,11 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
           return stock;
         });
 
-        if (hasChange) {
-          saveToCache(updated);
-        }
         return updated;
       });
-      setLastUpdated(Date.now());
     };
 
-    // Micro-walk interval every 3 seconds (zero network requests)
+    // Micro-walk interval every 3 seconds (zero network requests, zero synchronous disk writes)
     const tickInterval = setInterval(tickGlobalMarket, 3000);
 
     return () => {
@@ -220,13 +216,19 @@ export function StockMarketProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const getStock = (ticker: string) => {
+  const getStock = useCallback((ticker: string) => {
     const sym = (ticker || '').toUpperCase();
     return stocks.find(s => s.ticker === sym) || BASE_STOCKS.find(s => s.ticker === sym);
-  };
+  }, [stocks]);
+
+  const value = useMemo(() => ({
+    stocks,
+    getStock,
+    lastUpdated
+  }), [stocks, getStock, lastUpdated]);
 
   return (
-    <StockMarketContext.Provider value={{ stocks, getStock, lastUpdated }}>
+    <StockMarketContext.Provider value={value}>
       {children}
     </StockMarketContext.Provider>
   );

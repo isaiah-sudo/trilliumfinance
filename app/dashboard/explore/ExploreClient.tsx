@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -38,7 +38,7 @@ interface StockCardProps {
   onOpenDetails: (ticker: string) => void;
 }
 
-const StockCard: React.FC<StockCardProps> = ({ stock, onTrade, onOpenDetails }) => {
+const StockCard: React.FC<StockCardProps> = React.memo(({ stock, onTrade, onOpenDetails }) => {
   const [hoveredPoint, setHoveredPoint] = useState<CandlePoint | null>(null);
   const [dailyRange, setDailyRange] = useState<{ high: number; low: number } | null>(null);
 
@@ -179,7 +179,8 @@ const StockCard: React.FC<StockCardProps> = ({ stock, onTrade, onOpenDetails }) 
       </div>
     </div>
   );
-};
+});
+StockCard.displayName = 'StockCard';
 
 export default function MarketExplorer() {
   const { user } = useAuth();
@@ -219,12 +220,12 @@ export default function MarketExplorer() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSymbol, setDrawerSymbol] = useState('');
 
-  const openDrawer = (symbol: string) => {
+  const openDrawer = useCallback((symbol: string) => {
     setDrawerSymbol(symbol);
     setDrawerOpen(true);
-  };
+  }, []);
 
-  const openTradeModal = (stock: StockQuote) => {
+  const openTradeModal = useCallback((stock: StockQuote) => {
     const freshStock = getStock(stock.ticker) || stock;
     setSelectedStock(freshStock);
     setTradeModalOpen(true);
@@ -236,7 +237,7 @@ export default function MarketExplorer() {
     setModalHoveredPoint(null);
     setModalDailyRange(null);
     fetchPortfolio();
-  };
+  }, [getStock, fetchPortfolio]);
 
   // Category counts
   const categoryCounts = useMemo(() => {

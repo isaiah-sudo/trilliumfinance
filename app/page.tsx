@@ -63,13 +63,35 @@ function InteractiveDripDotGrid() {
     let width = (canvas.width = Math.max(canvas.parentElement?.offsetWidth || (typeof window !== 'undefined' ? window.innerWidth : 800), 300));
     let height = (canvas.height = Math.max(canvas.parentElement?.offsetHeight || (typeof window !== 'undefined' ? window.innerHeight : 1400), 400));
 
+    let heroCenterX = width / 2;
+    let heroCenterY = 320;
+    let textRadiusX = Math.min(width * 0.44, 560);
+    let textRadiusY = 160;
+
+    const measureHero = () => {
+      if (!canvas) return;
+      const heroEl = document.getElementById('hero-text-container') || document.getElementById('hero-headline');
+      if (heroEl) {
+        const canvasRect = canvas.getBoundingClientRect();
+        const heroRect = heroEl.getBoundingClientRect();
+        heroCenterX = (heroRect.left + heroRect.width / 2) - canvasRect.left;
+        heroCenterY = (heroRect.top + heroRect.height / 2) - canvasRect.top;
+        textRadiusX = Math.min(width * 0.46, Math.max(heroRect.width * 0.54, 280));
+        textRadiusY = Math.max(heroRect.height * 0.68, 120);
+      }
+    };
+
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return;
       width = canvas.width = Math.max(canvas.parentElement.offsetWidth || window.innerWidth || 800, 300);
       height = canvas.height = Math.max(canvas.parentElement.offsetHeight || window.innerHeight || 1400, 400);
+      measureHero();
+      scheduleRender();
     };
 
     window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', measureHero, { passive: true });
+    measureHero();
 
     const mouse = { x: -1000, y: -1000, active: false };
 
@@ -78,12 +100,14 @@ function InteractiveDripDotGrid() {
       mouse.x = e.clientX - rect.left;
       mouse.y = e.clientY - rect.top;
       mouse.active = true;
+      scheduleRender();
     };
 
     const handleMouseLeave = () => {
       mouse.active = false;
       mouse.x = -1000;
       mouse.y = -1000;
+      scheduleRender();
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -91,27 +115,16 @@ function InteractiveDripDotGrid() {
 
     const spacing = 22; // Dots slightly closer together
     const hoverRadius = 90; // Tighter hover activation range
+    let isVisible = true;
+    let isRunning = false;
 
     const render = () => {
+      isRunning = false;
+      if (!isVisible) return;
       ctx.clearRect(0, 0, width, height);
 
       const cols = Math.ceil(width / spacing);
       const rows = Math.ceil(height / spacing);
-
-      let heroCenterX = width / 2;
-      let heroCenterY = 320;
-      let textRadiusX = Math.min(width * 0.44, 560);
-      let textRadiusY = 160;
-
-      const heroEl = document.getElementById('hero-text-container') || document.getElementById('hero-headline');
-      if (heroEl && canvas) {
-        const canvasRect = canvas.getBoundingClientRect();
-        const heroRect = heroEl.getBoundingClientRect();
-        heroCenterX = (heroRect.left + heroRect.width / 2) - canvasRect.left;
-        heroCenterY = (heroRect.top + heroRect.height / 2) - canvasRect.top;
-        textRadiusX = Math.min(width * 0.46, Math.max(heroRect.width * 0.54, 280));
-        textRadiusY = Math.max(heroRect.height * 0.68, 120);
-      }
 
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
@@ -171,14 +184,42 @@ function InteractiveDripDotGrid() {
         }
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      // If mouse is active, keep animating smoothly
+      if (mouse.active && isVisible) {
+        scheduleRender();
+      }
     };
 
-    render();
+    const scheduleRender = () => {
+      if (!isRunning && isVisible) {
+        isRunning = true;
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    // Pause rendering entirely when scrolled out of viewport
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined' && canvas) {
+      observer = new IntersectionObserver(([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible) {
+          measureHero();
+          scheduleRender();
+        } else if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          isRunning = false;
+        }
+      }, { threshold: 0.05 });
+      observer.observe(canvas);
+    }
+
+    scheduleRender();
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      if (observer) observer.disconnect();
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', measureHero);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
     };

@@ -6,12 +6,13 @@ import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from '@/context/SettingsContext';
 import { StockMarketProvider } from '@/context/StockMarketContext';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' });
 const montserrat = Montserrat({
   subsets: ['latin'],
   variable: '--font-montserrat',
   weight: ['300', '400', '500', '600', '700', '800', '900'],
+  display: 'swap',
 });
 
 export const viewport: Viewport = {

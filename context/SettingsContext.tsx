@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -161,49 +161,49 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
-  const setTheme = (t: Theme) => {
+  const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     localStorage.setItem('settings_theme', t);
     if (user?.uid) {
       setDoc(doc(db, 'users', user.uid), { theme: t }, { merge: true }).catch(console.error);
     }
-  };
+  }, [user?.uid]);
 
-  const setNumberFont = (f: FontType) => {
+  const setNumberFont = useCallback((f: FontType) => {
     setNumberFontState(f);
     localStorage.setItem('settings_num_font', f);
     if (user?.uid) {
       setDoc(doc(db, 'users', user.uid), { numberFont: f }, { merge: true }).catch(console.error);
     }
-  };
+  }, [user?.uid]);
 
-  const setTextFont = (f: FontType) => {
+  const setTextFont = useCallback((f: FontType) => {
     setTextFontState(f);
     localStorage.setItem('settings_txt_font', f);
     if (user?.uid) {
       setDoc(doc(db, 'users', user.uid), { textFont: f }, { merge: true }).catch(console.error);
     }
-  };
+  }, [user?.uid]);
 
-  const setDetailedTrophies = (v: boolean) => {
+  const setDetailedTrophies = useCallback((v: boolean) => {
     setDetailedTrophiesState(v);
     localStorage.setItem('settings_detailed_trophies', String(v));
-  };
+  }, []);
 
-  const setShowPets = (v: boolean) => {
+  const setShowPets = useCallback((v: boolean) => {
     setShowPetsState(v);
     localStorage.setItem('settings_show_pets', String(v));
-  };
+  }, []);
 
-  const setPetSkin = (skin: PetSkin) => {
+  const setPetSkin = useCallback((skin: PetSkin) => {
     setPetSkinState(skin);
     localStorage.setItem('settings_pet_skin', skin);
     if (user?.uid) {
       setDoc(doc(db, 'users', user.uid), { petSkin: skin }, { merge: true }).catch(console.error);
     }
-  };
+  }, [user?.uid]);
 
-  const setTrilliums = (val: number) => {
+  const setTrilliums = useCallback((val: number) => {
     setTrilliumsState(val);
     localStorage.setItem('settings_trilliums', String(val));
     if (user?.uid) {
@@ -211,48 +211,70 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to save trilliums to Firestore user account:', err);
       });
     }
-  };
+  }, [user?.uid]);
 
-  const addOwnedSkin = (skin: string) => {
-    const updated = [...ownedSkins, skin];
-    setOwnedSkinsState(updated);
-    localStorage.setItem('settings_owned_skins', JSON.stringify(updated));
-    if (user?.uid) {
-      setDoc(doc(db, 'users', user.uid), { ownedSkins: updated }, { merge: true }).catch(console.error);
-    }
-  };
+  const addOwnedSkin = useCallback((skin: string) => {
+    setOwnedSkinsState((prev) => {
+      const updated = [...prev, skin];
+      localStorage.setItem('settings_owned_skins', JSON.stringify(updated));
+      if (user?.uid) {
+        setDoc(doc(db, 'users', user.uid), { ownedSkins: updated }, { merge: true }).catch(console.error);
+      }
+      return updated;
+    });
+  }, [user?.uid]);
 
-  const deductTrilliums = (amount: number): boolean => {
+  const deductTrilliums = useCallback((amount: number): boolean => {
     if (trilliums < amount) return false;
     const newVal = trilliums - amount;
     setTrilliums(newVal);
     return true;
-  };
+  }, [trilliums, setTrilliums]);
+
+  const contextValue = useMemo(() => ({
+    theme,
+    numberFont,
+    textFont,
+    detailedTrophies,
+    showPets,
+    isSettingsOpen,
+    petSkin,
+    trilliums,
+    ownedSkins,
+    setTheme,
+    setNumberFont,
+    setTextFont,
+    setDetailedTrophies,
+    setShowPets,
+    setIsSettingsOpen,
+    setPetSkin,
+    setTrilliums,
+    addOwnedSkin,
+    deductTrilliums,
+  }), [
+    theme,
+    numberFont,
+    textFont,
+    detailedTrophies,
+    showPets,
+    isSettingsOpen,
+    petSkin,
+    trilliums,
+    ownedSkins,
+    setTheme,
+    setNumberFont,
+    setTextFont,
+    setDetailedTrophies,
+    setShowPets,
+    setIsSettingsOpen,
+    setPetSkin,
+    setTrilliums,
+    addOwnedSkin,
+    deductTrilliums,
+  ]);
 
   return (
-    <SettingsContext.Provider
-      value={{
-        theme,
-        numberFont,
-        textFont,
-        detailedTrophies,
-        showPets,
-        isSettingsOpen,
-        petSkin,
-        trilliums,
-        ownedSkins,
-        setTheme,
-        setNumberFont,
-        setTextFont,
-        setDetailedTrophies,
-        setShowPets,
-        setIsSettingsOpen,
-        setPetSkin,
-        setTrilliums,
-        addOwnedSkin,
-        deductTrilliums,
-      }}
-    >
+    <SettingsContext.Provider value={contextValue}>
       {children}
     </SettingsContext.Provider>
   );

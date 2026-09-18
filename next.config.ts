@@ -8,6 +8,13 @@ import type { NextConfig } from 'next';
  */
 const nextConfig: NextConfig = {
   output: 'standalone',
+  compress: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
+
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion', 'date-fns'],
+  },
 
   // Tailwind CSS will purge unused classes based on the `content` field in tailwind.config.ts.
   // No further custom webpack config needed.
