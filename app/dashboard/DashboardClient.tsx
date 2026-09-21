@@ -385,7 +385,7 @@ export default function DashboardPage() {
       dayPerformancePercent,
       holdings
     };
-  }, [portfolio, getStock, lastUpdated]);
+  }, [portfolio, getStock]);
 
   const displayPortfolio = livePortfolio || portfolio;
 
@@ -768,10 +768,10 @@ export default function DashboardPage() {
     setWidgetModalOpen(false);
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     await fetchPortfolio();
     await fetchAchievementsAndStreak();
-  };
+  }, [fetchPortfolio, fetchAchievementsAndStreak]);
 
   useEffect(() => {
     const saved = localStorage.getItem('top_trophy_selections');
@@ -826,7 +826,7 @@ export default function DashboardPage() {
     if (!authLoading && user) {
       loadData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, loadData]);
 
   useEffect(() => {
     if (customizerOpen || widgetModalOpen) {

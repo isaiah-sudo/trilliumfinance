@@ -237,6 +237,8 @@ function InteractiveDripDotGrid() {
   );
 }
 
+const DEFAULT_LANDING_TICKERS = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ'];
+
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -458,10 +460,9 @@ export default function LandingPage() {
 
   // Synchronize ticker bar quotes directly with global live stock market context
   const { stocks } = useStockMarket();
-  const defaultTickers = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'META', 'SPY', 'QQQ'];
 
   const tickerQuotes = useMemo(() => {
-    return defaultTickers.map((t) => {
+    return DEFAULT_LANDING_TICKERS.map((t) => {
       const live = stocks.find((s) => s.ticker === t);
       if (live && live.price > 0) {
         return {

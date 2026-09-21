@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useDashboardSettings } from '@/context/DashboardSettingsContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -113,11 +113,23 @@ export default function StandaloneTeacherDashboardPage() {
   // Flattened list of lessons
   const allLessons = UNITS_DATA.flatMap(u => u.lessons.map(l => ({ ...l, unitTitle: u.title })));
 
+  const loadTeacherClassrooms = useCallback(async () => {
+    try {
+      const list = await getTeacherClassrooms();
+      setClassrooms(list);
+      if (list.length > 0 && !selectedClassId) {
+        setSelectedClassId(list[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load classrooms:', err);
+    }
+  }, [selectedClassId]);
+
   useEffect(() => {
     if (role === 'teacher') {
       loadTeacherClassrooms();
     }
-  }, [role]);
+  }, [role, loadTeacherClassrooms]);
 
   useEffect(() => {
     if (classId) {
@@ -140,18 +152,6 @@ export default function StandaloneTeacherDashboardPage() {
       setRestrictedAssets(settings.restrictedAssets ?? []);
     }
   }, [settings]);
-
-  const loadTeacherClassrooms = async () => {
-    try {
-      const list = await getTeacherClassrooms();
-      setClassrooms(list);
-      if (list.length > 0 && !selectedClassId) {
-        setSelectedClassId(list[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load classrooms:', err);
-    }
-  };
 
   const fetchClassroomData = async (cId: string) => {
     setRosterLoading(true);

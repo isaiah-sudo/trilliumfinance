@@ -170,7 +170,6 @@ export default function DebtLeverageLessonPage() {
   // Multiple Glossary Popups state
   const [activeGlossaries, setActiveGlossaries] = useState<Record<string, ActivePopup>>({});
   const [sparks, setSparks] = useState<Spark[]>([]);
-  const sparkAnimRef = useRef<number | null>(null);
 
   // Sparks & dragging tracking during glide
   const lastPositionsRef = useRef<Record<string, { x: number, y: number, time: number }>>({});
@@ -231,14 +230,13 @@ export default function DebtLeverageLessonPage() {
     }
 
     return () => {
-      if (synthRef.current) {
-        synthRef.current.cancel();
+      const currentSynth = synthRef.current;
+      const currentConfetti = confettiIntervalRef.current;
+      if (currentSynth) {
+        currentSynth.cancel();
       }
-      if (confettiIntervalRef.current) {
-        clearInterval(confettiIntervalRef.current);
-      }
-      if (sparkAnimRef.current) {
-        cancelAnimationFrame(sparkAnimRef.current);
+      if (currentConfetti) {
+        clearInterval(currentConfetti);
       }
     };
   }, [fetchPortfolio, portfolio?.hasBorrowed]);
