@@ -5,10 +5,15 @@ import { useRouter } from 'next/navigation';
 import { signUpWithEmail, signInWithGoogle, signOut, syncAuthCookie } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
-import { X, ShieldCheck, Sparkles, Activity, Eye, EyeOff } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Activity, Eye, EyeOff, GraduationCap, BookOpen, User } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+export type SignupRole = 'personal' | 'student' | 'teacher';
 
 export default function SignupPage() {
+  const [signupRole, setSignupRole] = useState<SignupRole>('personal');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +29,29 @@ export default function SignupPage() {
   useEffect(() => {
     // Prefetch login early to optimize redirect routing
     router.prefetch('/login');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const roleParam = params.get('role');
+      if (roleParam === 'teacher' || roleParam === 'student' || roleParam === 'personal') {
+        setSignupRole(roleParam as SignupRole);
+      }
+    }
   }, [router]);
+
+  const syncUserRole = async (uid: string, displayName?: string) => {
+    try {
+      const mappedRole = signupRole === 'teacher' ? 'teacher' : signupRole === 'student' ? 'student' : 'regular';
+      await setDoc(doc(db, 'users', uid), {
+        role: mappedRole,
+        name: displayName || username || email.split('@')[0],
+        email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not initialize user role in Firestore:', e);
+    }
+  };
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +71,17 @@ export default function SignupPage() {
       if (username && userCredential.user) {
         await updateProfile(userCredential.user, { displayName: username });
       }
+
+      // Initialize Firestore document with selected role
+      if (userCredential.user) {
+        await syncUserRole(userCredential.user.uid, username);
+      }
       
       // Automatically sign out so they can log in via login page cleanly
       await signOut();
 
-      // Redirect to login page with success state
-      router.push('/login?signup=success');
+      // Redirect to login page with success state and preselected role
+      router.push(`/login?signup=success&role=${signupRole}`);
     } catch (err: any) {
       console.error('Email signup flow error:', err);
       setError(err.message || 'An error occurred during signup.');
@@ -70,6 +102,9 @@ export default function SignupPage() {
       if (!syncSuccess) {
         console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
+
+      // Initialize Firestore role
+      await syncUserRole(userCredential.user.uid, userCredential.user.displayName || undefined);
 
       const params = new URLSearchParams(window.location.search);
       const redirectUrl = params.get('redirect') || '/dashboard';
@@ -135,9 +170,84 @@ export default function SignupPage() {
           <h2 className="mb-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Create Account
           </h2>
-          <p className="mb-8 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Enter your details to create your zero-risk trading simulator account.
+          <p className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Select your account type and enter your details to create your account.
           </p>
+
+          {/* 3 Account Type Options: Teacher, Student, Personal */}
+          <div className="mb-6 space-y-2.5">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Account Type:
+            </label>
+            <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSignupRole('teacher')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signupRole === 'teacher'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/50'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <GraduationCap className="h-4 w-4 mb-1" />
+                <span className="truncate">Teacher</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSignupRole('student')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signupRole === 'student'
+                    ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/25 ring-1 ring-teal-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <BookOpen className="h-4 w-4 mb-1" />
+                <span className="truncate">Student</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSignupRole('personal')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signupRole === 'personal'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <User className="h-4 w-4 mb-1" />
+                <span className="truncate">Personal</span>
+              </button>
+            </div>
+
+            {/* Role Context Pill */}
+            <div className={`p-3 rounded-xl border text-xs transition-all ${
+              signupRole === 'teacher'
+                ? 'bg-blue-500/10 border-blue-500/25 text-blue-400'
+                : signupRole === 'student'
+                ? 'bg-teal-500/10 border-teal-500/25 text-teal-400'
+                : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+            }`}>
+              {signupRole === 'teacher' && (
+                <div className="flex items-start gap-2">
+                  <GraduationCap className="h-4 w-4 shrink-0 mt-0.5 text-blue-400" />
+                  <span><strong>Educator Account:</strong> Master portal with full classroom command center, student roster tracking & custom trading rules.</span>
+                </div>
+              )}
+              {signupRole === 'student' && (
+                <div className="flex items-start gap-2">
+                  <BookOpen className="h-4 w-4 shrink-0 mt-0.5 text-teal-400" />
+                  <span><strong>Student Account:</strong> Regulated sandbox account to enroll in instructor classes and complete coursework.</span>
+                </div>
+              )}
+              {signupRole === 'personal' && (
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                  <span><strong>Personal Account:</strong> Full unlocked account with complete market freedom and zero restrictions.</span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {error && (
             <p className="mb-4 text-sm text-red-600 dark:text-red-400 text-center bg-red-500/10 py-2.5 px-3 rounded-xl border border-red-500/20 font-medium">
@@ -244,18 +354,28 @@ export default function SignupPage() {
               </label>
             </div>
 
-            {/* Brand Emerald Green Primary Submit Button */}
+            {/* Primary Submit Button */}
             <Button
               type="submit"
               loading={loading}
               block
-              className="py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black transition-all shadow-lg shadow-emerald-500/20 text-sm"
+              className={`py-3.5 font-black transition-all shadow-lg text-sm cursor-pointer ${
+                signupRole === 'teacher'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
+                  : signupRole === 'student'
+                  ? 'bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-teal-500/25'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+              }`}
             >
-              Create Account
+              {signupRole === 'teacher'
+                ? 'Create Teacher Account'
+                : signupRole === 'student'
+                ? 'Create Student Account'
+                : 'Create Personal Account'}
             </Button>
           </form>
 
-          <div className="relative my-8">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-slate-200 dark:border-slate-800/60" />
             </div>
@@ -271,9 +391,9 @@ export default function SignupPage() {
             onClick={handleGoogleLogin}
             loading={loading}
             block
-            className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm font-semibold"
+            className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm font-semibold text-xs uppercase tracking-wider"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -291,13 +411,20 @@ export default function SignupPage() {
                 fill="#EA4335"
               />
             </svg>
-            Google
+            Google ({signupRole === 'teacher' ? 'Teacher' : signupRole === 'student' ? 'Student' : 'Personal'})
           </Button>
 
           <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
             Already have an account?{' '}
-            <Link href="/login" className="font-bold text-emerald-600 hover:underline dark:text-emerald-400">
-              Sign In
+            <Link 
+              href={`/login?role=${signupRole}`} 
+              className={`font-bold hover:underline ${
+                signupRole === 'teacher' ? 'text-blue-500 dark:text-blue-400' :
+                signupRole === 'student' ? 'text-teal-500 dark:text-teal-400' :
+                'text-emerald-600 dark:text-emerald-400'
+              }`}
+            >
+              Sign In as {signupRole.charAt(0).toUpperCase() + signupRole.slice(1)}
             </Link>
           </p>
         </div>

@@ -5,9 +5,14 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle, resetPassword, syncAuthCookie } from '@/lib/auth';
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
-import { X, ShieldCheck, Sparkles, Activity, GraduationCap, Eye, EyeOff } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Activity, GraduationCap, Eye, EyeOff, BookOpen, User } from 'lucide-react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+export type SigninRole = 'personal' | 'student' | 'teacher';
 
 export default function LoginPage() {
+  const [signinRole, setSigninRole] = useState<SigninRole>('personal');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,8 +29,24 @@ export default function LoginPage() {
       if (params.get('signup') === 'success') {
         setSuccess('Account created successfully! Please sign in.');
       }
+      const roleParam = params.get('role');
+      if (roleParam === 'teacher' || roleParam === 'student' || roleParam === 'personal') {
+        setSigninRole(roleParam as SigninRole);
+      }
     }
   }, []);
+
+  const syncUserRole = async (uid: string) => {
+    try {
+      const userRole = signinRole === 'teacher' ? 'teacher' : signinRole === 'student' ? 'student' : 'regular';
+      await setDoc(doc(db, 'users', uid), {
+        role: userRole,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync user role to Firestore:', e);
+    }
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +61,9 @@ export default function LoginPage() {
       if (!syncSuccess) {
         console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
+
+      // Sync role into user profile
+      await syncUserRole(userCredential.user.uid);
 
       const params = new URLSearchParams(window.location.search);
       const redirectUrl = params.get('redirect') || '/dashboard';
@@ -64,6 +88,9 @@ export default function LoginPage() {
       if (!syncSuccess) {
         console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
       }
+
+      // Sync role into user profile
+      await syncUserRole(userCredential.user.uid);
 
       const params = new URLSearchParams(window.location.search);
       const redirectUrl = params.get('redirect') || '/dashboard';
@@ -147,9 +174,84 @@ export default function LoginPage() {
           <h2 className="mb-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Sign In
           </h2>
-          <p className="mb-8 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Enter your details to access your Trillium paper trading account.
+          <p className="mb-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Select your account type and enter your credentials to continue.
           </p>
+
+          {/* 3 Sign-In Options: Teacher, Student, Personal */}
+          <div className="mb-6 space-y-2.5">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Sign In As:
+            </label>
+            <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSigninRole('teacher')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signinRole === 'teacher'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/50'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <GraduationCap className="h-4 w-4 mb-1" />
+                <span className="truncate">Teacher</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSigninRole('student')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signinRole === 'student'
+                    ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/25 ring-1 ring-teal-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <BookOpen className="h-4 w-4 mb-1" />
+                <span className="truncate">Student</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSigninRole('personal')}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  signinRole === 'personal'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <User className="h-4 w-4 mb-1" />
+                <span className="truncate">Personal</span>
+              </button>
+            </div>
+
+            {/* Role Context Pill */}
+            <div className={`p-3 rounded-xl border text-xs transition-all ${
+              signinRole === 'teacher'
+                ? 'bg-blue-500/10 border-blue-500/25 text-blue-400'
+                : signinRole === 'student'
+                ? 'bg-teal-500/10 border-teal-500/25 text-teal-400'
+                : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+            }`}>
+              {signinRole === 'teacher' && (
+                <div className="flex items-start gap-2">
+                  <GraduationCap className="h-4 w-4 shrink-0 mt-0.5 text-blue-400" />
+                  <span><strong>Educator Portal:</strong> Classroom command center, student roster tracking, analytics & rule controls.</span>
+                </div>
+              )}
+              {signinRole === 'student' && (
+                <div className="flex items-start gap-2">
+                  <BookOpen className="h-4 w-4 shrink-0 mt-0.5 text-teal-400" />
+                  <span><strong>Regulated Student Sandbox:</strong> Enroll with your teacher's code, complete quests & trade under class rules.</span>
+                </div>
+              )}
+              {signinRole === 'personal' && (
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                  <span><strong>Full Unlocked Account:</strong> Unrestricted market access, zero teacher limitations, and full platform freedom.</span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {error && (
             <p className="mb-4 text-sm text-red-600 dark:text-red-400 text-center bg-red-500/10 py-2.5 px-3 rounded-xl border border-red-500/20 font-medium">
@@ -225,18 +327,28 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Brand Emerald Green Primary Submit Button */}
+            {/* Primary Submit Button with Role Label */}
             <Button
               type="submit"
               loading={loading}
               block
-              className="py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black transition-all shadow-lg shadow-emerald-500/20 text-sm"
+              className={`py-3.5 font-black transition-all shadow-lg text-sm cursor-pointer ${
+                signinRole === 'teacher'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
+                  : signinRole === 'student'
+                  ? 'bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-teal-500/25'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+              }`}
             >
-              Sign In
+              {signinRole === 'teacher'
+                ? 'Sign In as Teacher'
+                : signinRole === 'student'
+                ? 'Sign In as Student'
+                : 'Sign In as Personal'}
             </Button>
           </form>
 
-          <div className="relative my-8">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-slate-200 dark:border-slate-800/60" />
             </div>
@@ -253,9 +365,9 @@ export default function LoginPage() {
               onClick={handleGoogleLogin}
               loading={loading}
               block
-              className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm font-semibold"
+              className="flex items-center justify-center gap-2 py-3 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/65 transition-all shadow-sm font-semibold text-xs uppercase tracking-wider"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -273,22 +385,21 @@ export default function LoginPage() {
                   fill="#EA4335"
                 />
               </svg>
-              Google
+              Google ({signinRole === 'teacher' ? 'Teacher' : signinRole === 'student' ? 'Student' : 'Personal'})
             </Button>
-
-            <Link
-              href="/edu/auth"
-              className="flex items-center justify-center gap-2 py-3 w-full rounded-xl border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold transition-all text-xs uppercase tracking-wider shadow-sm"
-            >
-              <GraduationCap className="h-4 w-4 text-teal-400" />
-              Sign in with Classroom Account
-            </Link>
           </div>
 
           <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-bold text-emerald-600 hover:underline dark:text-emerald-400">
-              Sign Up
+            <Link 
+              href={`/signup?role=${signinRole}`} 
+              className={`font-bold hover:underline ${
+                signinRole === 'teacher' ? 'text-blue-500 dark:text-blue-400' :
+                signinRole === 'student' ? 'text-teal-500 dark:text-teal-400' :
+                'text-emerald-600 dark:text-emerald-400'
+              }`}
+            >
+              Sign Up as {signinRole.charAt(0).toUpperCase() + signinRole.slice(1)}
             </Link>
           </p>
         </div>

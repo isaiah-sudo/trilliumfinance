@@ -257,17 +257,13 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
   };
 
   const navLinks = [
-    { name: 'Dashboard', href: '/dashboard' },
+    { name: role === 'teacher' ? 'Educator Portal' : 'Dashboard', href: '/dashboard' },
     { name: 'Explore', href: '/dashboard/explore' },
     { name: 'News', href: '/dashboard/news' },
     { name: 'Chat', href: '/dashboard/chat' },
     { name: 'Rankings', href: '/dashboard/leaderboard' },
     { name: 'Lesson', href: '/dashboard/lesson' },
   ];
-
-  if (role === 'teacher') {
-    navLinks.push({ name: 'Educator Portal', href: '/teacher' });
-  }
 
   return (
     <div className={`flex min-h-screen flex-col bg-slate-50 dark:bg-[#0f111a] text-slate-800 dark:text-slate-200 font-txt-${textFont} relative overflow-hidden`}>
@@ -319,6 +315,21 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                   Trillium <span className="text-[var(--theme-accent,#10b981)] hidden min-[380px]:inline">Finance</span>
                 </span>
               </Link>
+              {role === 'teacher' && (
+                <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                  <GraduationCap className="h-3 w-3" /> Educator
+                </span>
+              )}
+              {role === 'student' && (
+                <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-400 text-[10px] font-black uppercase tracking-wider">
+                  <BookOpen className="h-3 w-3" /> Student
+                </span>
+              )}
+              {role === 'regular' && (
+                <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                  <Sparkles className="h-3 w-3" /> Personal
+                </span>
+              )}
             </div>
 
             {/* Navigation Center Section */}
@@ -331,6 +342,12 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                       desc: 'See how much money you have, what stocks you own, and watch your progress grow on simple charts.',
                       icon: LayoutDashboard,
                       color: 'text-emerald-400',
+                    },
+                    'Educator Portal': {
+                      title: 'Educator Master Portal',
+                      desc: 'Manage classrooms, review student roster performance, configure trading guidelines, and assign curriculum modules.',
+                      icon: GraduationCap,
+                      color: 'text-blue-400',
                     },
                     Explore: {
                       title: 'Market Explorer',
@@ -345,8 +362,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
                       color: 'text-amber-400',
                     },
                     Chat: {
-                      title: 'Community Chat',
-                      desc: 'Talk with other traders, share ideas, and learn new market strategies.',
+                      title: 'Chat',
+                      desc: 'Chat with the Trillium AI to analyze stocks, ask questions, and learn market strategies.',
                       icon: MessageSquare,
                       color: 'text-purple-400',
                     },
@@ -642,6 +659,7 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
             {navLinks.slice(0, 6).map((link) => {
               const icons: Record<string, any> = {
                 Dashboard: LayoutDashboard,
+                'Educator Portal': GraduationCap,
                 Explore: Compass,
                 News: Newspaper,
                 Chat: MessageSquare,

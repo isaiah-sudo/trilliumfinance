@@ -30,7 +30,13 @@ import {
   DollarSign,
   Activity,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  BookOpen,
+  Sparkles,
+  AlertCircle,
+  Calendar,
+  Target,
+  User
 } from 'lucide-react';
 import PortfolioChart from '@/components/PortfolioChart';
 import { getGraphData } from '@/app/actions/trading';
@@ -42,7 +48,8 @@ import { AnimatedNumber } from '@/components/ui';
 import { useDashboardSettings } from '@/context/DashboardSettingsContext';
 import { useStockMarket } from '@/context/StockMarketContext';
 import { safeRound, safeAdd, safeSubtract } from '@/lib/portfolioMath';
-import { joinClassroom } from '@/app/actions/edu';
+import { joinClassroom, getClassroomAssignments, getClassroomGoals } from '@/app/actions/edu';
+import TeacherDashboard from './teacher/page';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -290,7 +297,62 @@ export default function DashboardPage() {
     target.classList.add('ring-pulse-active');
   };
   
-  const { role, settings, classCode, className } = useDashboardSettings();
+  const { role, settings, classCode, className, classId, teacherPreviewMode, setTeacherPreviewMode } = useDashboardSettings();
+  const [studentEnrollCode, setStudentEnrollCode] = useState('');
+  const [studentEnrollName, setStudentEnrollName] = useState('');
+  const [studentEnrollError, setStudentEnrollError] = useState('');
+  const [studentEnrollLoading, setStudentEnrollLoading] = useState(false);
+  const [classroomAssignments, setClassroomAssignments] = useState<any[]>([]);
+  const [classroomGoals, setClassroomGoals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (role === 'student' && classId) {
+      Promise.all([
+        getClassroomAssignments(classId),
+        getClassroomGoals(classId),
+      ]).then(([asgns, gls]) => {
+        if (asgns) setClassroomAssignments(asgns);
+        if (gls) setClassroomGoals(gls);
+      }).catch(err => {
+        console.warn('Failed to load student classroom items:', err);
+      });
+    }
+  }, [role, classId]);
+
+  const handleStudentEnroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentEnrollCode.trim()) {
+      setStudentEnrollError('Please enter a 6-character class code.');
+      return;
+    }
+    setStudentEnrollLoading(true);
+    setStudentEnrollError('');
+    try {
+      const displayName = studentEnrollName.trim() || user?.displayName || user?.email?.split('@')[0] || 'Student';
+      const res = await joinClassroom(studentEnrollCode.trim().toUpperCase(), displayName);
+      if (res.success) {
+        window.location.reload();
+      }
+    } catch (err: any) {
+      setStudentEnrollError(err.message || 'Failed to join classroom. Please check code with your instructor.');
+    } finally {
+      setStudentEnrollLoading(false);
+    }
+  };
+
+  const handleSwitchToPersonal = async () => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        role: 'regular',
+        updatedAt: new Date(),
+      }, { merge: true });
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to switch to personal:', err);
+    }
+  };
+
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinError, setJoinError] = useState('');
@@ -933,6 +995,124 @@ export default function DashboardPage() {
     (id) => !visibleItems.some((item) => item.i === id)
   );
 
+  // 1. Teacher Account: Teacher gets Educator Master Portal as their main dashboard
+  if (role === 'teacher' && !teacherPreviewMode) {
+    return <TeacherDashboard />;
+  }
+
+  // 2. Student Account without an enrolled classroom: Student enrollment flow
+  if (role === 'student' && !classId) {
+    return (
+      <div className="w-full max-w-4xl mx-auto py-10 px-4 sm:px-6 space-y-8 animate-in fade-in duration-300">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase tracking-wider">
+            <GraduationCap className="h-4 w-4" />
+            <span>Student Regulated Sandbox</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            Enroll in Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">Classroom</span>
+          </h1>
+          <p className="text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
+            Your account is set to Student Mode. Enter the 6-character class code provided by your instructor to join your class and activate your regulated sandbox trading portfolio.
+          </p>
+        </div>
+
+        {/* Enrollment Card */}
+        <div className="bg-[#121622]/90 border border-slate-700/60 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl max-w-md mx-auto relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-2xl pointer-events-none" />
+
+          <form onSubmit={handleStudentEnroll} className="space-y-4">
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Class Code
+              </label>
+              <input
+                type="text"
+                value={studentEnrollCode}
+                onChange={(e) => setStudentEnrollCode(e.target.value.toUpperCase())}
+                placeholder="e.g. TR389X"
+                required
+                maxLength={10}
+                className="w-full bg-[#0b0d14] border border-slate-700 rounded-xl px-4 py-3 text-white font-black text-lg tracking-widest uppercase placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-center"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Your Full Name
+              </label>
+              <input
+                type="text"
+                value={studentEnrollName}
+                onChange={(e) => setStudentEnrollName(e.target.value)}
+                placeholder={user?.displayName || "Enter your name"}
+                className="w-full bg-[#0b0d14] border border-slate-700 rounded-xl px-4 py-2.5 text-white font-semibold text-sm placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors"
+              />
+            </div>
+
+            {studentEnrollError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{studentEnrollError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={studentEnrollLoading}
+              className="w-full py-3.5 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-teal-500/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {studentEnrollLoading ? 'Enrolling...' : 'Enroll & Unlock Sandbox'}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-5 border-t border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={handleSwitchToPersonal}
+              className="text-xs text-slate-400 hover:text-emerald-400 transition-colors font-medium cursor-pointer"
+            >
+              Not in a classroom? <span className="underline font-bold text-slate-300">Switch to Unlocked Personal Account</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Feature Explanations */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+            <div className="h-8 w-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white">Teacher Regulated</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your instructor customizes starting cash, allowable assets, options access, and maximum position rules.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+            <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white">Assigned Lessons</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Access coursework assigned directly by your teacher with clear due dates and interactive modules.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Trophy className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white">Zero Financial Risk</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Master trading dynamics in a safe sandbox designed specifically for educational mastery.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <AnimatePresence>
@@ -957,13 +1137,122 @@ export default function DashboardPage() {
       >
 
 
-      {role === 'student' && className && (
-        <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-teal-400 text-xs">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            <span>Enrolled in: <strong>{className}</strong> (Code: <code>{classCode}</code>)</span>
+      {role === 'student' && classId && (
+        <div className="space-y-3">
+          {/* Main Classroom Header Bar */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-teal-950/40 via-slate-900/70 to-slate-900/60 border border-teal-500/30 backdrop-blur-xl shadow-xl">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-[10px] uppercase font-black tracking-widest text-teal-400 flex items-center gap-1.5">
+                    <GraduationCap className="h-3.5 w-3.5" /> Classroom Regulated Sandbox
+                  </span>
+                  {classCode && (
+                    <span className="text-[11px] text-slate-400 font-bold">
+                      Code: <code className="text-teal-300 font-black">{classCode}</code>
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  {className || 'Enrolled Classroom'}
+                </h2>
+                <p className="text-xs text-slate-400 max-w-xl">
+                  Your trading account is regulated by instructor parameters. Short selling, options, and asset lists are enforced per classroom rules.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setJoinModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-400 border border-teal-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Switch Class
+                </button>
+              </div>
+            </div>
+
+            {/* Live Regulation Parameter Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4 mt-4 border-t border-slate-800/80">
+              <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Starting Cash</span>
+                <span className="text-xs font-black text-white">${settings.startingBalance?.toLocaleString() || '10,000'}</span>
+              </div>
+
+              <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Short Selling</span>
+                <span className={`text-xs font-black flex items-center gap-1 ${settings.allowShortSelling ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {!settings.allowShortSelling && <Lock className="h-3 w-3 shrink-0" />}
+                  {settings.allowShortSelling ? 'Allowed' : 'Disabled'}
+                </span>
+              </div>
+
+              <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Options Trading</span>
+                <span className={`text-xs font-black flex items-center gap-1 ${settings.allowOptions ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {!settings.allowOptions && <Lock className="h-3 w-3 shrink-0" />}
+                  {settings.allowOptions ? 'Unlocked' : 'Locked'}
+                </span>
+              </div>
+
+              <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Asset Restrictions</span>
+                <span className="text-xs font-black text-slate-300 truncate block">
+                  {settings.restrictedAssets && settings.restrictedAssets.length > 0
+                    ? `${settings.restrictedAssets.length} Restricted`
+                    : 'All Approved'}
+                </span>
+              </div>
+            </div>
+
+            {/* Active Teacher Assigned Lessons Section (if any) */}
+            {classroomAssignments.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-800/80">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-blue-400">
+                    Active Teacher Assignments ({classroomAssignments.length})
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {classroomAssignments.slice(0, 4).map((asgn) => (
+                    <div key={asgn.id} className="p-2.5 bg-slate-900/90 rounded-xl border border-blue-500/20 flex items-center justify-between gap-2">
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-white truncate block">{asgn.title}</span>
+                        {asgn.dueDate && <span className="text-[10px] text-amber-400 font-semibold">Due: {asgn.dueDate}</span>}
+                      </div>
+                      <a
+                        href="/dashboard/lesson"
+                        className="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-[10px] font-black shrink-0 border border-blue-500/30"
+                      >
+                        Start →
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Goals Section (if any) */}
+            {classroomGoals.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-800/80">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                    Instructor Goals ({classroomGoals.length})
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {classroomGoals.slice(0, 4).map((gl) => (
+                    <div key={gl.id} className="p-2.5 bg-slate-900/90 rounded-xl border border-emerald-500/20">
+                      <span className="text-xs font-bold text-white block">{gl.title}</span>
+                      <span className="text-[10px] text-slate-400 block">{gl.description || `Target: ${gl.targetValue}`}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <span className="font-extrabold uppercase tracking-widest text-[9px] px-2 py-0.5 rounded bg-teal-500/20">Classroom Mode</span>
         </div>
       )}
 
@@ -996,10 +1285,21 @@ export default function DashboardPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm shrink-0">
               <Wallet className="h-4 w-4 text-[var(--theme-accent,#3b82f6)]" />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-slate-900 dark:text-white text-lg md:text-xl lg:text-2xl font-black tracking-tight">
                 Portfolio Overview
               </h2>
+              {role === 'student' ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-400 text-[10px] font-extrabold uppercase tracking-wider">
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  <span>Class Sandbox ({className || 'Regulated'})</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-extrabold uppercase tracking-wider">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Personal Account · Fully Unlocked</span>
+                </span>
+              )}
             </div>
           </div>
           

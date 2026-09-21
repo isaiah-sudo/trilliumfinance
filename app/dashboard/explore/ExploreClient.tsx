@@ -99,7 +99,6 @@ const StockCard: React.FC<StockCardProps> = React.memo(({ stock, onTrade, onOpen
               <span className="text-xl sm:text-2xl font-black text-white font-mono tabular-nums tracking-tight">
                 <AnimatedNumber
                   value={displayPrice}
-                  gradient={activeIsPositive ? 'up' : 'down'}
                   formatter={(val) =>
                     `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   }
@@ -633,7 +632,6 @@ export default function MarketExplorer() {
                           <span className="text-2xl sm:text-3xl font-black text-white font-mono tabular-nums tracking-tight">
                             <AnimatedNumber
                               value={modalDisplayPrice}
-                              gradient={modalActiveIsPositive ? 'up' : 'down'}
                               formatter={(val) =>
                                 `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               }
