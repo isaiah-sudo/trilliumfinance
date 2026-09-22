@@ -22,6 +22,14 @@ interface CandlesResponse {
 const candlesCache = new Map<string, { data: CandlesResponse; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
+function setCandlesCache(key: string, data: CandlesResponse, timestamp: number) {
+  if (candlesCache.size >= 500) {
+    const firstKey = candlesCache.keys().next().value;
+    if (firstKey) candlesCache.delete(firstKey);
+  }
+  candlesCache.set(key, { data, timestamp });
+}
+
 function formatPointTimeLabel(tsSec: number, range: string): string {
   const date = new Date(tsSec * 1000);
   if (range === '1D') {
@@ -99,8 +107,10 @@ function generateFallbackPoints(symbol: string, range: string): CandlesResponse 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const symbolParam = (searchParams.get('symbol') || 'SPY').trim().toUpperCase();
-    const rangeParam = (searchParams.get('range') || '1D').trim().toUpperCase();
+    const rawSymbol = (searchParams.get('symbol') || 'SPY').trim().toUpperCase();
+    const symbolParam = /^[A-Z0-9^.-]{1,10}$/.test(rawSymbol) ? rawSymbol : 'SPY';
+    const rawRange = (searchParams.get('range') || '1D').trim().toUpperCase();
+    const rangeParam = ['1D', '1W', '1M', '1Y'].includes(rawRange) ? rawRange : '1D';
 
     const cacheKey = `${symbolParam}_${rangeParam}`;
     const now = Date.now();
@@ -185,7 +195,7 @@ export async function GET(request: NextRequest) {
               points,
             };
 
-            candlesCache.set(cacheKey, { data: responseData, timestamp: now });
+            setCandlesCache(cacheKey, responseData, now);
             return NextResponse.json(responseData, {
               headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
             });
@@ -198,7 +208,7 @@ export async function GET(request: NextRequest) {
 
     // Graceful fallback with deterministic realistic historical points
     const fallbackData = generateFallbackPoints(symbolParam, rangeParam);
-    candlesCache.set(cacheKey, { data: fallbackData, timestamp: now });
+    setCandlesCache(cacheKey, fallbackData, now);
     return NextResponse.json(fallbackData, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });

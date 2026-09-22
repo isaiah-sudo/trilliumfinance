@@ -317,12 +317,50 @@ function generateFallbackFinancialResponse(
     `3. **Paper Trading Strategy**: Practice entry/exit plans on the Trillium Simulator to refine conviction before deploying live capital.`;
 }
 
+const ipRateMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 30; // 30 requests per minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipRateMap.get(ip);
+  if (!entry || now > entry.resetTime) {
+    ipRateMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    if (ipRateMap.size > 2000) {
+      for (const [key, val] of ipRateMap.entries()) {
+        if (now > val.resetTime) ipRateMap.delete(key);
+      }
+    }
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  entry.count++;
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
-    const { messages, attachedNews } = await request.json();
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'anonymous';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { text: "Rate limit exceeded. Please wait a moment before sending more messages." },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    let { messages, attachedNews } = body;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
     }
+
+    // Bound messages array to recent 25 messages and cap text length
+    messages = messages.slice(-25).map((m: any) => ({
+      ...m,
+      text: typeof m.text === 'string' ? m.text.slice(0, 2500) : ''
+    }));
 
     const lastUserMessage = [...messages].reverse().find(msg => msg.sender === 'user');
     const rawText = lastUserMessage?.text || '';

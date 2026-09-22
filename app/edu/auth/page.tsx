@@ -55,7 +55,7 @@ export default function EducationAuthPage() {
       // 2. Create classroom
       const res = await createClassroom(className);
       if (res.success) {
-        router.push('/edu/teacher-dashboard');
+        router.push('/teacher');
       }
     } catch (err: any) {
       setActionError(err.message || 'Failed to initialize teacher account.');
@@ -79,7 +79,7 @@ export default function EducationAuthPage() {
       // 2. Join classroom (which registers student & maps portfolio starting cash)
       const res = await joinClassroom(classCode, studentName);
       if (res.success) {
-        router.push('/edu/student-dashboard');
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setActionError(err.message || 'Failed to join class. Please verify the code.');

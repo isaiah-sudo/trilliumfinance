@@ -10,12 +10,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ quotes: [] }, { status: 200 });
     }
 
-    const symbols = symbolsParam
+    const rawSymbols = symbolsParam
       .split(',')
       .map(s => s.trim().toUpperCase())
-      .filter(Boolean);
+      .filter(s => /^[A-Z0-9^.-]{1,10}$/.test(s));
 
-    const quotes = await Promise.all(symbols.map(resolveStockQuote));
+    const uniqueSymbols = Array.from(new Set(rawSymbols)).slice(0, 50);
+
+    if (uniqueSymbols.length === 0) {
+      return NextResponse.json({ quotes: [] }, { status: 200 });
+    }
+
+    const quotes = await Promise.all(uniqueSymbols.map(resolveStockQuote));
 
     return NextResponse.json(
       { quotes },

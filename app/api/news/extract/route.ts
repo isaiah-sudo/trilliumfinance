@@ -1,7 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import dns from 'dns/promises';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { determineMacroTags, MOCK_NEWS, NewsArticle } from '@/app/actions/news';
+
+function isPrivateIp(ip: string): boolean {
+  // IPv4 checks
+  const parts = ip.split('.').map(Number);
+  if (parts.length === 4 && parts.every(p => !isNaN(p) && p >= 0 && p <= 255)) {
+    const [a, b] = parts;
+    if (a === 0) return true; // 0.0.0.0/8
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 127) return true; // 127.0.0.0/8
+    if (a === 169 && b === 254) return true; // 169.254.0.0/16 Link-local & cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12 Private
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16 Private
+    if (a >= 224) return true; // Multicast & reserved
+  }
+
+  // IPv6 checks
+  const lower = ip.toLowerCase();
+  if (
+    lower === '::1' || 
+    lower === '::' || 
+    lower.startsWith('fe80:') || 
+    lower.startsWith('fc00:') || 
+    lower.startsWith('fd00:') ||
+    lower.startsWith('::ffff:127.') ||
+    lower.startsWith('::ffff:10.') ||
+    lower.startsWith('::ffff:169.254.') ||
+    lower.startsWith('::ffff:192.168.')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+async function isSafePublicUrl(urlString: string): Promise<boolean> {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    
+    // Check known dangerous hostnames
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === 'metadata.google.internal' ||
+      hostname.endsWith('.internal') ||
+      hostname.endsWith('.local')
+    ) {
+      return false;
+    }
+
+    // Check if direct IP
+    if (isPrivateIp(hostname)) {
+      return false;
+    }
+
+    // Resolve DNS to verify target IP is public
+    const addresses = await dns.lookup(hostname, { all: true });
+    for (const record of addresses) {
+      if (isPrivateIp(record.address)) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,21 +88,29 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const docRef = doc(db, 'news_articles', String(id));
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          return NextResponse.json({ success: true, article: { id: docSnap.id, ...docSnap.data() } });
+        const adminDb = getAdminDb();
+        if (adminDb) {
+          const docSnap = await adminDb.doc(`news_articles/${String(id)}`).get();
+          if (docSnap.exists) {
+            return NextResponse.json({ success: true, article: { id: docSnap.id, ...docSnap.data() } });
+          }
         }
       } catch (e) {
         console.warn('[Extract API] Firestore lookup error:', e);
       }
     }
 
-    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+    if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'Valid URL parameter is required' }, { status: 400 });
     }
 
-    // 2. Fetch raw HTML from source URL with realistic browser headers
+    // Validate URL against SSRF
+    const isSafe = await isSafePublicUrl(url);
+    if (!isSafe) {
+      return NextResponse.json({ error: 'Invalid or restricted destination URL' }, { status: 400 });
+    }
+
+    // 2. Fetch raw HTML from source URL with timeout
     let rawHtml = '';
     try {
       const res = await fetch(url, {
@@ -40,10 +120,13 @@ export async function POST(req: NextRequest) {
           'Accept-Language': 'en-US,en;q=0.9',
         },
         cache: 'no-store',
+        signal: AbortSignal.timeout(5000),
       });
 
       if (res.ok) {
-        rawHtml = await res.text();
+        // Read text and cap to 2MB to prevent memory exhaustion
+        const text = await res.text();
+        rawHtml = text.slice(0, 2 * 1024 * 1024);
       }
     } catch (err: any) {
       console.warn(`[Extract API] Fetch failed for ${url}:`, err.message);
@@ -118,9 +201,12 @@ export async function POST(req: NextRequest) {
       convertedAt: Date.now(),
     };
 
-    // 7. Save to Firestore `news_articles` catalog for subdomain index
+    // 7. Save to Firestore `news_articles` catalog via Admin SDK
     try {
-      await setDoc(doc(db, 'news_articles', articleId), processedArticle, { merge: true });
+      const adminDb = getAdminDb();
+      if (adminDb) {
+        await adminDb.doc(`news_articles/${articleId}`).set(processedArticle, { merge: true });
+      }
     } catch (dbErr) {
       console.warn('[Extract API] Firestore save error:', dbErr);
     }

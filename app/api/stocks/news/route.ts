@@ -15,6 +15,14 @@ export interface StockNewsArticle {
 const newsCache = new Map<string, { data: StockNewsArticle[]; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+function setNewsCache(key: string, data: StockNewsArticle[], timestamp: number) {
+  if (newsCache.size >= 500) {
+    const firstKey = newsCache.keys().next().value;
+    if (firstKey) newsCache.delete(firstKey);
+  }
+  newsCache.set(key, { data, timestamp });
+}
+
 function formatRelativeTime(timestampSec: number): string {
   const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - timestampSec);
   if (diffSec < 3600) {
@@ -105,8 +113,8 @@ function getFallbackNews(symbol: string): StockNewsArticle[] {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const rawSymbol = searchParams.get('symbol') || 'AVGO';
-    const symbol = rawSymbol.trim().toUpperCase();
+    const rawSymbol = (searchParams.get('symbol') || 'AVGO').trim().toUpperCase();
+    const symbol = /^[A-Z0-9^.-]{1,10}$/.test(rawSymbol) ? rawSymbol : 'AVGO';
 
     const now = Date.now();
     const cached = newsCache.get(symbol);
@@ -154,7 +162,7 @@ export async function GET(request: NextRequest) {
               });
 
             if (articles.length > 0) {
-              newsCache.set(symbol, { data: articles, timestamp: now });
+              setNewsCache(symbol, articles, now);
               return NextResponse.json({ symbol, articles }, {
                 headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
               });
@@ -167,7 +175,7 @@ export async function GET(request: NextRequest) {
     }
 
     const fallbackArticles = getFallbackNews(symbol);
-    newsCache.set(symbol, { data: fallbackArticles, timestamp: now });
+    setNewsCache(symbol, fallbackArticles, now);
     return NextResponse.json({ symbol, articles: fallbackArticles }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });

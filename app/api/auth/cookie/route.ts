@@ -1,12 +1,25 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function POST(request: Request) {
   try {
-    const { idToken } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { idToken } = body;
 
-    if (!idToken) {
-      return NextResponse.json({ error: 'Missing ID token' }, { status: 400 });
+    if (!idToken || typeof idToken !== 'string') {
+      return NextResponse.json({ error: 'Missing or invalid ID token' }, { status: 400 });
+    }
+
+    // Verify token validity with Firebase Admin
+    try {
+      const adminAuth = getAdminAuth();
+      if (adminAuth) {
+        await adminAuth.verifyIdToken(idToken);
+      }
+    } catch (verifyErr: any) {
+      console.warn('[Auth Cookie API] Token verification failed:', verifyErr.message);
+      return NextResponse.json({ error: 'Unauthorized: Invalid ID token' }, { status: 401 });
     }
 
     const cookieStore = await cookies();

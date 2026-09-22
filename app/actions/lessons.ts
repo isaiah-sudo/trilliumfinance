@@ -106,9 +106,18 @@ export async function getUserLessonAndStreakData() {
 }
 
 /**
- * Mark a lesson complete in Firestore and grant rewards.
+ * Mark a lesson complete in Firestore and grant rewards with server-enforced limits.
  */
-export async function completeLessonAction(lessonId: number, xp: number, trilliums: number) {
+export async function completeLessonAction(lessonId: number, xp?: number, trilliums?: number) {
+  const cleanLessonId = Math.floor(Number(lessonId));
+  if (isNaN(cleanLessonId) || cleanLessonId <= 0) {
+    throw new Error('Invalid lesson identifier');
+  }
+
+  // Server-side bounded rewards: Max 100 XP, max 25 Trilliums per lesson
+  const earnedXp = Math.min(Math.max(Number(xp) || 50, 25), 100);
+  const earnedTrilliums = Math.min(Math.max(Number(trilliums) || 10, 0), 25);
+
   const userId = await getAuthenticatedUserId();
   const userRef = doc(db, 'users', userId);
 
@@ -119,9 +128,10 @@ export async function completeLessonAction(lessonId: number, xp: number, trilliu
       const userDoc = await transaction.get(userRef);
       if (!userDoc.exists()) {
         transaction.set(userRef, {
-          completedLessonIds: [lessonId],
-          lessonCompletedDates: { [lessonId]: Date.now() },
-          totalLessonXp: xp,
+          completedLessonIds: [cleanLessonId],
+          lessonCompletedDates: { [cleanLessonId]: Date.now() },
+          totalLessonXp: earnedXp,
+          trilliums: 200 + earnedTrilliums,
           updatedAt: serverTimestamp()
         }, { merge: true });
         newlyCompleted = true;
@@ -134,12 +144,12 @@ export async function completeLessonAction(lessonId: number, xp: number, trilliu
       const currentXp: number = data.totalLessonXp || 0;
       const currentTrilliums: number = data.trilliums ?? 200;
 
-      if (!currentCompleted.includes(lessonId)) {
+      if (!currentCompleted.includes(cleanLessonId)) {
         newlyCompleted = true;
-        const updatedCompleted = [...currentCompleted, lessonId];
-        dates[lessonId] = Date.now();
-        const updatedXp = currentXp + xp;
-        const updatedTrilliums = currentTrilliums + (trilliums || 0);
+        const updatedCompleted = [...currentCompleted, cleanLessonId];
+        dates[cleanLessonId] = Date.now();
+        const updatedXp = currentXp + earnedXp;
+        const updatedTrilliums = currentTrilliums + earnedTrilliums;
 
         transaction.set(userRef, {
           completedLessonIds: updatedCompleted,
@@ -151,7 +161,7 @@ export async function completeLessonAction(lessonId: number, xp: number, trilliu
       }
     });
 
-    return { success: true, newlyCompleted };
+    return { success: true, newlyCompleted, earnedXp, earnedTrilliums };
   } catch (error: any) {
     console.error('Failed to complete lesson:', error);
     throw new Error(error.message || 'Failed to complete lesson.');

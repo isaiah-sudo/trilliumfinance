@@ -288,6 +288,20 @@ export async function getClassroomRoster(targetClassId?: string) {
 }
 
 /**
+ * Verifies that the given user is the registered teacher of the classroom.
+ */
+async function assertTeacherOfClass(userId: string, classId: string) {
+  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  if (!classDoc.exists()) {
+    throw new Error('Classroom not found.');
+  }
+  if (classDoc.data()?.teacherId !== userId) {
+    throw new Error('Forbidden: You are not authorized to manage this classroom.');
+  }
+  return classDoc;
+}
+
+/**
  * Updates trading settings for a classroom.
  */
 export async function updateClassroomSettings(settings: ClassroomSettings, targetClassId?: string) {
@@ -299,6 +313,8 @@ export async function updateClassroomSettings(settings: ClassroomSettings, targe
     classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
   }
   if (!classId) throw new Error('No active classroom found.');
+
+  await assertTeacherOfClass(userId, classId);
 
   const classRef = doc(db, 'classrooms', classId);
   
@@ -328,6 +344,8 @@ export async function assignLessonToClassroom(lessonId: number, title: string, d
   }
   if (!classId) throw new Error('No active classroom selected.');
 
+  await assertTeacherOfClass(userId, classId);
+
   const assignRef = doc(collection(db, 'classrooms', classId, 'assignments'));
   await setDoc(assignRef, {
     lessonId,
@@ -351,6 +369,8 @@ export async function removeClassroomAssignment(assignmentId: string, targetClas
     classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
   }
   if (!classId) throw new Error('No active classroom selected.');
+
+  await assertTeacherOfClass(userId, classId);
 
   await deleteDoc(doc(db, 'classrooms', classId, 'assignments', assignmentId));
   return { success: true };
@@ -397,6 +417,8 @@ export async function setClassroomGoal(goal: {
   }
   if (!classId) throw new Error('No active classroom selected.');
 
+  await assertTeacherOfClass(userId, classId);
+
   const goalRef = doc(collection(db, 'classrooms', classId, 'goals'));
   await setDoc(goalRef, {
     ...goal,
@@ -419,6 +441,8 @@ export async function removeClassroomGoal(goalId: string, targetClassId?: string
     classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
   }
   if (!classId) throw new Error('No active classroom selected.');
+
+  await assertTeacherOfClass(userId, classId);
 
   await deleteDoc(doc(db, 'classrooms', classId, 'goals', goalId));
   return { success: true };
@@ -456,6 +480,8 @@ export async function postClassroomAnnouncement(title: string, content: string, 
     classId = teacherDoc.data()?.activeClassId || teacherDoc.data()?.classId;
   }
   if (!classId) throw new Error('No active classroom selected.');
+
+  await assertTeacherOfClass(userId, classId);
 
   const annRef = doc(collection(db, 'classrooms', classId, 'announcements'));
   await setDoc(annRef, {
@@ -500,11 +526,13 @@ export async function removeStudentFromClassroom(studentId: string, targetClassI
   }
   if (!classId) throw new Error('No active classroom selected.');
 
+  await assertTeacherOfClass(userId, classId);
+
   await deleteDoc(doc(db, 'classrooms', classId, 'roster', studentId));
   
   // Reset student class link
   const studentRef = doc(db, 'users', studentId);
-  await setDoc(studentRef, { classId: null, classCode: null }, { merge: true });
+  await setDoc(studentRef, { classId: null, classCode: null }, { merge: true }).catch(() => {});
 
   return { success: true };
 }
@@ -522,8 +550,14 @@ export async function resetStudentPortfolio(studentId: string, targetClassId?: s
   }
   if (!classId) throw new Error('No active classroom selected.');
 
-  const classDoc = await getDoc(doc(db, 'classrooms', classId));
+  const classDoc = await assertTeacherOfClass(userId, classId);
   const startingBalance = classDoc.data()?.settings?.startingBalance ?? 10000;
+
+  // Verify student is actually enrolled in this classroom roster
+  const rosterDoc = await getDoc(doc(db, 'classrooms', classId, 'roster', studentId));
+  if (!rosterDoc.exists()) {
+    throw new Error('Forbidden: Student does not belong to this classroom.');
+  }
 
   const portfolioRef = doc(db, 'users', studentId, 'portfolio', 'main');
   await setDoc(portfolioRef, { cash: startingBalance }, { merge: true });
