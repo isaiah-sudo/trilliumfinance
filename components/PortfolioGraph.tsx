@@ -11,6 +11,7 @@ import {
   generateOrganicMarketFluctuation,
 } from '@/lib/portfolioTransformation';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { getStockMetadata } from '@/lib/stockUtils';
 
 function getMarketStatus(): { isOpen: boolean; label: string } {
   const est = getESTDateInfo(new Date());
@@ -160,8 +161,9 @@ export default function PortfolioGraph({
       const t = i / 25;
       const portWave = generateOrganicMarketFluctuation(t, baseVal, diff, dateSeed, 1.0);
       const portVal = baseVal + t * diff + portWave;
-      const spyWave = generateOrganicMarketFluctuation(t, 510, 2.5, dateSeed + 37, 0.6);
-      const spyVal = 510 + t * 2.5 + spyWave;
+      const defaultSpyPrice = getStockMetadata('SPY').basePrice;
+      const spyWave = generateOrganicMarketFluctuation(t, defaultSpyPrice, 2.5, dateSeed + 37, 0.6);
+      const spyVal = defaultSpyPrice + t * 2.5 + spyWave;
       const hour = 9 + Math.floor((30 + i * 15) / 60);
       const min = (30 + i * 15) % 60;
       const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -196,7 +198,7 @@ export default function PortfolioGraph({
   }, [portfolio, activePoints]);
 
   const startSpyVal = useMemo(() => {
-    return activePoints[0]?.spyValue ?? 510;
+    return activePoints[0]?.spyValue ?? getStockMetadata('SPY').basePrice;
   }, [activePoints]);
 
   const currentSpyVal = useMemo(() => {

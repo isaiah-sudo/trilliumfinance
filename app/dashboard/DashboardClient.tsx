@@ -1289,15 +1289,10 @@ export default function DashboardPage() {
               <h2 className="text-slate-900 dark:text-white text-lg md:text-xl lg:text-2xl font-black tracking-tight">
                 Portfolio Overview
               </h2>
-              {role === 'student' ? (
+              {role === 'student' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-400 text-[10px] font-extrabold uppercase tracking-wider">
                   <GraduationCap className="h-3.5 w-3.5" />
                   <span>Class Sandbox ({className || 'Regulated'})</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-extrabold uppercase tracking-wider">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Personal Account · Fully Unlocked</span>
                 </span>
               )}
             </div>

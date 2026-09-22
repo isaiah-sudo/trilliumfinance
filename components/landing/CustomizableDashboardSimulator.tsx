@@ -26,6 +26,7 @@ import {
   Palette
 } from 'lucide-react';
 import { useStockMarket } from '@/context/StockMarketContext';
+import { getStockMetadata } from '@/lib/stockUtils';
 
 export type ThemeKey = 'emerald' | 'sapphire' | 'violet' | 'gold';
 export type WidgetSize = 'S' | 'M' | 'L';
@@ -275,11 +276,12 @@ export default function CustomizableDashboardSimulator() {
 
         const miniQuotes = watchlistSymbols.map((item) => {
           const live = stocks.find((s) => s.ticker === item.sym);
+          const meta = getStockMetadata(item.sym);
           return {
             sym: item.sym,
             name: item.name,
-            price: live && live.price > 0 ? live.price : (item.sym === 'NVDA' ? 230.20 : item.sym === 'AAPL' ? 327.30 : 382.70),
-            chg: live ? live.change : (item.sym === 'NVDA' ? 2.56 : item.sym === 'AAPL' ? 0.73 : 7.19)
+            price: live && live.price > 0 ? live.price : meta.basePrice,
+            chg: live ? live.change : meta.baseChange
           };
         });
 

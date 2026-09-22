@@ -42,7 +42,7 @@ async function fetchFinnhubQuote(symbol: string): Promise<number> {
     // Continue to fallback
   }
 
-  return sym === 'SPY' ? 564.00 : 150.0;
+  return sym === 'SPY' ? 772.99 : 150.0;
 }
 
 /**

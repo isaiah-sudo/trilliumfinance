@@ -760,7 +760,8 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y' | 'ALL')
   }
 
   // Fetch SPY quote for realistic benchmark baseline and movement
-  let liveSpyQuote = { c: 512.50, pc: 510.25 };
+  const defaultSpy = getStockMetadata('SPY');
+  let liveSpyQuote = { c: defaultSpy.basePrice, pc: defaultSpy.basePrice };
   try {
     const q = await fetchFinnhubQuote('SPY');
     if (q && q.c > 0) {
@@ -770,8 +771,8 @@ export async function getGraphData(timeRange: '1D' | '1W' | '1M' | '1Y' | 'ALL')
     // Fallback to defaults
   }
 
-  const startSpyPrice = timeRange === '1D' ? (liveSpyQuote.pc || 510.25) : (liveSpyQuote.c * 0.985);
-  const endSpyPrice = liveSpyQuote.c || 512.50;
+  const startSpyPrice = timeRange === '1D' ? (liveSpyQuote.pc || defaultSpy.basePrice) : (liveSpyQuote.c * 0.985);
+  const endSpyPrice = liveSpyQuote.c || defaultSpy.basePrice;
 
   // Fetch from portfolio_snapshots (new schema) and fallback to portfolio_history (old schema)
   let rawPoints: { time: number; value: number; spyValue?: number }[] = [];

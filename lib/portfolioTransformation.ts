@@ -6,6 +6,8 @@
  * Market Trading Hours: 9:30 AM to 4:00 PM EST (Monday - Friday).
  */
 
+import { getStockMetadata } from '@/lib/stockUtils';
+
 export interface RawSnapshot {
   time: number; // Unix timestamp in seconds or milliseconds
   value: number;
@@ -226,7 +228,8 @@ export function process1DSnapshots(
   const startPortVal = sortedPort.length > 0 ? sortedPort[0].value : 10000;
   const endPortVal = sortedPort.length > 0 ? sortedPort[sortedPort.length - 1].value : startPortVal;
   
-  const startBenchVal = sortedBench.length > 0 ? (sortedBench[0].spyValue || sortedBench[0].value || 510) : 510;
+  const defaultSpyPrice = getStockMetadata('SPY').basePrice;
+  const startBenchVal = sortedBench.length > 0 ? (sortedBench[0].spyValue || sortedBench[0].value || defaultSpyPrice) : defaultSpyPrice;
   const endBenchVal = sortedBench.length > 0 ? (sortedBench[sortedBench.length - 1].spyValue || sortedBench[sortedBench.length - 1].value || startBenchVal) : startBenchVal;
 
   const totalPortDiff = endPortVal - startPortVal;
@@ -362,7 +365,8 @@ export function processMultiTimeframeSnapshots(
   const startPortVal = sortedPort[0]?.value ?? 10000;
   const endPortVal = sortedPort[sortedPort.length - 1]?.value ?? startPortVal;
 
-  const startBenchVal = sortedBench[0]?.spyValue || sortedBench[0]?.value || 510;
+  const defaultSpyPrice = getStockMetadata('SPY').basePrice;
+  const startBenchVal = sortedBench[0]?.spyValue || sortedBench[0]?.value || defaultSpyPrice;
   const endBenchVal = sortedBench[sortedBench.length - 1]?.spyValue || sortedBench[sortedBench.length - 1]?.value || startBenchVal;
 
   const totalPortDiff = endPortVal - startPortVal;

@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Trophy,
   BookOpen,
+  GraduationCap,
   Sparkles,
   Flame,
   User,

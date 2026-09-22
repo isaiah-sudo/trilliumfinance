@@ -241,7 +241,7 @@ export default function LoginPage() {
               {signinRole === 'student' && (
                 <div className="flex items-start gap-2">
                   <BookOpen className="h-4 w-4 shrink-0 mt-0.5 text-teal-400" />
-                  <span><strong>Regulated Student Sandbox:</strong> Enroll with your teacher's code, complete quests & trade under class rules.</span>
+                  <span><strong>Regulated Student Sandbox:</strong> Enroll with your teacher&apos;s code, complete quests & trade under class rules.</span>
                 </div>
               )}
               {signinRole === 'personal' && (

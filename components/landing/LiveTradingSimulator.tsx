@@ -45,57 +45,57 @@ const INITIAL_ASSETS: AssetData[] = [
   {
     symbol: 'AAPL',
     name: 'Apple Inc.',
-    price: 327.30,
-    change: 0.73,
-    high24h: 330.80,
-    low24h: 324.10,
+    price: 343.34,
+    change: 1.29,
+    high24h: 345.50,
+    low24h: 337.80,
     volume: '54.2M',
     category: 'Stock',
-    sparkline: [322, 323.5, 324.8, 326.5, 325.0, 326.4, 327.1, 326.9, 327.30]
+    sparkline: [338.5, 339.2, 340.8, 342.1, 341.0, 342.4, 343.1, 342.9, 343.34]
   },
   {
     symbol: 'NVDA',
     name: 'NVIDIA Corp.',
-    price: 230.20,
-    change: 2.56,
-    high24h: 232.40,
-    low24h: 224.50,
+    price: 228.36,
+    change: 0.43,
+    high24h: 231.50,
+    low24h: 226.20,
     volume: '88.6M',
     category: 'Stock',
-    sparkline: [224, 225.5, 226.2, 225.4, 228.8, 227.9, 229.5, 230.20]
+    sparkline: [226.5, 227.0, 226.8, 227.4, 228.0, 227.9, 228.1, 228.36]
   },
   {
     symbol: 'TSLA',
     name: 'Tesla Inc.',
-    price: 382.70,
-    change: 7.19,
-    high24h: 385.00,
-    low24h: 360.50,
+    price: 376.25,
+    change: 0.28,
+    high24h: 381.00,
+    low24h: 372.50,
     volume: '42.1M',
     category: 'Stock',
-    sparkline: [360, 364, 368.5, 372, 370, 375.8, 379.2, 382.70]
+    sparkline: [373.0, 374.5, 375.0, 374.2, 375.8, 376.0, 375.5, 376.25]
   },
   {
     symbol: 'MSFT',
     name: 'Microsoft Corp.',
-    price: 514.90,
-    change: 3.64,
-    high24h: 518.00,
-    low24h: 498.30,
+    price: 494.76,
+    change: -1.36,
+    high24h: 504.20,
+    low24h: 492.10,
     volume: '22.8M',
     category: 'Stock',
-    sparkline: [500, 502.5, 506, 505.8, 510.2, 512.9, 514.90]
+    sparkline: [502.0, 500.5, 498.0, 497.8, 496.2, 495.0, 494.76]
   },
   {
     symbol: 'BTC',
     name: 'Bitcoin',
-    price: 64250.00,
-    change: 4.15,
-    high24h: 65100.00,
-    low24h: 62800.00,
+    price: 86326.74,
+    change: -0.31,
+    high24h: 87400.00,
+    low24h: 85900.00,
     volume: '$31.4B',
     category: 'Crypto',
-    sparkline: [62000, 62800, 62400, 63500, 63100, 64250]
+    sparkline: [86600, 86800, 86400, 86500, 86200, 86326.74]
   }
 ];
 
