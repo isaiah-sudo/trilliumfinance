@@ -15,6 +15,14 @@ interface CompanyProfile {
 const profileCache = new Map<string, { data: CompanyProfile; timestamp: number }>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+function setProfileCache(key: string, data: CompanyProfile, timestamp: number) {
+  if (profileCache.size >= 500) {
+    const firstKey = profileCache.keys().next().value;
+    if (firstKey) profileCache.delete(firstKey);
+  }
+  profileCache.set(key, { data, timestamp });
+}
+
 const MOCK_PROFILES: Record<string, Partial<CompanyProfile>> = {
   AAPL: {
     name: 'Apple Inc.',
@@ -198,11 +206,11 @@ function marketCapFormatted(val: number) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const symbolParam = searchParams.get('symbol') || '';
-    const sym = symbolParam.trim().toUpperCase();
+    const rawSymbol = searchParams.get('symbol') || '';
+    const sym = rawSymbol.trim().toUpperCase();
 
-    if (!sym) {
-      return NextResponse.json({ error: 'Symbol required' }, { status: 400 });
+    if (!sym || !/^[A-Z0-9^.-]{1,10}$/.test(sym)) {
+      return NextResponse.json({ error: 'Valid symbol required' }, { status: 400 });
     }
 
     const PROFILE_HEADERS = {
@@ -235,7 +243,7 @@ export async function GET(request: NextRequest) {
               shareOutstanding: data.shareOutstanding || 0,
               description: `${data.name} (${sym}) is a premier corporation operating dynamically within the ${data.finnhubIndustry || 'global'} industry, listed on ${data.exchange || 'the market'}.`
             };
-            profileCache.set(sym, { data: profile, timestamp: Date.now() });
+            setProfileCache(sym, profile, Date.now());
             return NextResponse.json(profile, { headers: PROFILE_HEADERS });
           }
         }
@@ -245,7 +253,7 @@ export async function GET(request: NextRequest) {
     }
 
     const fallback = getFallbackProfile(sym);
-    profileCache.set(sym, { data: fallback, timestamp: Date.now() });
+    setProfileCache(sym, fallback, Date.now());
     return NextResponse.json(fallback, { headers: PROFILE_HEADERS });
   } catch (err: any) {
     return NextResponse.json(getFallbackProfile('SPY'), {

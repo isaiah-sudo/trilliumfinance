@@ -28,20 +28,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/dashboard/news/${articleId}`, request.url));
   }
 
-  // Protect dashboard and education routes
-  const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/edu');
+  // Protect dashboard, teacher, and education routes (excluding /edu/auth onboarding)
+  const isProtectedRoute = 
+    pathname.startsWith('/dashboard') || 
+    pathname.startsWith('/teacher') || 
+    (pathname.startsWith('/edu') && !pathname.startsWith('/edu/auth'));
 
   if (isProtectedRoute && !token) {
-    // Bypass redirects for client-side prefetching or data routing to prevent navigation layout breakage
-    const isNextInternal = 
-      pathname.startsWith('/_next') || 
-      request.headers.has('x-nextjs-data') || 
-      request.headers.get('purpose') === 'prefetch';
-
-    if (isNextInternal) {
-      return NextResponse.next();
-    }
-
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
