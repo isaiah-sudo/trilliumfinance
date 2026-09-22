@@ -209,13 +209,14 @@ export function AccountSummaryWidget({ portfolio, numberFont, borrowedAmountJust
 
   // Data for Positions mode (Only user positions, excluding cash)
   const positionsData = useMemo(() => {
-    const items = holdings.map((h: any, idx: number) => ({
+    const list = portfolio?.holdings || [];
+    const items = list.map((h: any, idx: number) => ({
       name: h.symbol || `Stock ${idx + 1}`,
       value: Math.max(0, h.marketValue || 0),
       color: HOLDING_COLOR_PALETTE[idx % HOLDING_COLOR_PALETTE.length],
     }));
     return items.length > 0 ? items : [{ name: 'No Positions', value: 0, color: '#64748b' }];
-  }, [holdings]);
+  }, [portfolio?.holdings]);
 
   const activeData = viewMode === 'portfolio' ? portfolioData : positionsData;
   const activeTotalValue = viewMode === 'portfolio' ? totalPortfolioValue : (totalMarketValue || 1);

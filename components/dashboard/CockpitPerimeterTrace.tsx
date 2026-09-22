@@ -441,7 +441,7 @@ export default function CockpitPerimeterTrace({
       closedPath: buildRoundedPath(verticesClosed, true),
       maxRow,
     };
-  }, [W, H, widgets]);
+  }, [W, H, widgets, gridWidth]);
 
   // Cubic easing
   const easeInOutCubic = useCallback((t: number): number => {
