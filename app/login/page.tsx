@@ -6,7 +6,7 @@ import { signInWithEmail, signInWithGoogle, resetPassword, syncAuthCookie } from
 import { Button, Input, TrilliumFlower } from '@/components/ui';
 import Link from 'next/link';
 import { X, ShieldCheck, Sparkles, Activity, GraduationCap, Eye, EyeOff, BookOpen, User } from 'lucide-react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export type SigninRole = 'personal' | 'student' | 'teacher';
@@ -38,8 +38,16 @@ export default function LoginPage() {
 
   const syncUserRole = async (uid: string) => {
     try {
+      const userDocRef = doc(db, 'users', uid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        const existingData = userDocSnap.data();
+        if (existingData?.role && signinRole === 'personal') {
+          return;
+        }
+      }
       const userRole = signinRole === 'teacher' ? 'teacher' : signinRole === 'student' ? 'student' : 'regular';
-      await setDoc(doc(db, 'users', uid), {
+      await setDoc(userDocRef, {
         role: userRole,
         updatedAt: serverTimestamp(),
       }, { merge: true });
@@ -59,19 +67,30 @@ export default function LoginPage() {
       // Sync cookie with retries & rate-limit resilience
       const syncSuccess = await syncAuthCookie(idToken);
       if (!syncSuccess) {
-        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
+        console.warn('Auth cookie sync delayed, proceeding with client navigation.');
       }
 
       // Sync role into user profile
       await syncUserRole(userCredential.user.uid);
 
       const params = new URLSearchParams(window.location.search);
-      const redirectUrl = params.get('redirect') || '/dashboard';
+      const redirectParam = params.get('redirect');
+      const redirectUrl = (redirectParam && !redirectParam.startsWith('/login') && !redirectParam.startsWith('/signup'))
+        ? redirectParam
+        : '/dashboard';
       window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Email login flow error:', err);
-      setError(err.message || 'An error occurred during sign-in.');
       setLoading(false);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('Incorrect email or password. Please verify your credentials.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed sign-in attempts. Please reset your password or try again later.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else {
+        setError(err.message || 'An error occurred during sign-in.');
+      }
     }
   };
 
@@ -86,14 +105,17 @@ export default function LoginPage() {
       // Sync cookie with retries & rate-limit resilience
       const syncSuccess = await syncAuthCookie(idToken);
       if (!syncSuccess) {
-        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
+        console.warn('Auth cookie sync delayed, proceeding with client navigation.');
       }
 
       // Sync role into user profile
       await syncUserRole(userCredential.user.uid);
 
       const params = new URLSearchParams(window.location.search);
-      const redirectUrl = params.get('redirect') || '/dashboard';
+      const redirectParam = params.get('redirect');
+      const redirectUrl = (redirectParam && !redirectParam.startsWith('/login') && !redirectParam.startsWith('/signup'))
+        ? redirectParam
+        : '/dashboard';
       window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Google login flow error:', err);

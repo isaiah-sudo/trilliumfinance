@@ -76,8 +76,10 @@ export const removeAuthCookie = async (retries = 2, initialDelay = 300): Promise
 /** Sign‑in with Google */
 export const signInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
   return await signInWithPopup(auth, provider);
 };
+
 
 /** Sign‑in with email & password */
 export const signInWithEmail = async (email: string, password: string) => {

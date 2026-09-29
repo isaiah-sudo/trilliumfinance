@@ -25,7 +25,6 @@ import {
   User,
   ArrowRight,
   Check,
-  GraduationCap
 } from 'lucide-react';
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

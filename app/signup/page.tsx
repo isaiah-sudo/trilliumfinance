@@ -84,8 +84,16 @@ export default function SignupPage() {
       router.push(`/login?signup=success&role=${signupRole}`);
     } catch (err: any) {
       console.error('Email signup flow error:', err);
-      setError(err.message || 'An error occurred during signup.');
       setLoading(false);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please sign in instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Please use at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else {
+        setError(err.message || 'An error occurred during signup.');
+      }
     }
   };
 
@@ -100,14 +108,17 @@ export default function SignupPage() {
       // Sync cookie with retries & rate-limit resilience
       const syncSuccess = await syncAuthCookie(idToken);
       if (!syncSuccess) {
-        console.warn('Auth cookie sync delayed by rate limits, proceeding with client navigation.');
+        console.warn('Auth cookie sync delayed, proceeding with client navigation.');
       }
 
       // Initialize Firestore role
       await syncUserRole(userCredential.user.uid, userCredential.user.displayName || undefined);
 
       const params = new URLSearchParams(window.location.search);
-      const redirectUrl = params.get('redirect') || '/dashboard';
+      const redirectParam = params.get('redirect');
+      const redirectUrl = (redirectParam && !redirectParam.startsWith('/login') && !redirectParam.startsWith('/signup'))
+        ? redirectParam
+        : '/dashboard';
       window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('Google signup flow error:', err);

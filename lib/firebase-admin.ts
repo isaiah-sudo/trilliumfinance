@@ -90,21 +90,39 @@ try {
 /**
  * Robust getter for adminDb (Firestore)
  */
-export const getAdminDb = (): Firestore => {
+export const getAdminDb = (): Firestore | null => {
   if (!app) {
-    throw new Error('Firebase Admin app not initialized. Check environment variables.');
+    try {
+      app = getFirebaseAdminApp();
+    } catch {
+      return null;
+    }
   }
-  return getFirestore(app);
+  try {
+    return app ? getFirestore(app) : null;
+  } catch (err) {
+    console.warn('[Firebase Admin] getFirestore error:', err);
+    return null;
+  }
 };
 
 /**
  * Robust getter for adminAuth
  */
-export const getAdminAuth = (): Auth => {
+export const getAdminAuth = (): Auth | null => {
   if (!app) {
-    throw new Error('Firebase Admin app not initialized. Check environment variables.');
+    try {
+      app = getFirebaseAdminApp();
+    } catch {
+      return null;
+    }
   }
-  return getAuth(app);
+  try {
+    return app ? getAuth(app) : null;
+  } catch (err) {
+    console.warn('[Firebase Admin] getAuth error:', err);
+    return null;
+  }
 };
 
 // Also export the constants for backward compatibility, but wrap them
