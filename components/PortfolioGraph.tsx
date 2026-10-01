@@ -12,6 +12,7 @@ import {
 } from '@/lib/portfolioTransformation';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { getStockMetadata } from '@/lib/stockUtils';
+import { useSettings } from '@/context/SettingsContext';
 
 function getMarketStatus(): { isOpen: boolean; label: string } {
   const est = getESTDateInfo(new Date());
@@ -140,6 +141,7 @@ export default function PortfolioGraph({
   const [selectedBenchmark, setSelectedBenchmark] = useState<'SPY' | 'DJI' | 'NASDAQ'>('SPY');
   const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const { chartStyle, setChartStyle, privacyMode, playSound } = useSettings();
 
   // Transform raw snapshots into 26-slot dataset
   const chartData = useMemo(() => {
@@ -304,6 +306,7 @@ export default function PortfolioGraph({
     portfolioCoords,
     portfolioLinePath,
     portfolioAreaPath,
+    portfolioCandles,
     benchCoords,
     benchLinePath,
     baselineY,
@@ -313,6 +316,7 @@ export default function PortfolioGraph({
         portfolioCoords: [],
         portfolioLinePath: '',
         portfolioAreaPath: '',
+        portfolioCandles: [],
         benchCoords: [],
         benchLinePath: '',
         baselineY: H / 2,
@@ -359,10 +363,44 @@ export default function PortfolioGraph({
     const bPath = showBenchmark ? getSplineSvgPath(bCoords) : '';
     const baseY = H - padY - ((startPortVal - min) / range) * usableH;
 
+    const candleWidth = Math.max(3, Math.min(12, (W / (activePoints.length || 1)) * 0.6));
+    const pCandles = activePoints.map((p, i) => {
+      const prevVal = i > 0 ? activePoints[i - 1].portfolioValue : startPortVal;
+      const curVal = p.portfolioValue;
+      const open = prevVal;
+      const close = curVal;
+      const spread = Math.abs(close - open);
+      const high = Math.max(open, close) + spread * 0.4 + (range * 0.015);
+      const low = Math.min(open, close) - spread * 0.4 - (range * 0.015);
+
+      const x = activePoints.length > 1 ? (i / (activePoints.length - 1)) * W : W / 2;
+      const openY = H - padY - ((open - min) / range) * usableH;
+      const closeY = H - padY - ((close - min) / range) * usableH;
+      const highY = H - padY - ((high - min) / range) * usableH;
+      const lowY = H - padY - ((low - min) / range) * usableH;
+
+      const isUp = close >= open;
+      const bodyTop = Math.min(openY, closeY);
+      const bodyHeight = Math.max(2.5, Math.abs(closeY - openY));
+
+      return {
+        x,
+        openY,
+        closeY,
+        highY,
+        lowY,
+        bodyTop,
+        bodyHeight,
+        candleWidth,
+        isUp,
+      };
+    });
+
     return {
       portfolioCoords: pCoords,
       portfolioLinePath: lPath,
       portfolioAreaPath: aPath,
+      portfolioCandles: pCandles,
       benchCoords: bCoords,
       benchLinePath: bPath,
       baselineY: baseY,
@@ -411,6 +449,24 @@ export default function PortfolioGraph({
             {/* Market Countdown Status (Green until it opens, Red until it closes) */}
             <MarketStatusBadge />
 
+            {/* Chart Style Switcher (Line vs Candlestick) */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = chartStyle === 'candlestick' ? 'line' : 'candlestick';
+                setChartStyle(next);
+                playSound('click');
+              }}
+              title={`Switch to ${chartStyle === 'candlestick' ? 'Smooth Line' : 'Candlestick (OHLC)'} Chart`}
+              className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-mono font-bold rounded-md border transition-all cursor-pointer shadow-xs ${
+                chartStyle === 'candlestick'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <span>{chartStyle === 'candlestick' ? '🕯️ Candle' : '📈 Line'}</span>
+            </button>
+
             {/* Benchmark Selector */}
             <div className="relative">
               <button
@@ -448,10 +504,14 @@ export default function PortfolioGraph({
 
         {/* Row 2: Large Net Worth Display (Dynamically scrubs on hover with AnimatedNumber) */}
         <div className={`text-3xl sm:text-4xl font-black tracking-tight text-white font-mono tabular-nums`}>
-          <AnimatedNumber
-            value={displayValue}
-            formatter={(val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          />
+          {privacyMode ? (
+            <span>$••••••</span>
+          ) : (
+            <AnimatedNumber
+              value={displayValue}
+              formatter={(val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
+          )}
         </div>
 
         {/* Row 3: Primary Portfolio Change & Timestamp */}
@@ -465,10 +525,14 @@ export default function PortfolioGraph({
           >
             {isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
             <span>
-              <AnimatedNumber
-                value={displayDiff}
-                formatter={(val) => `${val >= 0 ? '+' : '-'}$${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              />
+              {privacyMode ? (
+                <span>$••••••</span>
+              ) : (
+                <AnimatedNumber
+                  value={displayDiff}
+                  formatter={(val) => `${val >= 0 ? '+' : '-'}$${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                />
+              )}
             </span>
             <span>
               (<AnimatedNumber
@@ -548,27 +612,64 @@ export default function PortfolioGraph({
             />
           )}
 
-          {/* Portfolio Area Gradient Fill */}
-          {portfolioAreaPath && (
-            <path
-              d={portfolioAreaPath}
-              fill={`url(#${gradientId})`}
-              className="transition-opacity duration-300"
-            />
+          {/* Candlestick Visualization */}
+          {chartStyle === 'candlestick' && portfolioCandles && portfolioCandles.length > 0 && (
+            <g className="transition-opacity duration-300">
+              {portfolioCandles.map((c: any, i: number) => (
+                <g key={`port-candle-${i}`}>
+                  {/* Candle Wick Line */}
+                  <line
+                    x1={c.x}
+                    y1={c.highY}
+                    x2={c.x}
+                    y2={c.lowY}
+                    stroke={c.isUp ? '#10B981' : '#F43F5E'}
+                    strokeWidth={1.5}
+                    vectorEffect="non-scaling-stroke"
+                    opacity={0.85}
+                  />
+                  {/* Candle Body */}
+                  <rect
+                    x={c.x - c.candleWidth / 2}
+                    y={c.bodyTop}
+                    width={c.candleWidth}
+                    height={c.bodyHeight}
+                    fill={c.isUp ? '#10B981' : '#F43F5E'}
+                    stroke={c.isUp ? '#059669' : '#E11D48'}
+                    strokeWidth={0.8}
+                    rx={1.5}
+                    opacity={0.95}
+                  />
+                </g>
+              ))}
+            </g>
           )}
 
-          {/* Primary Portfolio Performance Curve */}
-          {portfolioLinePath && (
-            <path
-              d={portfolioLinePath}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth="2.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
+          {/* Portfolio Area Gradient Fill & Curve (Line Mode) */}
+          {chartStyle !== 'candlestick' && (
+            <>
+              {portfolioAreaPath && (
+                <path
+                  d={portfolioAreaPath}
+                  fill={`url(#${gradientId})`}
+                  className="transition-opacity duration-300"
+                />
+              )}
+
+              {portfolioLinePath && (
+                <path
+                  d={portfolioLinePath}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+            </>
           )}
+
 
           {/* Achievement Milestone Pins */}
           {activePoints.map((point, idx) => {

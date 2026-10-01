@@ -32,6 +32,7 @@ import { useSettings, FontType } from '@/context/SettingsContext';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { DashboardSettingsProvider, useDashboardSettings } from '@/context/DashboardSettingsContext';
 import JoinClassModal from '@/components/edu/JoinClassModal';
+import SettingsModal from '@/components/dashboard/SettingsModal';
 
 interface ShopItem {
   id: string;
@@ -193,7 +194,6 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
     }
   }, [user, fetchAchievementsAndStreak, fetchPortfolio]);
 
-  const [activeTab, setActiveTab] = useState<'Graphics' | 'Market' | 'Filters' | 'Linked'>('Graphics');
   const [isBadgeHovered, setIsBadgeHovered] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -701,146 +701,8 @@ function DashboardInnerLayout({ children }: PropsWithChildren) {
         </div>
 
         {/* Settings Popup Modal */}
-        {isSettingsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-[#1a2133] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-5 sm:p-6 w-full max-w-xl max-h-[88dvh] overflow-y-auto shadow-2xl relative">
-              
-              {/* Top Left Title and Clean X in top right */}
-              <div className="flex justify-between items-start mb-4 sm:mb-6">
-                <div>
-                  <h2 className="text-slate-900 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight">
-                    {activeTab}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-              {/* Tab Navigation Buttons under the title */}
-              <div className="flex gap-2 mb-4 sm:mb-6 border-b border-slate-200 dark:border-slate-700/50 pb-3 overflow-x-auto no-scrollbar">
-                {(['Graphics', 'Market', 'Filters', 'Linked'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold rounded-xl transition-all duration-200 whitespace-nowrap ${
-                      activeTab === tab
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {/* Content Panel */}
-              <div className="min-h-[220px] py-1 sm:py-2">
-                {activeTab === 'Graphics' && (
-                  <div className="space-y-4 sm:space-y-6">
-                    {/* Theme Mode Toggle */}
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
-                      <div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-white">Theme Mode</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Toggle between dark and light themes</div>
-                      </div>
-                      <button
-                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                          theme === 'dark' ? 'bg-blue-600' : 'bg-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Font Changer for Text */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30 gap-2 sm:gap-0">
-                      <div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-white">Text Font</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose typeface for menus and descriptions</div>
-                      </div>
-                      <div className="flex gap-1.5 self-start sm:self-auto">
-                        {(['sans', 'serif', 'mono'] as const).map((font) => (
-                          <button
-                            key={`text-${font}`}
-                            onClick={() => setTextFont(font)}
-                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
-                              textFont === font
-                                ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
-                                : 'bg-transparent border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                            }`}
-                          >
-                            {font.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Font Changer for Numbers */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30 gap-2 sm:gap-0">
-                      <div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-white">Number Font</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">Choose layout style for prices and charts</div>
-                      </div>
-                      <div className="flex gap-1.5 self-start sm:self-auto">
-                        {(['sans', 'serif', 'mono'] as const).map((font) => (
-                          <button
-                            key={`num-${font}`}
-                            onClick={() => setNumberFont(font)}
-                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
-                              numberFont === font
-                                ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
-                                : 'bg-transparent border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                            }`}
-                          >
-                            {font.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Switch for Detailed Trophies */}
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#0f111a]/40 border border-slate-200/50 dark:border-slate-800/30">
-                      <div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-white">Detailed Trophies</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Show interactive animations and details on trophy hover</div>
-                      </div>
-                      <button
-                        onClick={() => setDetailedTrophies(!detailedTrophies)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                          detailedTrophies ? 'bg-blue-600' : 'bg-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            detailedTrophies ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab !== 'Graphics' && (
-                  <div className="flex flex-col items-center justify-center text-center py-12">
-                    <span className="text-3xl mb-2">⚙️</span>
-                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">{activeTab} Settings</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Configuring {activeTab.toLowerCase()} properties will be supported in a future update.</p>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </div>
-        )}
 
         {/* Trillium Customization Store Popup Modal */}
         {isShopOpen && (

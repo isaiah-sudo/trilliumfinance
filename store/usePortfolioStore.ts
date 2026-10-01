@@ -21,7 +21,7 @@ interface PortfolioState {
   xp: number;
   levelInfo: LevelInfo | null;
   fetchPortfolio: () => Promise<void>;
-  executeTrade: (ticker: string, quantity: number, type: 'BUY' | 'SELL') => Promise<void>;
+  executeTrade: (ticker: string, quantity: number, type: 'BUY' | 'SELL', orderExecutionType?: 'MARKET' | 'LIMIT', limitPrice?: number) => Promise<any>;
   fetchAchievementsAndStreak: () => Promise<void>;
 }
 
@@ -48,15 +48,16 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     }
   },
 
-  executeTrade: async (ticker: string, quantity: number, type: 'BUY' | 'SELL') => {
+  executeTrade: async (ticker: string, quantity: number, type: 'BUY' | 'SELL', orderExecutionType: 'MARKET' | 'LIMIT' = 'MARKET', limitPrice?: number) => {
     set({ loading: true, error: null });
     try {
-      await handleTrade(ticker, quantity, type);
+      const result = await handleTrade(ticker, quantity, type, orderExecutionType, limitPrice);
       // Immediately refetch summary to sync calculations deterministic state
       const summary = await getPortfolioSummary();
       set({ portfolio: summary, loading: false });
       // Refetch achievements in case trading unlocks any new achievements/XP
       await get().fetchAchievementsAndStreak();
+      return result;
     } catch (err: any) {
       console.error('[Portfolio Store] Trade Error:', err);
       set({ error: err.message || 'Trade execution failed', loading: false });

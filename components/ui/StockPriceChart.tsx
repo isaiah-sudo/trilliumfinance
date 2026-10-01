@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { Spinner } from './Spinner';
+import { useSettings } from '@/context/SettingsContext';
 
 interface CandlePoint {
   time: number;
@@ -39,11 +40,20 @@ interface StockPriceChartProps {
 type TimeRange = '1D' | '1W' | '1M' | '1Y';
 
 export const StockPriceChart: React.FC<StockPriceChartProps> = ({ symbol, className = '' }) => {
-  const [timeRange, setTimeRange] = useState<TimeRange>('1D');
+  const { defaultTimeframe, chartStyle, setChartStyle, playSound } = useSettings();
+  const initialRange: TimeRange = defaultTimeframe === 'ALL' ? '1Y' : (defaultTimeframe as TimeRange) || '1D';
+  const [timeRange, setTimeRange] = useState<TimeRange>(initialRange);
   const [data, setData] = useState<StockChartData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<CandlePoint | null>(null);
+
+  useEffect(() => {
+    if (defaultTimeframe) {
+      const nextRange: TimeRange = defaultTimeframe === 'ALL' ? '1Y' : (defaultTimeframe as TimeRange) || '1D';
+      setTimeRange(nextRange);
+    }
+  }, [defaultTimeframe]);
 
   useEffect(() => {
     if (!symbol) return;
@@ -161,27 +171,46 @@ export const StockPriceChart: React.FC<StockPriceChartProps> = ({ symbol, classN
           </div>
         </div>
 
-        {/* Timeframe Button Controls */}
-        <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-          {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
-            const isActive = timeRange === range;
-            return (
-              <button
-                key={range}
-                type="button"
-                onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                  isActive
-                    ? isPositive
-                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                      : 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                {range}
-              </button>
-            );
-          })}
+        {/* Chart Style & Timeframe Button Controls */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              const next = chartStyle === 'candlestick' ? 'line' : 'candlestick';
+              setChartStyle(next);
+              playSound('click');
+            }}
+            title={`Switch to ${chartStyle === 'candlestick' ? 'Smooth Line' : 'Candlestick (OHLC)'} Chart`}
+            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-xl border transition-all cursor-pointer shadow-xs ${
+              chartStyle === 'candlestick'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
+            }`}
+          >
+            {chartStyle === 'candlestick' ? '🕯️ Candle' : '📈 Line'}
+          </button>
+
+          <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+            {(['1D', '1W', '1M', '1Y'] as const).map((range) => {
+              const isActive = timeRange === range;
+              return (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setTimeRange(range)}
+                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    isActive
+                      ? isPositive
+                        ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                        : 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  {range}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -220,7 +249,79 @@ export const StockPriceChart: React.FC<StockPriceChartProps> = ({ symbol, classN
           </div>
         )}
 
-        {data && data.points.length > 0 && (
+        {data && data.points.length > 0 && chartStyle === 'candlestick' ? (
+          <div className="w-full h-full relative select-none">
+            <svg
+              viewBox="0 0 600 180"
+              preserveAspectRatio="none"
+              className="w-full h-full overflow-visible"
+              onMouseLeave={() => setHoveredPoint(null)}
+            >
+              <line x1="0" y1="90" x2="600" y2="90" stroke="#1e293b" strokeDasharray="3 3" opacity={0.5} />
+
+              {(() => {
+                const W = 600;
+                const H = 180;
+                const pad = 12;
+                const usableH = H - pad * 2;
+                const pMin = typeof yDomain[0] === 'number' ? yDomain[0] : data.low;
+                const pMax = typeof yDomain[1] === 'number' ? yDomain[1] : data.high;
+                const pRange = Math.max(0.01, pMax - pMin);
+                const candleW = Math.max(3, Math.min(14, (W / (data.points.length || 1)) * 0.65));
+
+                return data.points.map((pt, i) => {
+                  const prevP = i > 0 ? data.points[i - 1].price : startPrice;
+                  const curP = pt.price;
+                  const spread = Math.abs(curP - prevP);
+                  const open = prevP;
+                  const close = curP;
+                  const high = Math.max(open, close) + spread * 0.4 + (pRange * 0.01);
+                  const low = Math.min(open, close) - spread * 0.4 - (pRange * 0.01);
+
+                  const x = data.points.length > 1 ? (i / (data.points.length - 1)) * W : W / 2;
+                  const openY = H - pad - ((open - pMin) / pRange) * usableH;
+                  const closeY = H - pad - ((close - pMin) / pRange) * usableH;
+                  const highY = H - pad - ((high - pMin) / pRange) * usableH;
+                  const lowY = H - pad - ((low - pMin) / pRange) * usableH;
+
+                  const isUp = close >= open;
+                  const bodyTop = Math.min(openY, closeY);
+                  const bodyH = Math.max(2.5, Math.abs(closeY - openY));
+
+                  return (
+                    <g
+                      key={`candle-pt-${i}`}
+                      onMouseEnter={() => setHoveredPoint(pt)}
+                      className="cursor-crosshair"
+                    >
+                      <line
+                        x1={x}
+                        y1={highY}
+                        x2={x}
+                        y2={lowY}
+                        stroke={isUp ? '#10B981' : '#F43F5E'}
+                        strokeWidth={1.5}
+                        vectorEffect="non-scaling-stroke"
+                        opacity={0.85}
+                      />
+                      <rect
+                        x={x - candleW / 2}
+                        y={bodyTop}
+                        width={candleW}
+                        height={bodyH}
+                        fill={isUp ? '#10B981' : '#F43F5E'}
+                        stroke={isUp ? '#059669' : '#E11D48'}
+                        strokeWidth={0.8}
+                        rx={1.5}
+                        opacity={0.95}
+                      />
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </div>
+        ) : data && data.points.length > 0 && (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data.points}

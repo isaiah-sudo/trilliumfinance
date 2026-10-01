@@ -468,7 +468,13 @@ async function validateTradeAgainstRules(
   }
 }
 
-export async function handleTrade(ticker: string, quantity: number, type: 'BUY' | 'SELL') {
+export async function handleTrade(
+  ticker: string,
+  quantity: number,
+  type: 'BUY' | 'SELL',
+  orderExecutionType: 'MARKET' | 'LIMIT' = 'MARKET',
+  limitPrice?: number
+) {
   const shares = Number(quantity);
   if (isNaN(shares) || shares <= 0) {
     throw new Error('Quantity must be a valid number greater than 0');
@@ -489,6 +495,72 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   const price = Number(currentPrice);
   if (isNaN(price) || price <= 0) {
     throw new Error(`Could not fetch live price for ${ticker}`);
+  }
+
+  // Handle Limit Order logic
+  if (orderExecutionType === 'LIMIT') {
+    const targetPrice = Number(limitPrice);
+    if (isNaN(targetPrice) || targetPrice <= 0) {
+      throw new Error('Please specify a valid limit price greater than $0.00');
+    }
+
+    // If BUY limit: price must be <= targetPrice to execute immediately
+    if (type === 'BUY' && price > targetPrice) {
+      const pendingOrdersRef = collection(db, 'users', userId, 'pending_orders');
+      const orderDoc = doc(pendingOrdersRef);
+      await setDoc(orderDoc, {
+        id: orderDoc.id,
+        ticker: ticker.toUpperCase(),
+        quantity: shares,
+        targetPrice,
+        priceAtPlacement: price,
+        type: 'BUY',
+        orderExecutionType: 'LIMIT',
+        status: 'PENDING',
+        createdAt: serverTimestamp(),
+        description: `Limit BUY ${shares} ${ticker.toUpperCase()} @ $${targetPrice.toFixed(2)} (Market: $${price.toFixed(2)})`
+      });
+
+      return {
+        status: 'PENDING',
+        orderId: orderDoc.id,
+        message: `Limit order placed! Will execute when ${ticker.toUpperCase()} drops to $${targetPrice.toFixed(2)} (currently $${price.toFixed(2)}).`,
+        executed: false,
+        ticker: ticker.toUpperCase(),
+        quantity: shares,
+        price: targetPrice,
+        total: shares * targetPrice,
+      };
+    }
+
+    // If SELL limit: price must be >= targetPrice to execute immediately
+    if (type === 'SELL' && price < targetPrice) {
+      const pendingOrdersRef = collection(db, 'users', userId, 'pending_orders');
+      const orderDoc = doc(pendingOrdersRef);
+      await setDoc(orderDoc, {
+        id: orderDoc.id,
+        ticker: ticker.toUpperCase(),
+        quantity: shares,
+        targetPrice,
+        priceAtPlacement: price,
+        type: 'SELL',
+        orderExecutionType: 'LIMIT',
+        status: 'PENDING',
+        createdAt: serverTimestamp(),
+        description: `Limit SELL ${shares} ${ticker.toUpperCase()} @ $${targetPrice.toFixed(2)} (Market: $${price.toFixed(2)})`
+      });
+
+      return {
+        status: 'PENDING',
+        orderId: orderDoc.id,
+        message: `Limit order placed! Will execute when ${ticker.toUpperCase()} rises to $${targetPrice.toFixed(2)} (currently $${price.toFixed(2)}).`,
+        executed: false,
+        ticker: ticker.toUpperCase(),
+        quantity: shares,
+        price: targetPrice,
+        total: shares * targetPrice,
+      };
+    }
   }
 
   const totalAmount = safeMultiply(price, shares);
@@ -570,8 +642,9 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
       price: price,
       totalAmount,
       type,
+      orderExecutionType: orderExecutionType || 'MARKET',
       timestamp: serverTimestamp(),
-      description: `${type} ${shares} ${ticker.toUpperCase()} @ $${price.toFixed(2)}`
+      description: `${orderExecutionType === 'LIMIT' ? 'Limit ' : ''}${type} ${shares} ${ticker.toUpperCase()} @ $${price.toFixed(2)}`
     });
   });
 
@@ -582,8 +655,18 @@ export async function handleTrade(ticker: string, quantity: number, type: 'BUY' 
   const { checkAndUnlockAchievements } = await import('./achievements');
   await checkAndUnlockAchievements(userId);
 
-  return { success: true };
+  return {
+    success: true,
+    status: 'FILLED',
+    executed: true,
+    message: `Successfully executed ${orderExecutionType} ${type} of ${shares} ${ticker.toUpperCase()} at $${price.toFixed(2)}`,
+    ticker: ticker.toUpperCase(),
+    quantity: shares,
+    price,
+    total: totalAmount,
+  };
 }
+
 
 export async function getMarketQuotes(tickers: string[]): Promise<Array<{ ticker: string; price: number; change: number }>> {
   if (!tickers || tickers.length === 0) return [];

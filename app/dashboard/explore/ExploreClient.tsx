@@ -20,6 +20,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/context/SettingsContext';
 import { handleTrade } from '@/app/actions/trading';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { StockInfoDrawer } from '@/components/ui/StockInfoDrawer';
@@ -190,20 +191,43 @@ export default function MarketExplorer() {
     fetchPortfolio();
   }, [fetchPortfolio]);
 
+  const {
+    defaultExplorerCategory,
+    defaultExplorerSort,
+    defaultTradeQuantity,
+    defaultOrderType,
+    orderConfirmation,
+    hidePennyStocks,
+    pennyStockWarning,
+    privacyMode,
+    playSound,
+  } = useSettings();
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
-  const [sortOption, setSortOption] = useState<SortOption>('default');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>(() => (defaultExplorerCategory as CategoryType) || 'All');
+  const [sortOption, setSortOption] = useState<SortOption>(() => (defaultExplorerSort as SortOption) || 'default');
 
   // Trade Modal State
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockQuote | null>(null);
   const [orderType, setOrderType] = useState<'BUY' | 'SELL'>('BUY');
-  const [tradeQty, setTradeQty] = useState(1);
+  const [orderExecutionType, setOrderExecutionType] = useState<'MARKET' | 'LIMIT'>(() => defaultOrderType === 'limit' ? 'LIMIT' : 'MARKET');
+  const [limitPrice, setLimitPrice] = useState<number>(0);
+  const [confirmStepOpen, setConfirmStepOpen] = useState(false);
+  const [tradeQty, setTradeQty] = useState(defaultTradeQuantity || 1);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState(false);
   const [modalHoveredPoint, setModalHoveredPoint] = useState<CandlePoint | null>(null);
   const [modalDailyRange, setModalDailyRange] = useState<{ high: number; low: number } | null>(null);
+
+  useEffect(() => {
+    if (defaultExplorerCategory) setSelectedCategory(defaultExplorerCategory as CategoryType);
+  }, [defaultExplorerCategory]);
+
+  useEffect(() => {
+    if (defaultExplorerSort) setSortOption(defaultExplorerSort as SortOption);
+  }, [defaultExplorerSort]);
   const [lastExecutedTrade, setLastExecutedTrade] = useState<{
     id: string;
     timestamp: string;
@@ -231,12 +255,15 @@ export default function MarketExplorer() {
     setTradeError('');
     setTradeSuccess(false);
     setLastExecutedTrade(null);
+    setConfirmStepOpen(false);
     setOrderType('BUY');
-    setTradeQty(1);
+    setOrderExecutionType(defaultOrderType === 'limit' ? 'LIMIT' : 'MARKET');
+    setLimitPrice(freshStock.price);
+    setTradeQty(defaultTradeQuantity || 1);
     setModalHoveredPoint(null);
     setModalDailyRange(null);
     fetchPortfolio();
-  }, [getStock, fetchPortfolio]);
+  }, [getStock, fetchPortfolio, defaultOrderType, defaultTradeQuantity]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -265,7 +292,8 @@ export default function MarketExplorer() {
         stock.ticker.toLowerCase().includes(query) ||
         stock.name.toLowerCase().includes(query);
       const matchesCategory = selectedCategory === 'All' || stock.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesPennyStock = !hidePennyStocks || stock.price >= 5;
+      return matchesSearch && matchesCategory && matchesPennyStock;
     });
 
     if (sortOption === 'gainers') {
@@ -281,18 +309,19 @@ export default function MarketExplorer() {
     }
 
     return list;
-  }, [stocks, searchQuery, selectedCategory, sortOption]);
+  }, [stocks, searchQuery, selectedCategory, sortOption, hidePennyStocks]);
 
   // Live modal metrics and financial calculations
   const livePrice = selectedStock ? (getStock(selectedStock.ticker)?.price || selectedStock.price) : 0;
+  const effectivePrice = orderExecutionType === 'LIMIT' && limitPrice > 0 ? limitPrice : livePrice;
   const userCash = portfolio?.cash ?? 10000;
   const userHolding = portfolio?.holdings?.find(
     (h: any) => (h.symbol || h.ticker)?.toUpperCase() === selectedStock?.ticker?.toUpperCase()
   );
   const ownedShares = userHolding ? Number(userHolding.qty) : 0;
-  const orderTotal = livePrice * tradeQty;
+  const orderTotal = effectivePrice * tradeQty;
 
-  const maxBuyQty = livePrice > 0 ? Math.floor(userCash / livePrice) : 0;
+  const maxBuyQty = effectivePrice > 0 ? Math.floor(userCash / effectivePrice) : 0;
   const canAffordBuy = userCash >= orderTotal;
   const hasEnoughSharesToSell = ownedShares >= tradeQty;
 
@@ -311,11 +340,17 @@ export default function MarketExplorer() {
 
   const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!selectedStock) return;
+    if (orderConfirmation && !confirmStepOpen) {
+      setConfirmStepOpen(true);
+      return;
+    }
+    setConfirmStepOpen(false);
     setTradeLoading(true);
     setTradeError('');
     const currentLivePrice = getStock(selectedStock.ticker)?.price || selectedStock.price;
     const orderQty = Number(tradeQty);
-    const calculatedTotal = currentLivePrice * orderQty;
+    const effectivePrice = orderExecutionType === 'LIMIT' && limitPrice > 0 ? limitPrice : currentLivePrice;
+    const calculatedTotal = effectivePrice * orderQty;
 
     // Financial validation checks
     if (type === 'BUY' && calculatedTotal > userCash) {
@@ -331,7 +366,8 @@ export default function MarketExplorer() {
     }
 
     try {
-      await executeTrade(selectedStock.ticker, orderQty, type);
+      const res = await executeTrade(selectedStock.ticker, orderQty, type, orderExecutionType, effectivePrice);
+      playSound('trade');
 
       if (typeof window !== 'undefined' && 'vibrate' in navigator) {
         try {
@@ -342,13 +378,13 @@ export default function MarketExplorer() {
       }
 
       setLastExecutedTrade({
-        id: `TRX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        id: res?.orderId || `TRX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         ticker: selectedStock.ticker,
         name: selectedStock.name,
         type,
         qty: orderQty,
-        price: currentLivePrice,
+        price: effectivePrice,
         total: calculatedTotal,
       });
       setTradeSuccess(true);
@@ -359,6 +395,7 @@ export default function MarketExplorer() {
       setTradeLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-5 sm:space-y-6 pb-12">
@@ -722,6 +759,7 @@ export default function MarketExplorer() {
                         onClick={() => {
                           setOrderType('BUY');
                           setTradeError('');
+                          setConfirmStepOpen(false);
                         }}
                         className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-md transition-all cursor-pointer ${
                           orderType === 'BUY'
@@ -736,6 +774,7 @@ export default function MarketExplorer() {
                         onClick={() => {
                           setOrderType('SELL');
                           setTradeError('');
+                          setConfirmStepOpen(false);
                         }}
                         className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-md transition-all cursor-pointer ${
                           orderType === 'SELL'
@@ -747,6 +786,74 @@ export default function MarketExplorer() {
                       </button>
                     </div>
 
+                    {/* Order Mode (Market vs Limit) */}
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+                      <span className="text-[10px] text-slate-400 font-sans font-bold uppercase pl-1">Execution Mode:</span>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setOrderExecutionType('MARKET'); setConfirmStepOpen(false); }}
+                          className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                            orderExecutionType === 'MARKET' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Market
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderExecutionType('LIMIT');
+                            if (!limitPrice) setLimitPrice(livePrice);
+                            setConfirmStepOpen(false);
+                          }}
+                          className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                            orderExecutionType === 'LIMIT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Limit
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Limit Price Input if Limit Mode */}
+                    {orderExecutionType === 'LIMIT' && (
+                      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/25 space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-blue-400">Target Limit Price ($)</span>
+                          <span className="text-[10px] font-mono text-slate-400">Market: ${livePrice.toFixed(2)}</span>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={limitPrice || ''}
+                            onChange={(e) => {
+                              setLimitPrice(Math.max(0, Number(e.target.value)));
+                              setConfirmStepOpen(false);
+                            }}
+                            placeholder={livePrice.toFixed(2)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          {orderType === 'BUY'
+                            ? `Order fills if price drops to or below $${(limitPrice || livePrice).toFixed(2)}.`
+                            : `Order fills if price rises to or above $${(limitPrice || livePrice).toFixed(2)}.`}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Penny Stock Volatility Warning if applicable */}
+                    {pennyStockWarning && livePrice < 5 && (
+                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-medium flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                        <span>High Volatility Guard: {selectedStock.ticker} is priced under $5.00.</span>
+                      </div>
+                    )}
+
+
                     {/* Financial Capacity Card (Buying Power & Owned Shares) */}
                     <div className="rounded-lg bg-slate-900/80 border border-slate-800 p-3.5 space-y-2.5">
                       <div className="flex items-center justify-between text-xs">
@@ -755,12 +862,16 @@ export default function MarketExplorer() {
                           Available Cash:
                         </span>
                         <span className="font-mono font-bold text-white text-sm">
-                          <AnimatedNumber
-                            value={userCash}
-                            formatter={(val) =>
-                              `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            }
-                          />
+                          {privacyMode ? (
+                            '••••••'
+                          ) : (
+                            <AnimatedNumber
+                              value={userCash}
+                              formatter={(val) =>
+                                `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              }
+                            />
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/60">
@@ -897,7 +1008,7 @@ export default function MarketExplorer() {
                             remainingCash < 0 ? 'text-rose-400' : 'text-slate-200'
                           }`}
                         >
-                          ${Math.max(0, remainingCash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {privacyMode ? '••••••' : `$${Math.max(0, remainingCash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </span>
                       </div>
                     </div>
@@ -927,32 +1038,84 @@ export default function MarketExplorer() {
                       </div>
                     )}
 
-                    {/* Primary Action Submit Button */}
-                    <button
-                      type="button"
-                      onClick={() => executeTradeSubmit(orderType)}
-                      disabled={
-                        tradeLoading ||
-                        (orderType === 'BUY' && !canAffordBuy) ||
-                        (orderType === 'SELL' && (!hasEnoughSharesToSell || ownedShares === 0))
-                      }
-                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                        orderType === 'BUY'
-                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-[0.99]'
-                          : 'bg-rose-600 hover:bg-rose-500 text-white active:scale-[0.99]'
-                      }`}
-                    >
-                      {tradeLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                          Submitting Order...
-                        </span>
-                      ) : orderType === 'BUY' ? (
-                        `Buy ${tradeQty} ${selectedStock.ticker} · $${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      ) : (
-                        `Sell ${tradeQty} ${selectedStock.ticker} · $${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      )}
-                    </button>
+                    {/* Order Confirmation Step Card or Primary Action Submit Button */}
+                    {confirmStepOpen ? (
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                        <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                          <AlertCircle className="h-4 w-4 shrink-0" />
+                          <span>Review &amp; Confirm Order</span>
+                        </div>
+                        <div className="text-[11px] space-y-1.5 font-mono bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400 font-sans">Action:</span>
+                            <span className={`font-bold ${orderType === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {orderType} {tradeQty} shares of {selectedStock.ticker}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400 font-sans">Execution:</span>
+                            <span className="text-blue-400 font-bold">{orderExecutionType} Order</span>
+                          </div>
+                          {orderExecutionType === 'LIMIT' && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-400 font-sans">Target Price:</span>
+                              <span className="text-blue-400 font-bold">${effectivePrice.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-slate-800">
+                            <span className="text-slate-400 font-sans">Est. Total:</span>
+                            <span className="font-bold text-white">${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmStepOpen(false)}
+                            className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Modify
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => executeTradeSubmit(orderType)}
+                            disabled={tradeLoading}
+                            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                              orderType === 'BUY'
+                                ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                                : 'bg-rose-600 hover:bg-rose-500 text-white'
+                            }`}
+                          >
+                            {tradeLoading ? 'Confirming...' : 'Authorize Trade'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => executeTradeSubmit(orderType)}
+                        disabled={
+                          tradeLoading ||
+                          (orderType === 'BUY' && !canAffordBuy) ||
+                          (orderType === 'SELL' && (!hasEnoughSharesToSell || ownedShares === 0))
+                        }
+                        className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                          orderType === 'BUY'
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-[0.99]'
+                            : 'bg-rose-600 hover:bg-rose-500 text-white active:scale-[0.99]'
+                        }`}
+                      >
+                        {tradeLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                            Submitting Order...
+                          </span>
+                        ) : orderType === 'BUY' ? (
+                          `Buy ${tradeQty} ${selectedStock.ticker} · $${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        ) : (
+                          `Sell ${tradeQty} ${selectedStock.ticker} · $${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

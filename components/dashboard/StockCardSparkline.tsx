@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSettings } from '@/context/SettingsContext';
 
 export interface CandlePoint {
   time: number;
@@ -96,6 +97,7 @@ export const StockCardSparkline: React.FC<StockCardSparklineProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const { showSparklines } = useSettings();
 
   // Initial fallback data for instant zero-latency paint
   const [chartData, setChartData] = useState<{ points: CandlePoint[]; high: number; low: number }>(() => {
@@ -214,6 +216,14 @@ export const StockCardSparkline: React.FC<StockCardSparklineProps> = ({
   };
 
   const activePointCoord = hoverIndex !== null && coords[hoverIndex] ? coords[hoverIndex] : null;
+
+  if (!showSparklines) {
+    return (
+      <div className={`relative w-full flex items-center justify-center opacity-25 ${className}`} style={{ height }}>
+        <div className="w-full border-b border-dashed border-slate-700" />
+      </div>
+    );
+  }
 
   return (
     <div

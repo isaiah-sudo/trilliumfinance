@@ -274,7 +274,16 @@ function TrophyCard({ id, title, description, iconType, difficulty, isSelected, 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { numberFont } = useSettings();
+  const {
+    numberFont,
+    privacyMode,
+    playSound,
+    defaultTimeframe,
+    defaultOrderType,
+    defaultTradeQuantity,
+    orderConfirmation,
+    pennyStockWarning,
+  } = useSettings();
   const [showDetails, setShowDetails] = useState(true);
   const [isGameLoading, setIsGameLoading] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -379,7 +388,13 @@ export default function DashboardPage() {
   const { getStock, lastUpdated } = useStockMarket();
 
   const [chartData, setChartData] = useState<{ portfolio: any[], benchmark: any[] } | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('1D');
+  const [timeRange, setTimeRange] = useState<TimeRange>((defaultTimeframe as TimeRange) || '1D');
+
+  useEffect(() => {
+    if (defaultTimeframe) {
+      setTimeRange(defaultTimeframe as TimeRange);
+    }
+  }, [defaultTimeframe]);
   const [selectedTrophyIds, setSelectedTrophyIds] = useState<string[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [hoveredData, setHoveredData] = useState<{ portfolio: number; spy: number; time: number; achievements?: any[] } | null>(null);
@@ -584,7 +599,10 @@ export default function DashboardPage() {
 
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeTicker, setTradeTicker] = useState('');
-  const [tradeQty, setTradeQty] = useState(1);
+  const [tradeQty, setTradeQty] = useState(defaultTradeQuantity || 1);
+  const [tradeOrderExecutionType, setTradeOrderExecutionType] = useState<'MARKET' | 'LIMIT'>(() => defaultOrderType === 'limit' ? 'LIMIT' : 'MARKET');
+  const [tradeLimitPrice, setTradeLimitPrice] = useState<number>(0);
+  const [tradeConfirmStepOpen, setTradeConfirmStepOpen] = useState(false);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
 
@@ -903,13 +921,23 @@ export default function DashboardPage() {
 
   const executeTradeSubmit = async (type: 'BUY' | 'SELL') => {
     if (!tradeTicker) return;
+    if (orderConfirmation && !tradeConfirmStepOpen) {
+      setTradeConfirmStepOpen(true);
+      return;
+    }
+    setTradeConfirmStepOpen(false);
     setTradeLoading(true);
     setTradeError('');
     try {
-      await executeTrade(tradeTicker.toUpperCase(), Number(tradeQty), type);
+      const stock = getStock(tradeTicker.toUpperCase().trim());
+      const effectivePrice = tradeOrderExecutionType === 'LIMIT' && tradeLimitPrice > 0 ? tradeLimitPrice : (stock?.price || 0);
+      await executeTrade(tradeTicker.toUpperCase().trim(), Number(tradeQty), type, tradeOrderExecutionType, effectivePrice);
+      playSound('trade');
       setTradeModalOpen(false);
       setTradeTicker('');
-      setTradeQty(1);
+      setTradeQty(defaultTradeQuantity || 1);
+      setTradeLimitPrice(0);
+      setTradeConfirmStepOpen(false);
     } catch (err: any) {
       setTradeError(err.message || 'Trade failed');
     } finally {
@@ -917,8 +945,10 @@ export default function DashboardPage() {
     }
   };
 
-  const formatCurrency = (val: number) => val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const formatCurrency = (val: number) =>
+    privacyMode ? '$••••••' : val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   const formatSignedCurrency = (val: number) => {
+    if (privacyMode) return '$••••••';
     const absVal = Math.abs(val);
     const formatted = absVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     if (val > 0) return `+${formatted}`;
@@ -1832,8 +1862,72 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  {/* Execution Mode (Market vs Limit) */}
+                  <div className="flex items-center justify-between p-1.5 rounded-xl bg-[#0f111a] border border-slate-700 text-xs">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase pl-2">Mode:</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { setTradeOrderExecutionType('MARKET'); setTradeConfirmStepOpen(false); }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          tradeOrderExecutionType === 'MARKET' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Market
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTradeOrderExecutionType('LIMIT');
+                          const cur = getStock(tradeTicker.toUpperCase().trim())?.price;
+                          if (cur && !tradeLimitPrice) setTradeLimitPrice(cur);
+                          setTradeConfirmStepOpen(false);
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          tradeOrderExecutionType === 'LIMIT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Limit
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Limit Price Input if Limit Mode */}
+                  {tradeOrderExecutionType === 'LIMIT' && (
+                    <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-blue-400">Target Limit Price ($)</span>
+                        {tradeTicker && (
+                          <span className="text-[10px] font-mono text-slate-400">
+                            Market: ${(getStock(tradeTicker.toUpperCase().trim())?.price || 0).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={tradeLimitPrice || ''}
+                          onChange={(e) => {
+                            setTradeLimitPrice(Math.max(0, Number(e.target.value)));
+                            setTradeConfirmStepOpen(false);
+                          }}
+                          placeholder={(getStock(tradeTicker.toUpperCase().trim())?.price || 100).toFixed(2)}
+                          className="w-full bg-[#0f111a] border border-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {(() => {
                     const upperTicker = tradeTicker.toUpperCase().trim();
+                    const liveStock = getStock(upperTicker);
+                    const stockPrice = liveStock?.price || 0;
+                    const effectivePrice = tradeOrderExecutionType === 'LIMIT' && tradeLimitPrice > 0 ? tradeLimitPrice : stockPrice;
+                    const orderEstTotal = effectivePrice * tradeQty;
+
                     const isRestricted = settings.restrictedAssets.some(
                       (asset: string) => asset.toUpperCase().trim() === upperTicker
                     );
@@ -1848,6 +1942,12 @@ export default function DashboardPage() {
 
                     return (
                       <div className="space-y-2">
+                        {pennyStockWarning && stockPrice > 0 && stockPrice < 5 && (
+                          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-medium flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                            <span>Volatility Guard: {upperTicker} is under $5.00.</span>
+                          </div>
+                        )}
                         {isRestricted && (
                           <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-[11px] font-semibold leading-normal">
                             <ShieldAlert className="h-4 w-4 shrink-0" />
@@ -1868,22 +1968,78 @@ export default function DashboardPage() {
                         )}
                         {tradeError && <div className="text-rose-500 text-xs font-bold">{tradeError}</div>}
                         
-                        <div className="flex gap-4 pt-2">
-                          <button 
-                            onClick={() => executeTradeSubmit('BUY')}
-                            disabled={tradeLoading || !tradeTicker || isRestricted || isPosLimitReached}
-                            className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer"
-                          >
-                            {tradeLoading ? 'Processing...' : 'Buy'}
-                          </button>
-                          <button 
-                            onClick={() => executeTradeSubmit('SELL')}
-                            disabled={tradeLoading || !tradeTicker || isRestricted || isShortBlocked}
-                            className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] disabled:opacity-50 cursor-pointer"
-                          >
-                            {tradeLoading ? 'Processing...' : 'Sell'}
-                          </button>
-                        </div>
+                        {tradeConfirmStepOpen ? (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+                            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                              <AlertCircle className="h-4 w-4 shrink-0" />
+                              <span>Confirm Order ({tradeOrderExecutionType})</span>
+                            </div>
+                            <div className="text-[11px] space-y-1 font-mono text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                              <div className="flex justify-between">
+                                <span className="text-slate-400 font-sans">Asset:</span>
+                                <span className="font-bold text-white">{upperTicker} ({tradeQty} shares)</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400 font-sans">Mode:</span>
+                                <span className="text-blue-400 font-bold">{tradeOrderExecutionType}</span>
+                              </div>
+                              {tradeOrderExecutionType === 'LIMIT' && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 font-sans">Target:</span>
+                                  <span className="text-blue-400 font-bold">${effectivePrice.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between pt-1 border-t border-slate-800">
+                                <span className="text-slate-400 font-sans">Est. Total:</span>
+                                <span className="font-bold text-white">
+                                  {orderEstTotal > 0 ? `$${orderEstTotal.toFixed(2)}` : 'Market'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setTradeConfirmStepOpen(false)}
+                                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                              >
+                                Modify
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => executeTradeSubmit('BUY')}
+                                disabled={tradeLoading}
+                                className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition-all cursor-pointer"
+                              >
+                                {tradeLoading ? 'Confirming...' : 'Confirm Buy'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => executeTradeSubmit('SELL')}
+                                disabled={tradeLoading}
+                                className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all cursor-pointer"
+                              >
+                                {tradeLoading ? 'Confirming...' : 'Confirm Sell'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-4 pt-2">
+                            <button 
+                              onClick={() => executeTradeSubmit('BUY')}
+                              disabled={tradeLoading || !tradeTicker || isRestricted || isPosLimitReached}
+                              className="flex-1 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer"
+                            >
+                              {tradeLoading ? 'Processing...' : 'Buy'}
+                            </button>
+                            <button 
+                              onClick={() => executeTradeSubmit('SELL')}
+                              disabled={tradeLoading || !tradeTicker || isRestricted || isShortBlocked}
+                              className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] disabled:opacity-50 cursor-pointer"
+                            >
+                              {tradeLoading ? 'Processing...' : 'Sell'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
